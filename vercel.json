@@ -1,0 +1,8 @@
+{
+  "framework": "vite",
+  "buildCommand": "npx vite build",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    { "source": "/api/trpc/(.*)", "destination": "/api/trpc/$1" }
+  ]
+}
