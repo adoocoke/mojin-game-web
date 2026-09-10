@@ -67,6 +67,9 @@ export interface World {
   missionWall?: { meshes: THREE.Object3D[]; aabb: AABB }  // 破壁任务的可爆破掩体
   missionGuides: THREE.Object3D[]  // 任务目标引导光柱（任务完成后移除）
   lampStands?: { x: number; z: number; floorY: number; flame: THREE.Object3D; light: THREE.PointLight; lit: boolean }[]  // 长明灯灯座
+  sun: THREE.DirectionalLight
+  hemi: THREE.HemisphereLight
+  train?: { group: THREE.Group; cars: THREE.Object3D[]; speed: number; x: number; zMin: number; zMax: number }
 }
 
 const crateColors: Record<string, number> = {
@@ -470,7 +473,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = 140
+  const size = mapId === 'snow' ? 300 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -765,6 +768,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   const slowZones: World['slowZones'] = []
   let extractPos2: THREE.Vector3 | undefined = undefined
   let lampStands: World['lampStands'] = undefined
+  let train: World['train'] = undefined
 
   if (mapId === 'wild') {
     // ================= 地图一：废弃矿区（爆率下调） =================
@@ -1268,9 +1272,81 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mapMarkers.push({ x: 2, z: -74, kind: 'mission', name: '主控台' })
 
     // 敌人出没点：地图南侧（玩家北侧推进，南侧接敌）
-    for (const [ex, ez] of [[-40, 70], [40, 70], [0, 60], [-80, 90], [80, 90], [-20, 95], [60, 20], [-60, -20]] as const) {
+    for (const [ex, ez] of [[-40, 70], [40, 70], [0, 60], [-80, 90], [80, 90], [-20, 95], [60, 20], [-60, -20], [-200, -40], [210, 40], [-160, 180]] as const) {
       spawnPoints.push(new THREE.Vector3(ex, 0, ez))
     }
+
+    // ---- 皇家酒店（西扩区，可进内构搜刮） ----
+    const HT = { x: -190, z: -40, w: 36, d: 28, h: 4.2 }
+    const hotelMat = new THREE.MeshStandardMaterial({ color: 0xb7c0c8, roughness: 0.7 })
+    const hotelDark = new THREE.MeshStandardMaterial({ color: 0x4a3a32, roughness: 0.55, metalness: 0.2 })
+    const goldTrim = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.4, metalness: 0.7 })
+    sbox(hotelMat, HT.w, HT.h, 0.45, HT.x, HT.h / 2, HT.z - HT.d / 2)
+    sbox(hotelMat, HT.w, HT.h, 0.45, HT.x, HT.h / 2, HT.z + HT.d / 2)
+    sbox(hotelMat, 0.45, HT.h, HT.d, HT.x - HT.w / 2, HT.h / 2, HT.z)
+    sbox(hotelMat, 0.45, HT.h, HT.d * 0.38, HT.x + HT.w / 2, HT.h / 2, HT.z - HT.d * 0.31)
+    sbox(hotelMat, 0.45, HT.h, HT.d * 0.38, HT.x + HT.w / 2, HT.h / 2, HT.z + HT.d * 0.31)
+    mkDoor(HT.x + HT.w / 2, HT.z, 3.6, 3.0, 0, Math.PI / 2)
+    sbox(hotelDark, HT.w + 1.2, 0.35, HT.d + 1.2, HT.x, HT.h + 0.2, HT.z, false)
+    sbox(goldTrim, 8, 0.4, 1.2, HT.x + HT.w / 2 + 0.4, 3.4, HT.z, false)
+    sbox(goldTrim, 0.7, 3.4, 0.7, HT.x - 8, 1.7, HT.z - 6)
+    sbox(goldTrim, 0.7, 3.4, 0.7, HT.x + 8, 1.7, HT.z - 6)
+    sbox(goldTrim, 0.7, 3.4, 0.7, HT.x - 8, 1.7, HT.z + 6)
+    sbox(goldTrim, 0.7, 3.4, 0.7, HT.x + 8, 1.7, HT.z + 6)
+    sbox(hotelDark, 8, 1.2, 1.6, HT.x, 0.6, HT.z - 8)
+    sbox(hotelMat, 0.35, HT.h - 0.4, 10, HT.x - 6, (HT.h - 0.4) / 2, HT.z + 6)
+    sbox(hotelMat, 0.35, HT.h - 0.4, 10, HT.x + 6, (HT.h - 0.4) / 2, HT.z + 6)
+    mkDoor(HT.x - 6, HT.z + 2, 2.8, 2.4, 0, Math.PI / 2)
+    mkDoor(HT.x + 6, HT.z + 2, 2.8, 2.4, 0, Math.PI / 2)
+    mkContainer(HT.x - 10, HT.z + 8, '高级旅行箱', 0.7, 0, rng)
+    mkContainer(HT.x + 10, HT.z + 8, '保险箱', 1.3, 0, rng)
+    mkContainer(HT.x, HT.z - 8.5, '保险柜', 1.8, 0, rng)
+    mkContainer(HT.x + 12, HT.z - 4, '武器箱', 0.85, 0, rng)
+    mapMarkers.push({ x: HT.x, z: HT.z, kind: 'house', name: '皇家酒店' })
+    mapMarkers.push({ x: HT.x, z: HT.z - 8, kind: 'house', name: '酒店大堂' })
+
+    // ---- 超新铁轨 + 过路火车（东扩区，车厢可搜） ----
+    const railX = 210
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.5, metalness: 0.7 })
+    const tieMat = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 })
+    for (let z = -280; z <= 280; z += 4) {
+      const tie = new THREE.Mesh(new THREE.BoxGeometry(8, 0.18, 0.6), tieMat)
+      tie.position.set(railX, 0.08, z)
+      scene.add(tie)
+    }
+    for (const dx of [-1.1, 1.1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 560), railMat)
+      rail.position.set(railX + dx, 0.18, 0)
+      scene.add(rail)
+    }
+    const trainGroup = new THREE.Group()
+    const carMat = new THREE.MeshStandardMaterial({ color: 0x4a5560, roughness: 0.55, metalness: 0.35 })
+    const cars: THREE.Object3D[] = []
+    const carDefs: { dz: number; title: string; luck: number }[] = [
+      { dz: 0, title: '火车头驾驶室', luck: 0.4 },
+      { dz: -14, title: '货车厢', luck: 0.8 },
+      { dz: -28, title: '军用车厢', luck: 1.2 },
+      { dz: -42, title: '邮政车厢', luck: 1.0 },
+    ]
+    for (const [i, cd] of carDefs.entries()) {
+      const car = new THREE.Group()
+      const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 12), i === 0 ? rustSteel : carMat)
+      body.position.y = 2.0
+      car.add(body)
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.25, 12.2), darkSteel)
+      roof.position.y = 3.7
+      car.add(roof)
+      car.position.set(0, 0, cd.dz)
+      trainGroup.add(car)
+      cars.push(car)
+      mkContainer(railX, cd.dz - 220, cd.title === '军用车厢' ? '航空箱' : (cd.title === '邮政车厢' ? '高级旅行箱' : '武器箱'), cd.luck, 1.1, rng)
+    }
+    trainGroup.position.set(railX, 0, -220)
+    scene.add(trainGroup)
+    mapMarkers.push({ x: railX, z: 0, kind: 'block', name: '超新铁轨' })
+    mapMarkers.push({ x: railX, z: -220, kind: 'mission', name: '过路火车' })
+    train = { group: trainGroup, cars, speed: 18, x: railX, zMin: -280, zMax: 280 }
+
   } else if (mapId === 'desert') {
     // ================= 地图五：沙海古城（双层：地表遗迹 + 大型地下陵墓群） =================
     scene.background = new THREE.Color(0xdfc088)
@@ -2138,7 +2214,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       if (i > 0) pw(cx0, -40.5, 0.3, 8.6, CB.h - 0.4)                          // 隔断
       bars(cx0 + (i === 0 ? 0 : 0.15), -36, ccx - 0.9, -36)                    // 铁栏（门左侧）
       bars(ccx + 0.9, -36, cx0 + 10 - (i === 5 ? 0.2 : 0), -36)                // 铁栏（门右侧）
-      mkDoor(ccx, -36, 1.6, 2.5, 0, 0)                                         // 牢门
+      mkDoor(ccx, -36, 2.6, 2.5, 0, 0)                                         // 牢门
       // 床铺
       const bunk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 1), bunkMat)
       bunk.position.set(ccx - 2.5, 0.25, -43.5)
@@ -2149,7 +2225,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       if (i > 0) pw(cx0, -19.5, 0.3, 8.6, CB.h - 0.4)
       bars(cx0 + (i === 0 ? 0 : 0.15), -24, ccx - 0.9, -24)
       bars(ccx + 0.9, -24, cx0 + 10 - (i === 5 ? 0.2 : 0), -24)
-      mkDoor(ccx, -24, 1.6, 2.5, 0, 0)
+      mkDoor(ccx, -24, 2.6, 2.5, 0, 0)
       const bunk2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 1), bunkMat)
       bunk2.position.set(ccx + 2.5, 0.25, -16.5)
       bunk2.castShadow = true
@@ -2184,8 +2260,8 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     pw(OB.x0 + 8, 30, 0.3, 16.4, OB.h - 0.3)                                  // 纵隔墙中段
     pw(OB.x0 + 8, 42.3, 0.3, 5, OB.h - 0.3)                                   // 纵隔墙南段
     pw(OB.x0 + 4, (OB.z0 + OB.z1) / 2, 8, 0.3, OB.h - 0.3)                    // 横隔墙
-    mkDoor(OB.x0 + 8, 21, 1.6, 2.4, 0, Math.PI / 2, 'k_p_warden', '典狱长办公室卡')  // 典狱长办公室（北间）
-    mkDoor(OB.x0 + 8, 39, 1.6, 2.4, 0, Math.PI / 2, 'k_p_med', '医务室房卡')         // 医务室（南间）
+    mkDoor(OB.x0 + 8, 21, 2.8, 2.4, 0, Math.PI / 2, 'k_p_warden', '典狱长办公室卡')  // 典狱长办公室（北间）
+    mkDoor(OB.x0 + 8, 39, 2.8, 2.4, 0, Math.PI / 2, 'k_p_med', '医务室房卡')         // 医务室（南间）
     mkContainer(OB.x0 + 4, OB.z0 + 3.5, '保险箱', 2.6, 0, rng)                 // 典狱长办公室保险箱
     mkContainer(OB.x0 + 2, OB.z0 + 10, '航空箱', 1.1, 0, rng)                  // 典狱长办公室航空箱
     mkContainer(OB.x0 + 4, OB.z0 + 4, '保险柜', 1.8, 0, rng)                   // 典狱长办公室保险柜
@@ -2216,7 +2292,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     // 军械库纵隔墙 x=GB.x1-8：在 z=23 留 1.6m 门洞
     pw(GB.x1 - 8, 18.7, 0.3, 7, GB.h - 0.3)                                   // 军械库隔墙北段
     pw(GB.x1 - 8, 34.3, 0.3, 21, GB.h - 0.3)                                  // 军械库隔墙南段
-    mkDoor(GB.x1 - 8, 23, 1.6, 2.4, 0, Math.PI / 2, 'k_p_arm', '狱警军械库房卡')
+    mkDoor(GB.x1 - 8, 23, 2.8, 2.4, 0, Math.PI / 2, 'k_p_arm', '狱警军械库房卡')
     pw(GB.x1 - 4, GB.z0 + 3.5, 8, 0.3, GB.h - 0.3)                            // 军械库北隔墙（留南半进入）
     mkContainer(GB.x1 - 4, GB.z0 + 6, '武器箱', 1.0, 0, rng)                   // 军械库武器箱 ×2
     mkContainer(GB.x1 - 2, GB.z0 + 11, '武器箱', 1.0, 0, rng)
@@ -2371,7 +2447,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(b.x + 3.5, b.z + 1.5, '军用保险库', 2.2, b.y)
   }
 
-  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands }
+  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train }
 }
 
 function mulberry32(a: number) {

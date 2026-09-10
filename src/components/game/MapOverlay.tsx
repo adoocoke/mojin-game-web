@@ -1,10 +1,22 @@
+import { useRef } from 'react'
 import { engine, useUI } from '@/game/store'
+
+function clientToWorld(svg: SVGSVGElement, clientX: number, clientY: number) {
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return null
+  const pt = svg.createSVGPoint()
+  pt.x = clientX
+  pt.y = clientY
+  const p = pt.matrixTransform(ctm.inverse())
+  return { x: p.x, z: p.y }
+}
 
 /** 对局内地图查看（M 键 / 触屏🗺️按钮）：俯视示意图 + 玩家位置 + 撤离点 + 锁房 */
 export function MapOverlay() {
   const ui = useUI()
+  const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
-  const S = 140 // 地图半径
+  const S = ui.mapSize || 140
   const mapName = ui.mapId === 'tower' ? '高塔禁区' : ui.mapId === 'prison' ? '潮汐监狱' : ui.mapId === 'snow' ? '雪地雷达站' : ui.mapId === 'desert' ? '沙海古城' : '废弃矿区'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
@@ -17,18 +29,16 @@ export function MapOverlay() {
           <span className="text-zinc-500 text-xs">{ui.creator ? '点击地图瞬移 · M 关闭' : '按 M 关闭'}</span>
         </div>
         <svg
+          ref={svgRef}
           viewBox={`${-S} ${-S} ${S * 2} ${S * 2}`}
           className={`w-[min(70vh,520px)] h-[min(70vh,520px)] ${ui.creator ? 'cursor-crosshair' : ''}`}
           onClick={(e) => {
             if (!ui.creator) return
-            const svg = e.currentTarget
-            const ctm = svg.getScreenCTM()
-            if (!ctm) return
-            const pt = svg.createSVGPoint()
-            pt.x = e.clientX
-            pt.y = e.clientY
-            const w = pt.matrixTransform(ctm.inverse())
-            engine.creatorTeleport(w.x, w.y)
+            const svg = svgRef.current
+            if (!svg) return
+            const w = clientToWorld(svg, e.clientX, e.clientY)
+            if (!w) return
+            engine.creatorTeleport(w.x, w.z)
           }}
         >
           {/* 边界与网格道路 */}

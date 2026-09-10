@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUI, engine } from '@/game/store'
 import { GridView, DragGhost, gridTotalValue, type DragState, type GridId } from './GridView'
+import { ItemArt } from './ItemArt'
 import { ITEMS } from '@/game/data'
 import { RARITY_INFO, itemValue } from '@/game/types'
 import { findPlaced } from '@/game/inventory'
@@ -133,7 +134,7 @@ export function InventoryOverlay() {
           {/* 选中物品操作 */}
           {selPlaced && selDef && (
             <div className="mt-3 rounded-md border border-zinc-700 bg-zinc-900 p-3 flex items-center gap-3">
-              <div className="text-2xl">{selDef.icon}</div>
+              <ItemArt defId={selDef.id} width={42} height={42} emojiSize={24} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold" style={{ color: RARITY_INFO[selPlaced.item.rarity].color }}>
                   【{RARITY_INFO[selPlaced.item.rarity].name}】{selDef.name}

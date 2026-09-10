@@ -3,7 +3,6 @@ import {
   makeGrid,
   canPlace,
   findSpot,
-  mergeStacks,
   autoPlace,
   placeAt,
   removeItem,

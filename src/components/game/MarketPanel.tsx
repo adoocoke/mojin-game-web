@@ -4,6 +4,7 @@ import { ITEMS, MARKET_GOODS } from '@/game/data'
 import { RARITY_INFO } from '@/game/types'
 import { currentEvent } from '@/game/events'
 import { loadOrders, orderableGoods, ARRIVE_RATE, MAX_ORDERS } from '@/game/orders'
+import { ItemArt } from './ItemArt'
 
 /** 交易行：用卖物资所得的金币购买枪械与辅助物资，买入后直接进仓库 */
 export function MarketPanel() {
@@ -55,7 +56,7 @@ export function MarketPanel() {
                     style={{ borderColor: RARITY_INFO[def.rarity].color + '55', backgroundColor: RARITY_INFO[def.rarity].bg }}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{def.icon}</span>
+                      <ItemArt defId={def.id} width={32} height={32} emojiSize={24} />
                       <div className="min-w-0">
                         <div className="font-bold text-sm truncate" style={{ color: RARITY_INFO[def.rarity].color }}>{def.name}</div>
                         <div className="text-[10px] text-zinc-500">{RARITY_INFO[def.rarity].name}{def.kind === 'weapon' ? ' · 武器' : def.heal ? ` · 回复 ${def.heal}` : ' · 弹药'}</div>
@@ -112,7 +113,7 @@ function OrderTab({ orders }: { orders: ReturnType<typeof loadOrders> }) {
               const def = ITEMS[o.defId]
               return (
                 <div key={o.id} className="flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2">
-                  <span className="text-2xl">{def.icon}</span>
+                  <ItemArt defId={def.id} width={32} height={32} emojiSize={24} />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm" style={{ color: RARITY_INFO[def.rarity].color }}>{def.name}</div>
                     <div className="text-[10px] text-zinc-500 font-mono">挂单价 {o.price.toLocaleString()} 金币</div>
@@ -149,7 +150,7 @@ function OrderTab({ orders }: { orders: ReturnType<typeof loadOrders> }) {
               style={{ borderColor: RARITY_INFO[def.rarity].color + '55', backgroundColor: RARITY_INFO[def.rarity].bg }}
             >
               <div className="flex items-center gap-2">
-                <span className="text-2xl">{def.icon}</span>
+                <ItemArt defId={def.id} width={32} height={32} emojiSize={24} />
                 <div className="min-w-0">
                   <div className="font-bold text-sm truncate" style={{ color: RARITY_INFO[def.rarity].color }}>{def.name}</div>
                   <div className="text-[10px] text-zinc-500">{RARITY_INFO[def.rarity].name}</div>

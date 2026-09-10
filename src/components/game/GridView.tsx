@@ -1,6 +1,7 @@
 import type { Grid, ItemInstance } from '@/game/types'
 import { RARITY_INFO, itemValue } from '@/game/types'
 import { ITEMS } from '@/game/data'
+import { ItemArt } from './ItemArt'
 
 export type GridId = 'backpack' | 'loot' | 'safebox'
 
@@ -106,7 +107,7 @@ export function GridView({ grid, gridId, cell, title, titleRight, drag, setDrag,
                 setDrag({ uid: p.item.uid, from: gridId, item: p.item, px: e.clientX, py: e.clientY, startX: e.clientX, startY: e.clientY, moved: false })
               }}
             >
-              <div style={{ fontSize: Math.min(cell * 0.42 * Math.min(def.w, def.h), 26) }}>{def.icon}</div>
+              <ItemArt defId={def.id} width={Math.min(def.w * cell - 8, 72)} height={Math.min(def.h * cell - 20, 72)} />
               {(def.w * cell > 60) && (
                 <div className="text-[10px] leading-tight px-0.5 text-center font-medium truncate w-full" style={{ color: r.color }}>
                   {def.name}
@@ -140,7 +141,7 @@ export function DragGhost({ drag, cell }: { drag: DragState; cell: number }) {
         boxShadow: `0 0 18px ${r.color}66`,
       }}
     >
-      <div style={{ fontSize: Math.min(cell * 0.42 * Math.min(def.w, def.h), 26) }}>{def.icon}</div>
+      <ItemArt defId={def.id} width={Math.min(def.w * cell - 8, 72)} height={Math.min(def.h * cell - 20, 72)} />
       <div className="text-[10px] font-medium truncate w-full text-center" style={{ color: r.color }}>{def.name}</div>
     </div>
   )

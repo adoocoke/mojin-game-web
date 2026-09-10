@@ -44,6 +44,7 @@ export interface UIState {
   playerYaw: number
   mapMarkers: { x: number; z: number; kind: string; name?: string }[]
   mapExtract: { x: number; z: number }
+  mapSize: number
   marketOpen: boolean     // 交易行
   loadoutOpen: boolean    // 战前配装
   carryDefs: string[]     // 选择带入对局的仓库物品 defId
@@ -101,7 +102,7 @@ export const uiState: UIState = {
   toast: '', toastRarity: 'white', toastTs: 0,
   mapId: (localStorage.getItem('mojin_map') as MapId) || 'wild',
   mapOpen: false, playerX: 0, playerZ: 0, playerYaw: 0,
-  mapMarkers: [], mapExtract: { x: 0, z: 0 },
+  mapMarkers: [], mapExtract: { x: 0, z: 0 }, mapSize: 140,
   marketOpen: false, loadoutOpen: false,
   carryDefs: JSON.parse(localStorage.getItem('mojin_loadout') || '[]') as string[],
   operator: localStorage.getItem('mojin_operator') || 'assault',

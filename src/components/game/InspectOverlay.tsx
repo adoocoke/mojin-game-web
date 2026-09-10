@@ -1,6 +1,7 @@
 import { engine, useUI } from '@/game/store'
 import { ITEMS } from '@/game/data'
 import { itemValue } from '@/game/types'
+import { ItemArt } from './ItemArt'
 
 // ===================== 红色物品检视 =====================
 // 每件红都有专属检视动作，动作贴合物品本身的特色
@@ -127,7 +128,7 @@ export function InspectOverlay() {
               transformStyle: 'preserve-3d',
             }}
           >
-            {def.icon}
+            <ItemArt defId={def.id} width={150} height={150} emojiSize={96} />
           </div>
         </div>
         <div className="text-red-300 text-2xl font-black tracking-widest mb-1">【红】{def.name}</div>

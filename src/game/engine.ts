@@ -189,6 +189,7 @@ export class Game {
     this.enemies = new EnemyManager(this.world.scene, this.world.colliders)
     uiState.mapMarkers = this.world.mapMarkers
     uiState.mapExtract = { x: this.world.extractPos.x, z: this.world.extractPos.z }
+    uiState.mapSize = this.world.size
     uiState.mapOpen = false
 
     addEventListener('resize', this.onResize)
@@ -2532,6 +2533,11 @@ export class Game {
     const dt = Math.min(rawDt, 0.05)
 
     if (uiState.phase === 'playing' && this.running) {
+      const tr = this.world.train
+      if (tr) {
+        tr.group.position.z += tr.speed * dt
+        if (tr.group.position.z > tr.zMax + 40) tr.group.position.z = tr.zMin - 40
+      }
       // 移动（键鼠或触屏）
       const inputActive = (this.locked || this.isTouch) && !uiState.invOpen
       if (inputActive) {

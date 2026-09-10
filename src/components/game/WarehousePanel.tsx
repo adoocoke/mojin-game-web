@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useUI, engine } from '@/game/store'
 import { GridView, DragGhost, type DragState, type GridId } from './GridView'
+import { ItemArt } from './ItemArt'
 import { ITEMS, BOSS_DROPS, BOSS_COLLECT_REWARD, loadBossDrops } from '@/game/data'
 import { RARITY_INFO, itemValue, type ItemKind } from '@/game/types'
 import { stashValue } from '@/game/stash'
@@ -174,7 +175,7 @@ export function WarehousePanel() {
                   title={`${d.boss} 掉落`}
                   className={`rounded-md border px-1.5 py-1 text-center ${got ? 'border-red-500/60 bg-red-950/40' : 'border-zinc-800 bg-zinc-950/60'}`}
                 >
-                  <div className={`text-base leading-tight ${got ? '' : 'grayscale opacity-30'}`}>{def.icon}</div>
+                  <div className={`leading-tight ${got ? '' : 'grayscale opacity-30'}`}><ItemArt defId={def.id} width={28} height={28} emojiSize={16} /></div>
                   <div className={`text-[10px] leading-tight truncate ${got ? 'text-red-200' : 'text-zinc-600'}`}>{def.name}</div>
                   <div className="text-[9px] text-zinc-600 truncate">{d.boss}</div>
                 </div>
@@ -188,7 +189,7 @@ export function WarehousePanel() {
         {/* 出售栏 */}
         {selPlaced && selDef && (
           <div className="mt-2 flex items-center gap-3 rounded-lg border border-yellow-600/40 bg-zinc-900/90 p-2.5">
-            <div className="text-2xl">{selDef.icon}</div>
+            <ItemArt defId={selDef.id} width={42} height={42} emojiSize={24} />
             <div className="flex-1 min-w-0">
               <div className="font-bold truncate" style={{ color: RARITY_INFO[selPlaced.item.rarity].color }}>
                 {selDef.name}{selPlaced.item.count > 1 && <span className="text-zinc-400"> ×{selPlaced.item.count}</span>}

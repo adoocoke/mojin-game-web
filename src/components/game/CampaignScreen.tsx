@@ -1,6 +1,7 @@
 import { engine, useUI } from '@/game/store'
 import { CAMPAIGN, loadCampaign, clearReward } from '@/game/campaign'
 import { ITEMS } from '@/game/data'
+import { ItemArt } from './ItemArt'
 import { useState } from 'react'
 
 /** 剧情战役模式（P3 #23）：4 章 × 3 关，潜入→夺取→撤离，讲 4 个 Boss 的故事 */
@@ -45,7 +46,7 @@ export function CampaignScreen() {
                     <div className="text-[11px] text-zinc-500 mb-2">
                       每关奖励：<span className="text-amber-300">{ch.rewardGold.toLocaleString()} 金币</span>
                       <span className="text-zinc-600">（重复刷递减至 {clearReward(1, ch.rewardGold).toLocaleString()}…）</span>
-                      ｜整章 3 关全通：{ITEMS[ch.rewardItem].icon} <span className="text-red-300 font-bold">{ITEMS[ch.rewardItem].name}</span><span className="text-red-400/70">（只此一家）</span>
+                      ｜整章 3 关全通：<ItemArt defId={ch.rewardItem} width={17} height={17} emojiSize={14} inline /> <span className="text-red-300 font-bold">{ITEMS[ch.rewardItem].name}</span><span className="text-red-400/70">（只此一家）</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       {ch.levels.map(lv => {
