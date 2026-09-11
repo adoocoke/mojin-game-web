@@ -70,10 +70,11 @@ export interface World {
   sun: THREE.DirectionalLight
   hemi: THREE.HemisphereLight
   train?: { group: THREE.Group; cars: THREE.Object3D[]; speed: number; x: number; zMin: number; zMax: number }
+  lift?: { mesh: THREE.Object3D; walkable: Walkable; baseY: number; topY: number; active: boolean; dir: 1 | -1; waitT: number }  // 高塔货运电梯（电闸启动后地面↔天台往返）
 }
 
 const crateColors: Record<string, number> = {
-  '收纳盒': 0xd9a41f, '武器箱': 0x5a4a3a, '保险箱': 0x6a6a72,
+  '收纳盒': 0xd9a41f, '武器箱': 0x5a4a3a, '保险箱': 0x6a6a72, '电闸箱': 0x3a6a8a,
   '医疗物资': 0xdde1e4, '高级旅行箱': 0xc7b28a, '战利品': 0x555555,
 }
 
@@ -769,6 +770,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   let extractPos2: THREE.Vector3 | undefined = undefined
   let lampStands: World['lampStands'] = undefined
   let train: World['train'] = undefined
+  let lift: World['lift'] = undefined
 
   if (mapId === 'wild') {
     // ================= 地图一：废弃矿区（爆率下调） =================
@@ -909,6 +911,198 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       mkRewardCrate(MXC, MZC) // 炸开挡板后现身
       mapMarkers.push({ x: MXC, z: MZC, kind: 'mission', name: '掩埋点' })
     }
+
+    // ================= 矿区扩充①：地下矿井（塌陷矿洞入口 + 巷道网络） =================
+    const UY = -4 // 地下矿井地面高度
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x5a544c, roughness: 1 })
+    const rockDark = new THREE.MeshStandardMaterial({ color: 0x3b362f, roughness: 1 })
+    const timberMat = new THREE.MeshStandardMaterial({ color: 0x6a5138, roughness: 0.9 })
+    const dbox = (mat: THREE.Material, w: number, h: number, d: number, x: number, y: number, z: number, solid = true) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
+      m.position.set(x, y, z)
+      m.castShadow = true; m.receiveShadow = true
+      scene.add(m); obstacleMeshes.push(m)
+      if (solid) colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top: y + h / 2, base: y - h / 2 })
+      return m
+    }
+    // 地下巷墙：base -4，top -1（地表玩家不会被挡）
+    const uwall = (x: number, z: number, w: number, d: number) => dbox(rockMat, w, 3, d, x, UY + 1.5, z)
+    // 地下顶板：仅视觉（加碰撞会挡住地下玩家）
+    const uceil = (x: number, z: number, w: number, d: number) => dbox(rockDark, w, 0.3, d, x, -0.85, z, false)
+    // 地下地板：逻辑 walkable + 视觉石板（否则从地下会看到地表透底）
+    const ufloor = (x0: number, x1: number, z0: number, z1: number) => {
+      walkables.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, y0: UY, y1: UY })
+      dbox(rockDark, x1 - x0 + 1, 0.2, z1 - z0 + 1, (x0 + x1) / 2, UY - 0.1, (z0 + z1) / 2, false)
+    }
+
+    // —— 塌陷矿洞入口（24,-103）：坑沿石板 + 老井架 + 下行坡道 ——
+    dbox(rockMat, 7, 0.4, 16, 17.5, 0.2, -103, false)   // 坑沿西侧石板
+    dbox(rockMat, 7, 0.4, 16, 30.5, 0.2, -103, false)   // 坑沿东侧石板
+    walkables.push({ minX: 14, maxX: 21, minZ: -111, maxZ: -95, y0: 0.4, y1: 0.4 })
+    walkables.push({ minX: 27, maxX: 34, minZ: -111, maxZ: -95, y0: 0.4, y1: 0.4 })
+    for (const [px, pz] of [[21.2, -96.8], [26.8, -96.8], [21.2, -100.2], [26.8, -100.2]] as const) {
+      dbox(timberMat, 0.4, 5.4, 0.4, px, 2.7, pz) // 井架立柱
+    }
+    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -96.8, false)  // 井架顶梁
+    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -100.2, false)
+    const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.14, 8, 18),
+      new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.5, metalness: 0.7 }))
+    pulley.position.set(24, 5.0, -98.5)
+    scene.add(pulley); obstacleMeshes.push(pulley)
+    const warnSign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.6, emissive: 0x4a3a00, emissiveIntensity: 0.4 }))
+    warnSign.position.set(20.6, 1.3, -95.6)
+    warnSign.rotation.y = 0.5
+    scene.add(warnSign); obstacleMeshes.push(warnSign)
+    // 坡道两侧石壁（从地表深入地下）
+    dbox(rockMat, 1.0, 4.8, 15, 21.3, -1.8, -103)
+    dbox(rockMat, 1.0, 4.8, 15, 26.7, -1.8, -103)
+    // 下行坡道：坑沿 0.4m 降到地下 -4m
+    walkables.push({ minX: 22, maxX: 26, minZ: -110.5, maxZ: -95.5, y0: UY, y1: 0.4, axis: 'z' })
+    {
+      const rampLen = Math.hypot(15, 4.4)
+      const rampMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, rampLen), rockMat)
+      rampMesh.position.set(24, -1.95, -103)
+      rampMesh.rotation.x = -Math.atan2(4.4, 15)
+      rampMesh.receiveShadow = true
+      scene.add(rampMesh); obstacleMeshes.push(rampMesh)
+    }
+
+    // —— 主巷道（南北向）+ 东西两条支巷 + 两间矿室 ——
+    ufloor(22, 26, -110, -58)   // 主巷道
+    ufloor(26, 46, -86, -82)    // 东支巷
+    ufloor(46, 58, -94, -74)    // 东矿室（矿脉核心区）
+    ufloor(4, 22, -70, -66)     // 西支巷
+    ufloor(-8, 4, -78, -56)     // 西矿室
+    // 主巷道墙壁（东墙 z -86~-82 开口接东支巷；西墙 z -70~-66 开口接西支巷；南端通坡道不封口）
+    uwall(21.75, -90, 0.5, 40)
+    uwall(21.75, -62, 0.5, 8)
+    uwall(26.25, -98, 0.5, 24)
+    uwall(26.25, -70, 0.5, 24)
+    uwall(24, -57.75, 5, 0.5)     // 北端封口
+    // 东支巷
+    uwall(36, -86.25, 20, 0.5)
+    uwall(36, -81.75, 20, 0.5)
+    // 东矿室（西侧开口接支巷）
+    uwall(58.25, -84, 0.5, 20)
+    uwall(52, -94.25, 12.5, 0.5)
+    uwall(52, -73.75, 12.5, 0.5)
+    uwall(45.75, -90, 0.5, 8)
+    uwall(45.75, -78, 0.5, 8)
+    // 西支巷
+    uwall(13, -70.25, 18, 0.5)
+    uwall(13, -65.75, 18, 0.5)
+    // 西矿室（东侧开口接支巷）
+    uwall(-8.25, -67, 0.5, 22)
+    uwall(-2, -78.25, 12.5, 0.5)
+    uwall(-2, -55.75, 12.5, 0.5)
+    uwall(4.25, -74, 0.5, 8)
+    uwall(4.25, -61, 0.5, 10)
+    // 顶板
+    uceil(24, -84, 6, 54)
+    uceil(36, -84, 20, 6)
+    uceil(52, -84, 14, 22)
+    uceil(13, -68, 18, 6)
+    uceil(-2, -67, 14, 24)
+    // 巷道木支撑门架
+    const support = (sx: number, sz: number, along: 'x' | 'z') => {
+      const pw = 0.28
+      if (along === 'z') {
+        dbox(timberMat, pw, 3, pw, sx - 1.7, UY + 1.5, sz)
+        dbox(timberMat, pw, 3, pw, sx + 1.7, UY + 1.5, sz)
+        dbox(timberMat, 3.8, pw, pw, sx, UY + 2.9, sz, false)
+      } else {
+        dbox(timberMat, pw, 3, pw, sx, UY + 1.5, sz - 1.7)
+        dbox(timberMat, pw, 3, pw, sx, UY + 1.5, sz + 1.7)
+        dbox(timberMat, pw, pw, 3.8, sx, UY + 2.9, sz, false)
+      }
+    }
+    for (const sz of [-104, -96, -88, -80, -72, -64]) support(24, sz, 'z')
+    support(36, -84, 'x')
+    support(13, -68, 'x')
+    // 矿灯（昏黄点光 + 灯珠）
+    const mineLamp = (lx: number, lz: number) => {
+      const l = new THREE.PointLight(0xffb46a, 26, 17, 1.5)
+      l.position.set(lx, UY + 2.5, lz)
+      scene.add(l)
+      const lm = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x442200, emissive: 0xffc27a, emissiveIntensity: 1.6 }))
+      lm.position.set(lx, UY + 2.62, lz)
+      scene.add(lm)
+    }
+    mineLamp(24, -100); mineLamp(24, -64); mineLamp(36, -84); mineLamp(52, -84); mineLamp(13, -68); mineLamp(-2, -67)
+    // 矿石堆装饰（东矿室有金矿石）
+    const oreMat = new THREE.MeshStandardMaterial({ color: 0x4a4440, roughness: 0.9, metalness: 0.2 })
+    const goldOreMat = new THREE.MeshStandardMaterial({ color: 0x8a6a2a, roughness: 0.5, metalness: 0.7, emissive: 0x3a2a00, emissiveIntensity: 0.5 })
+    for (const [ox, oz, os, gold] of [[50, -91, 0.9, true], [56, -78, 0.7, false], [-6, -59, 0.8, false], [1, -76, 0.6, true]] as const) {
+      const ore = new THREE.Mesh(new THREE.IcosahedronGeometry(os, 0), gold ? goldOreMat : oreMat)
+      ore.position.set(ox, UY + os * 0.55, oz)
+      ore.castShadow = true
+      scene.add(ore); obstacleMeshes.push(ore)
+      colliders.push({ minX: ox - os * 0.7, maxX: ox + os * 0.7, minZ: oz - os * 0.7, maxZ: oz + os * 0.7, top: UY + os * 1.2, base: UY })
+    }
+    // 矿洞容器（越深越肥）
+    mkContainer(24, -107, '收纳盒', 0.5, UY, rng)
+    mkContainer(23, -61, '弹药箱', 0.7, UY, rng)
+    mkContainer(36, -84, '武器箱', 0.9, UY, rng)
+    mkContainer(55, -90, '保险柜', 2.2, UY, rng)   // 东矿室·矿脉核心
+    mkContainer(55, -78, '医疗物资', 0.8, UY, rng)
+    mkContainer(-5, -59, '保险箱', 1.5, UY, rng)   // 西矿室
+    mkContainer(-5, -74, '高级旅行箱', 0.9, UY, rng)
+    mapMarkers.push({ x: 24, z: -103, kind: 'block', name: '塌陷矿洞' })
+    mapMarkers.push({ x: 24, z: -84, kind: 'block', name: '地下矿井' })
+
+    // ================= 矿区扩充②：东侧矿车轨道（循环矿车 + 装卸台） =================
+    const mRailX = 116
+    const mRailMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.5, metalness: 0.7 })
+    const mTieMat = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 })
+    for (let z = -126; z <= 126; z += 3.5) {
+      const tie = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.14, 0.5), mTieMat)
+      tie.position.set(mRailX, 0.07, z)
+      scene.add(tie)
+    }
+    for (const dx of [-0.9, 0.9]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 254), mRailMat)
+      rail.position.set(mRailX + dx, 0.16, 0)
+      scene.add(rail)
+    }
+    const cartGroup = new THREE.Group()
+    const cartMat = new THREE.MeshStandardMaterial({ color: 0x6e4a3a, roughness: 0.6, metalness: 0.4 })
+    const cartOreMat = new THREE.MeshStandardMaterial({ color: 0x3f3a34, roughness: 0.95 })
+    const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.16, 12)
+    for (let i = 0; i < 3; i++) {
+      const cart = new THREE.Group()
+      const tub = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 2.8), cartMat)
+      tub.position.y = 0.95
+      tub.castShadow = true
+      cart.add(tub)
+      const oreHeap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 1), cartOreMat)
+      oreHeap.scale.set(1, 0.45, 1.3)
+      oreHeap.position.y = 1.5
+      cart.add(oreHeap)
+      for (const [wx, wz] of [[-0.95, -0.9], [0.95, -0.9], [-0.95, 0.9], [0.95, 0.9]] as const) {
+        const wh = new THREE.Mesh(wheelGeo, mRailMat)
+        wh.rotation.z = Math.PI / 2
+        wh.position.set(wx, 0.3, wz)
+        cart.add(wh)
+      }
+      cart.position.set(0, 0, i * 3.6)
+      cartGroup.add(cart)
+    }
+    cartGroup.position.set(mRailX, 0, -90)
+    scene.add(cartGroup)
+    train = { group: cartGroup, cars: [], speed: 8, x: mRailX, zMin: -126, zMax: 126 }
+    // 装卸台（0.5m 高，可直接走上）
+    const dockMat = new THREE.MeshStandardMaterial({ color: 0x7a6a4d, roughness: 0.9 })
+    const dock = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 5), dockMat)
+    dock.position.set(110.5, 0.25, -60)
+    dock.castShadow = true; dock.receiveShadow = true
+    scene.add(dock); obstacleMeshes.push(dock)
+    walkables.push({ minX: 107.5, maxX: 113.5, minZ: -62.5, maxZ: -57.5, y0: 0.5, y1: 0.5 })
+    mkContainer(110, -61, '武器箱', 0.8, 0.5, rng)
+    mkContainer(111.8, -58.8, '收纳盒', 0.5, 0.5, rng)
+    mapMarkers.push({ x: mRailX, z: 0, kind: 'block', name: '矿车轨道' })
+    mapMarkers.push({ x: 110.5, z: -60, kind: 'block', name: '装卸台' })
   } else if (mapId === 'snow') {
     // ================= 地图四：雪地雷达站 =================
     // 低温低能见度：60m 雪雾、积雪地面、冰湖减速区，主打中距离交战
@@ -2100,6 +2294,141 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       scene.add(c); obstacleMeshes.push(c)
       colliders.push({ minX: x - s / 2, maxX: x + s / 2, minZ: z - s / 2, maxZ: z + s / 2, top: s })
     }
+
+    // ================= 高塔扩充①：天台直升机坪（负重限制撤离点，引擎对超重玩家拒飞） =================
+    const ROOFY = FLOORS * FH // 13.6m 天台地面
+    walkables.push({ minX: -IN, maxX: IN, minZ: -IN, maxZ: IN, y0: ROOFY, y1: ROOFY })
+    // 上部塔楼基座（退台段第一层 40×40 坐落在天台中央）：加碰撞，防止天台玩家穿进玻璃体
+    colliders.push({ minX: -20, maxX: 20, minZ: -20, maxZ: 20, base: ROOFY, top: ROOFY + 30 })
+    // 天台矮护栏（东侧 z -2.5~2.5 留缺口，正对货运电梯平台）
+    const roofRailMat = new THREE.MeshStandardMaterial({ color: 0x5a5e66, roughness: 0.6, metalness: 0.4 })
+    const roofRail = (w: number, d: number, x: number, z: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.1, d), roofRailMat)
+      m.position.set(x, ROOFY + 0.55, z)
+      m.castShadow = true
+      scene.add(m); obstacleMeshes.push(m)
+      colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, base: ROOFY, top: ROOFY + 1.1 })
+    }
+    roofRail(IN * 2, 0.3, 0, -IN + 0.15)      // 北
+    roofRail(IN * 2, 0.3, 0, IN - 0.15)       // 南
+    roofRail(0.3, IN * 2, -IN + 0.15, 0)      // 西
+    roofRail(0.3, IN - 2.5, IN - 0.15, -(IN + 2.5) / 2)  // 东北段
+    roofRail(0.3, IN - 2.5, IN - 0.15, (IN + 2.5) / 2)   // 东南段
+    // 直升机坪（黄色圆环 + H 标识）
+    const padC = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 0.12, 36),
+      new THREE.MeshStandardMaterial({ color: 0x3d4148, roughness: 0.8 }))
+    padC.position.set(0, ROOFY + 0.06, 28.5)
+    padC.receiveShadow = true
+    scene.add(padC)
+    const padRing = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.18, 8, 40),
+      new THREE.MeshStandardMaterial({ color: 0xc9a227, emissive: 0x6a5200, emissiveIntensity: 0.6 }))
+    padRing.rotation.x = Math.PI / 2
+    padRing.position.set(0, ROOFY + 0.14, 28.5)
+    scene.add(padRing)
+    const padHMat = new THREE.MeshStandardMaterial({ color: 0xd8c04a, emissive: 0x5a4a00, emissiveIntensity: 0.5 })
+    for (const hx of [-0.9, 0.9]) {
+      const hb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 3.2), padHMat)
+      hb.position.set(hx, ROOFY + 0.15, 28.5)
+      scene.add(hb)
+    }
+    const padHBar = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.05, 0.5), padHMat)
+    padHBar.position.set(0, ROOFY + 0.15, 28.5)
+    scene.add(padHBar)
+    // 撤离光圈 + 光柱（同暗河撤离点样式）
+    extractPos2 = new THREE.Vector3(0, ROOFY, 28.5)
+    const exPad = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 0.22, 28),
+      new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x0a5a66, transparent: true, opacity: 0.5 }))
+    exPad.position.set(0, ROOFY + 0.13, 28.5)
+    scene.add(exPad)
+    const exPadBeam = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 5, 20, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false }))
+    exPadBeam.position.set(0, ROOFY + 2.5, 28.5)
+    scene.add(exPadBeam)
+    // 天台杂物：通风箱 + 天线杆
+    box(slabMat, 2.2, 1.2, 1.6, -28, ROOFY + 0.6, -12)
+    box(slabMat, 1.6, 0.9, 1.6, -25, ROOFY + 0.45, -14)
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 6, 8), roofRailMat)
+    antenna.position.set(-24, ROOFY + 3, 24)
+    scene.add(antenna); obstacleMeshes.push(antenna)
+    colliders.push({ minX: -24.2, maxX: -23.8, minZ: 23.8, maxZ: 24.2, base: ROOFY, top: ROOFY + 6 })
+    mapMarkers.push({ x: 0, z: 28, kind: 'block', name: '天台直升机坪' })
+
+    // ================= 高塔扩充②：货运电梯（搜电闸箱启动，地面 ↔ 天台往返） =================
+    const liftMat = new THREE.MeshStandardMaterial({ color: 0x8a7038, roughness: 0.55, metalness: 0.5 })
+    const liftDark = new THREE.MeshStandardMaterial({ color: 0x3f434a, roughness: 0.6, metalness: 0.5 })
+    // 东侧导轨柱（外悬，不挡天台上下口）
+    for (const gz of [-2.4, 2.4]) {
+      box(liftDark, 0.4, ROOFY + 3, 0.4, T + 5.4, (ROOFY + 3) / 2, gz)
+    }
+    // 顶部机房横梁 + 卷扬机
+    box(liftDark, 5.6, 0.5, 5.6, T + 3, ROOFY + 2.85, 0, false)
+    box(liftMat, 2.0, 1.2, 1.6, T + 3, ROOFY + 2.0, 0, false)
+    // 电梯平台（动态 walkable，origin 在台面高度）
+    const liftGroup = new THREE.Group()
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.3, 5.2), liftMat)
+    plate.position.y = -0.15
+    plate.castShadow = true; plate.receiveShadow = true
+    liftGroup.add(plate)
+    const liftGuard = (w: number, d: number, x: number, z: number) => {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, d), liftDark)
+      g.position.set(x, 0.5, z)
+      liftGroup.add(g)
+    }
+    liftGuard(5.2, 0.15, 0, -2.5)  // 北侧护栏
+    liftGuard(5.2, 0.15, 0, 2.5)   // 南侧护栏
+    liftGuard(0.15, 5.2, 2.55, 0)  // 外侧护栏（朝塔一侧开放）
+    const liftStripe = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.06, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0xc9a227, emissive: 0x4a3a00, emissiveIntensity: 0.5 }))
+    liftStripe.position.set(0, 0.03, -2.3)
+    liftGroup.add(liftStripe)
+    liftGroup.position.set(T + 3, 0, 0)
+    scene.add(liftGroup)
+    const liftWalk: Walkable = { minX: T + 0.3, maxX: T + 5.6, minZ: -2.5, maxZ: 2.5, y0: 0, y1: 0 }
+    walkables.push(liftWalk)
+    lift = { mesh: liftGroup, walkable: liftWalk, baseY: 0, topY: ROOFY, active: false, dir: 1, waitT: 0 }
+    // 电闸箱（塔东南角墙根）：搜它启动电梯 + 全图广播
+    mkContainer(T + 1.2, 7, '电闸箱', 0.3, 0, rng, 'lift_switch')
+    mapMarkers.push({ x: T + 3, z: 0, kind: 'block', name: '货运电梯' })
+
+    // ================= 高塔扩充③：外墙脚手架（北侧之字爬架，高打低狙击位） =================
+    const plankMat = new THREE.MeshStandardMaterial({ color: 0x9a8258, roughness: 0.9 })
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x7d8590, roughness: 0.5, metalness: 0.6 })
+    const SCZ = -(T + 2.2) // 脚手架走道中心 z
+    const scafRamp = (xLo: number, xHi: number, yLo: number, yHi: number) => {
+      const len = xHi - xLo
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(len, yHi - yLo), 0.18, 2.2), plankMat)
+      mesh.position.set((xLo + xHi) / 2, (yLo + yHi) / 2 - 0.09, SCZ)
+      mesh.rotation.z = Math.atan2(yHi - yLo, len)
+      mesh.castShadow = true; mesh.receiveShadow = true
+      scene.add(mesh); obstacleMeshes.push(mesh)
+      walkables.push({ minX: xLo, maxX: xHi, minZ: SCZ - 1.1, maxZ: SCZ + 1.1, y0: yLo, y1: yHi, axis: 'x' })
+    }
+    const scafDeck = (xLo: number, xHi: number, y: number) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(xHi - xLo, 0.18, 2.2), plankMat)
+      mesh.position.set((xLo + xHi) / 2, y - 0.09, SCZ)
+      mesh.castShadow = true; mesh.receiveShadow = true
+      scene.add(mesh); obstacleMeshes.push(mesh)
+      walkables.push({ minX: xLo, maxX: xHi, minZ: SCZ - 1.1, maxZ: SCZ + 1.1, y0: y, y1: y })
+    }
+    const scafPole = (x: number, h: number) => {
+      if (h < 0.4) return
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, h, 8), poleMat)
+      p.position.set(x, h / 2, SCZ + 0.9)
+      scene.add(p)
+      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, h, 8), poleMat)
+      p2.position.set(x, h / 2, SCZ - 0.9)
+      scene.add(p2)
+    }
+    // 之字形：地面 → 一层高平台 → 二层高平台
+    scafRamp(-22, -6, 0, FH)
+    scafDeck(-6, 0, FH)
+    scafRamp(0, 16, FH, 2 * FH)
+    scafDeck(16, 23, 2 * FH)
+    scafPole(-14, 1.7); scafPole(-6, FH); scafPole(0, FH); scafPole(8, 5.1); scafPole(16, 2 * FH); scafPole(23, 2 * FH)
+    // 爬架上的工具和物资（奖励攀爬）
+    mkContainer(-3, SCZ, '收纳盒', 0.5, FH, rng)
+    mkContainer(20, SCZ, '武器箱', 0.9, 2 * FH, rng)
+    mapMarkers.push({ x: 0, z: SCZ, kind: 'block', name: '外墙脚手架' })
   }
 
   if (mapId === 'tower') {
@@ -2447,7 +2776,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(b.x + 3.5, b.z + 1.5, '军用保险库', 2.2, b.y)
   }
 
-  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train }
+  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift }
 }
 
 function mulberry32(a: number) {

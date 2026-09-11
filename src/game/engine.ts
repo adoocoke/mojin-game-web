@@ -75,6 +75,7 @@ export class Game {
   private searchT = -1
   private searchTarget: Container | null = null
   private extractT = 0
+  private padWarnT = 0 // 天台直升机坪超重告警冷却
   private stormOn = false      // 沙海古城：沙暴已来袭
   private stormHurtT = 0       // 沙暴掉血音效节流
   // ===== 剧情战役（P3 #23） =====
@@ -670,6 +671,7 @@ export class Game {
       const dmg = this.gunDef.damage * (eHit.isHead ? this.gunDef.headMult : 1) * (eHit.enemy.markedT > 0 ? 1 + this.markBonus : 1)
       if (eHit.enemy.name.includes('押运护卫')) this.alertAllEnemies() // 袭击押运护卫：惊动全图
       const killed = this.enemies.damage(eHit.enemy, dmg)
+      if (!killed) this.checkBossFrenzy(eHit.enemy)
       uiState.hitMarker = performance.now()
       sfx.hit()
       this.spawnSpark(eHit.point, 0xff7a5a)
@@ -692,6 +694,7 @@ export class Game {
     if (best) {
       const dmg = this.gunDef.damage * (best.markedT > 0 ? 1 + this.markBonus : 1)
       const killed = this.enemies.damage(best, dmg)
+      if (!killed) this.checkBossFrenzy(best)
       uiState.hitMarker = performance.now()
       sfx.hit()
       const at = best.group.position.clone(); at.y = 1.3
@@ -749,6 +752,7 @@ export class Game {
       if (!pierced) dmg *= 0.55
       if (eHit.enemy.name.includes('押运护卫')) this.alertAllEnemies() // 袭击押运护卫：惊动全图
       const killed = this.enemies.damage(eHit.enemy, dmg)
+      if (!killed) this.checkBossFrenzy(eHit.enemy)
       uiState.hitMarker = performance.now()
       if (zone === 'head') sfx.headshot(); else sfx.hit()
       this.spawnSpark(end, 0xffd28a)
@@ -770,6 +774,27 @@ export class Game {
   private onItemPicked(item: ItemInstance) {
     if (this.tryAutoEquipGear(item)) return true
     return false
+  }
+
+  /** 矿区 Boss 铁爪二阶段：半血狂暴——提速提射速，并吹哨召唤两名护卫 */
+  private checkBossFrenzy(e: Enemy) {
+    if (e.dead || !e.boss || e.frenzied || e.hp > e.maxHp / 2) return
+    if (!e.name.includes('铁爪')) return
+    e.frenzied = true
+    e.speed *= 1.25
+    e.fireGap *= 0.8
+    sfx.boom()
+    this.toast('⚠️ 铁爪被打怒了！吹哨呼叫护卫增援，攻势更猛！', 'red')
+    uiState.killFeed = ['👑 铁爪进入狂暴状态，召唤护卫！', ...uiState.killFeed].slice(0, 4)
+    for (let i = 0; i < 2; i++) {
+      const a = Math.random() * Math.PI * 2
+      const p = e.group.position.clone()
+      p.x += Math.cos(a) * 5
+      p.z += Math.sin(a) * 5
+      p.y = this.groundHeightAt(p.x, p.z, e.group.position.y)
+      this.enemies.spawn(p, 2, { kind: i === 0 ? 'heavy' : 'scout', name: '铁爪护卫' })
+    }
+    notify()
   }
 
   private onEnemyKilled(e: Enemy) {
@@ -1213,6 +1238,13 @@ export class Game {
       }
     }
     for (const gz of this.gasZones) { if (Math.hypot(c.pos.x - gz.x, c.pos.z - gz.z) < gz.r) { luck += 2; break } } // 毒气区：出货率 ×2
+    // 高塔电闸箱：搜它合上电闸，货运电梯启动（全图广播）
+    if (c.tag === 'lift_switch' && this.world.lift && !this.world.lift.active) {
+      this.world.lift.active = true
+      sfx.extract()
+      this.toast('🔌 电闸合上！货运电梯启动——全图广播：天台直升机坪撤离点开放（超重拒飞）', 'cyan')
+      uiState.killFeed = ['🔌 电闸合上了——高塔货运电梯开始运行！', ...uiState.killFeed].slice(0, 4)
+    }
     if (c.title === '鸟窝' && ev === 'nests') luck += 1.2 * pw
     const n = c.title === '保险箱' ? 3 + Math.floor(Math.random() * 3)
       : c.title === '保险柜' ? 2 + Math.floor(Math.random() * 2)   // 高价值低数量
@@ -2538,6 +2570,20 @@ export class Game {
         tr.group.position.z += tr.speed * dt
         if (tr.group.position.z > tr.zMax + 40) tr.group.position.z = tr.zMin - 40
       }
+      // 高塔货运电梯：电闸启动后在地面与天台之间往返，端点停靠 4 秒
+      const lf = this.world.lift
+      if (lf?.active) {
+        if (lf.waitT > 0) {
+          lf.waitT -= dt
+        } else {
+          let y = lf.walkable.y0 + lf.dir * 2.2 * dt
+          if (y >= lf.topY) { y = lf.topY; lf.dir = -1; lf.waitT = 4 }
+          else if (y <= lf.baseY) { y = lf.baseY; lf.dir = 1; lf.waitT = 4 }
+          lf.walkable.y0 = y
+          lf.walkable.y1 = y
+          lf.mesh.position.y = y
+        }
+      }
       // 移动（键鼠或触屏）
       const inputActive = (this.locked || this.isTouch) && !uiState.invOpen
       if (inputActive) {
@@ -2677,13 +2723,20 @@ export class Game {
       const ep2 = uiState.highRisk ? undefined : this.world.extractPos2 // 第二撤离点（沙海古城地下暗河）；高危禁区：撤离点减半
       const distExtract2 = ep2 ? Math.hypot(this.pos.x - ep2.x, this.pos.z - ep2.z) : Infinity
       const sameLevel2 = ep2 ? Math.abs((this.pos.y - EYE) - ep2.y) < 2.5 : false
-      if ((distExtract < 6.2 && sameLevel) || (distExtract2 < 6.2 && sameLevel2)) {
+      const atPad2 = distExtract2 < 6.2 && sameLevel2
+      // 高塔天台直升机坪：重载/超重无法登机（直升机载重有限）
+      const padHeavy = atPad2 && this.world.mapId === 'tower' && this.weightTier >= 2
+      if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
         this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / this.opMods.extract) // 高危禁区：撤离读条 +3 秒
         uiState.extractProgress = Math.min(1, this.extractT)
         if (this.extractT >= 1) { uiState.extractProgress = -1; this.endRaid(true) }
       } else {
         this.extractT = 0
         if (uiState.extractProgress >= 0) uiState.extractProgress = -1
+        if (padHeavy && performance.now() > this.padWarnT) {
+          this.padWarnT = performance.now() + 3000
+          this.toast('🚁 直升机超重拒飞！把负重降到「中载」以下再来登机', 'red')
+        }
       }
 
       // ===== 战役阶段推进：潜入（接近目标区）→ 夺取（找到目标箱）→ 撤离 =====
@@ -2794,7 +2847,7 @@ export class Game {
             if (d < 8) {
               const killed = this.enemies.damage(e, chargeDmg * (e.markedT > 0 ? 1 + this.markBonus : 1))
               hit++
-              if (killed) this.onEnemyKilled(e)
+              if (killed) this.onEnemyKilled(e); else this.checkBossFrenzy(e)
             }
           }
           this.toast(hit > 0 ? `💥 爆炸命中 ${hit} 个敌人！` : '💥 炸药爆炸，没炸到敌人', hit > 0 ? 'cyan' : 'white')
@@ -2837,7 +2890,7 @@ export class Game {
             && Math.abs(e.group.position.y - mn.floorY) < 3) {
             const killed = this.enemies.damage(e, 130)
             hit++
-            if (killed) this.onEnemyKilled(e)
+            if (killed) this.onEnemyKilled(e); else this.checkBossFrenzy(e)
           }
         }
         this.world.mapMarkers.push({ x: mn.x, z: mn.z, kind: 'patrol', name: '绊雷爆炸' })

@@ -31,6 +31,7 @@ export interface Enemy {
   lastSeen: THREE.Vector3  // 最后看到玩家的位置（搜索用）
   grenadeT: number   // 掷弹兵：手雷冷却
   calledHelp: boolean// 侦察兵：是否已呼援
+  frenzied?: boolean // 矿区 Boss 铁爪：半血狂暴（已召唤护卫）
 }
 
 const ENEMY_NAMES = ['猎犬', '秃鹫', '豺狼', '毒蝎', '夜枭', '铁壁', '幽灵', '狂徒', '哨兵', '游侠']
