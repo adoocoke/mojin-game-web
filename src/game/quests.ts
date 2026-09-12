@@ -92,7 +92,7 @@ export type StatKey =
   | 'purplePlus'   // 累计带出紫色及以上物品件数
   | 'cyanPlus'     // 累计带出青色及以上
   | 'redPlus'      // 累计带出红色
-  | 'themeActions' // 当季主题行动次数（消毒/劫车/复电）
+  | 'themeActions' // 当季主题行动次数（按主题任务标签计数：感染箱/空投/精英掉落/毒区击杀/爆炸击杀等）
   | 'scout'        // 跑图调查：抵达指定地图现场并按 F 交互（见 story.ts 的 SCOUT_SPOTS）
 
 export interface QuestDef {
@@ -149,12 +149,10 @@ export const QUESTS: QuestDef[] = [
 import { currentSeasonTheme } from './events'
 export function themeQuests(): QuestDef[] {
   const t = currentSeasonTheme()
-  const name = t.id === 'infection' ? '消杀行动' : t.id === 'convoy' ? '劫镖行动' : '光明行动'
-  const desc = t.id === 'infection' ? '开启 6 个被感染的容器' : t.id === 'convoy' ? '劫掠 2 辆押运车' : '修复 3 个电力装置'
-  const target = t.id === 'infection' ? 6 : t.id === 'convoy' ? 2 : 3
+  const stat = t.quest.stat ?? 'themeActions'
   return [
-    { id: `q_th_${t.id}_1`, phase: 1, main: false, icon: t.icon, name: `【主题】${name}`, desc, stat: 'themeActions', target, reward: 600 },
-    { id: `q_th_${t.id}_2`, phase: 2, main: false, icon: '🏅', name: `【主题】${name}·进阶`, desc: `${desc}（累计）`, stat: 'themeActions', target: target * 3, reward: 1000 },
+    { id: `q_th_${t.id}_1`, phase: 1, main: false, icon: t.icon, name: `【主题】${t.quest.name}`, desc: t.quest.desc, stat, target: t.quest.target, reward: 600 },
+    { id: `q_th_${t.id}_2`, phase: 2, main: false, icon: '🏅', name: `【主题】${t.quest.name}·进阶`, desc: `${t.quest.desc}（累计）`, stat, target: t.quest.target * 3, reward: 1000 },
   ]
 }
 

@@ -2805,7 +2805,7 @@ export function spawnAirDrop(world: World, x: number, z: number, floorY: number)
   world.scene.add(g)
   const c: Container = {
     id: g.userData.containerId as string, mesh: g, pos: new THREE.Vector3(x, floorY + 0.8, z),
-    grid: makeGrid(6, 4), searched: false, title: '航空箱', luck: 1.5,
+    grid: makeGrid(6, 4), searched: false, title: '航空箱', luck: 1.5, tag: 'airdrop',
   }
   world.containers.push(c)
   return c

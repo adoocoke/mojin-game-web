@@ -102,6 +102,7 @@ export class Game {
   private vsOver = false
   private kills = 0
   private raidLeft = RAID_SECONDS
+  private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
 
   // 本局任务统计（赛季任务）
@@ -160,16 +161,22 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
     this.camera = new THREE.PerspectiveCamera(this.baseFov, innerWidth / innerHeight, 0.08, 400)
-    const blackout = currentSeasonTheme().id === 'blackout' // 停电夜：全赛季固定夜战
-    this.world = buildWorld(mapId, uiState.night || blackout, uiState.highRisk)
-    if (uiState.night || blackout) {
+    const themeNight = currentSeasonTheme().mods.night ?? false // 赛季主题：强制夜战
+    this.world = buildWorld(mapId, uiState.night || themeNight, uiState.highRisk)
+    // 赛季主题：迷雾（雾浓度倍率）
+    const themeFog = currentSeasonTheme().mods.fogMul ?? 1
+    if (themeFog !== 1 && this.world.scene.fog) {
+      const fg = this.world.scene.fog as THREE.Fog
+      fg.near /= themeFog; fg.far /= themeFog
+    }
+    if (uiState.night || themeNight) {
       // 战术手电：挂在相机上的暖色聚光灯
       this.torch = new THREE.SpotLight(0xfff0d0, 3.2, 42, 0.52, 0.45, 1.1)
       this.world.scene.add(this.torch)
       this.world.scene.add(this.torch.target)
     }
-    if (blackout) {
-      // 停电夜主题：配电室——恢复局部照明
+    if (themeNight) {
+      // 夜战主题：配电室——恢复局部照明
       const ex = this.world.extractPos
       const px = ex.x + 8, pz = ex.z + 4
       const py = 0
@@ -797,8 +804,13 @@ export class Game {
     notify()
   }
 
-  private onEnemyKilled(e: Enemy) {
+  private onEnemyKilled(e: Enemy, cause?: 'explosive') {
     this.kills++
+    // 赛季主题任务：爆炸物击杀
+    if (cause === 'explosive' && this.theme.quest.tag === 'explosive' && (this.theme.quest.stat ?? 'themeActions') === 'themeActions') this.themeActions++
+    // 赛季主题任务：毒雾区域内击杀
+    if (this.theme.quest.tag === 'gas' && (this.theme.quest.stat ?? 'themeActions') === 'themeActions'
+      && this.gasZones.some(gz => Math.hypot(e.group.position.x - gz.x, e.group.position.z - gz.z) < gz.r)) this.themeActions++
     if (e.boss) { this.raidBossKills++; uiState.raidLive = { ...uiState.raidLive, bossKills: this.raidBossKills } }
     uiState.kills = this.kills
     uiState.killFeed = [`击杀 ${e.name}`, ...uiState.killFeed].slice(0, 4)
@@ -846,6 +858,7 @@ export class Game {
     this.world.containers.push({
       id: `drop${Date.now()}${Math.random()}`, mesh: m, pos: new THREE.Vector3(dropPos.x, dropPos.y + 0.5, dropPos.z),
       grid, searched: true, title: e.boss ? `${e.name}的战利品` : '战利品', luck: 0, enemyDrop: true,
+      tag: e.name.includes('精英巡逻兵') ? 'eliteDrop' : undefined,
     })
   }
 
@@ -1058,7 +1071,7 @@ export class Game {
       })
       const fog = this.world.scene.fog as THREE.Fog | null
       if (fog) { fog.near = Math.max(fog.near, 30); fog.far = Math.max(fog.far, 160) }
-      this.themeActions++
+      if (this.theme.quest.tag === 'power' && (this.theme.quest.stat ?? 'themeActions') === 'themeActions') this.themeActions++ // 赛季主题任务：合闸送电
       this.toast('💡 配电室已启动！局部照明恢复', 'green')
       sfx.extract()
       notify()
@@ -1220,10 +1233,9 @@ export class Game {
     const pw = cur?.power ?? 1
     let luck = c.luck + (ev === 'lucky' ? 0.5 * pw : 0) + this.opMods.luck + (uiState.night ? 0.15 : 0) // 夜莺「幸运星」/ 夜战加成
     if (uiState.highRisk) luck += 0.8 // 高危禁区：出货品级整体升一档
-    if (this.theme.id === 'blackout') luck += 0.3 // 停电夜：全赛季爆率提升
+    luck += this.theme.mods.luck ?? 0 // 赛季主题：全局爆率修正
     if (c.tag === 'infected') {
       luck += 2 // 感染容器：出货率翻倍
-      this.themeActions++
       if (this.sprayBuffT > 0) {
         this.toast('🧴 消毒喷雾起效：免受感染', 'green')
       } else if (uiState.creator) {
@@ -1260,7 +1272,11 @@ export class Game {
       const item = rollLootItem(pool, luck, redBoost)
       autoPlace(c.grid, item)
     }
-    if (c.tag === 'convoy') { this.themeActions++; this.alertAllEnemies() } // 劫车：军用物资到手，但惊动全图
+    // 赛季主题任务统计：按任务标签计数（'*' = 任意战利品容器；售货机/电闸箱/剧情目标不算）
+    const qt = this.theme.quest.tag
+    if ((this.theme.quest.stat ?? 'themeActions') === 'themeActions' && c.title !== '售货机'
+      && c.tag !== 'lift_switch' && c.tag !== 'campObj' && (qt === '*' || c.tag === qt)) this.themeActions++
+    if (c.tag === 'convoy') this.alertAllEnemies() // 劫车：军用物资到手，但惊动全图
     if (c.tag === 'campObj' && this.camp && this.campStage === 1) {
       this.campStage = 2
       uiState.campObj = this.camp.stageText[2]
@@ -1922,7 +1938,8 @@ export class Game {
         this.vsActors.set(m.id, { mesh, tag })
       }
     }
-    this.raidLeft = RAID_SECONDS
+    this.raidDuration = Math.round(RAID_SECONDS * (this.theme.mods.raidTimeMul ?? 1)) // 赛季主题：对局时长倍率
+    this.raidLeft = this.raidDuration
     this.extractT = 0
     this.stormOn = false
     this.stormHurtT = 0
@@ -1977,12 +1994,13 @@ export class Game {
     this.themeActions = 0
     this.sprayBuffT = 0
     this.convoyAlerted = false
-    // 感染爆发：约 30% 容器被污染（出货率翻倍但开箱扣血）
+    // 赛季主题：容器感染（出货率翻倍但开箱扣血，概率由主题定义）
+    const infectP = this.theme.mods.infect ?? 0
     for (const c of this.world.containers) {
       const old = c.mesh.getObjectByName('infectedMark')
       if (old) c.mesh.remove(old)
       c.tag = undefined
-      if (this.theme.id === 'infection' && !this.camp && !c.enemyDrop && c.title !== '售货机' && Math.random() < 0.3) {
+      if (infectP > 0 && !this.camp && !c.enemyDrop && c.title !== '售货机' && Math.random() < infectP) {
         c.tag = 'infected'
         const spore = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6),
           new THREE.MeshStandardMaterial({ color: 0x3fae2a, emissive: 0x2a8a1a, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }))
@@ -2004,9 +2022,11 @@ export class Game {
       (['supplyRain', 'elitePatrol', 'gasLeak'] as ('supplyRain' | 'elitePatrol' | 'gasLeak' | 'convoy')[])
         .sort(() => Math.random() - 0.5).slice(0, 2)
         .map(id => ({ id, at: 90 + Math.random() * 270, fired: false }))
-    // 赛季主题「武装押运」：局内随机时段押运车队入场
-    if (this.theme.id === 'convoy' && !uiState.tutorial && this.vs?.mode !== 'pvp') {
-      this.raidEvents.push({ id: 'convoy', at: 120 + Math.random() * 180, fired: false })
+    // 赛季主题：额外局内事件排程（押运/连场空投雨/精英巡猎等，由主题数据驱动）
+    if (!uiState.tutorial && this.vs?.mode !== 'pvp') {
+      for (const evId of this.theme.mods.extraEvents ?? []) {
+        this.raidEvents.push({ id: evId, at: 100 + Math.random() * 220, fired: false })
+      }
     }
     uiState.hp = this.hp
     uiState.extractProgress = -1
@@ -2142,6 +2162,7 @@ export class Game {
     let total = isSnow ? 11 : nBoss >= 2 ? 12 : nBoss === 1 ? 10 : 8 // 潮汐监狱最大；雪地 11 人
     const hr = uiState.highRisk
     if (hr) total = Math.round(total * 1.5) // 高危禁区：敌人数量 ×1.5
+    total = Math.round(total * (this.theme.mods.enemyCountMul ?? 1)) // 赛季主题：敌人数量倍率
     // 活动「精英出没」：敌人整体 tier +1（更强，掉落更好）
     const elite = currentEvent().event?.id === 'elite'
     // 兵种构成：监狱多重甲、雪地多侦察、其余混搭（约 1/3 特殊兵种）
@@ -2156,7 +2177,7 @@ export class Game {
     }
     for (let i = 0; i < total; i++) {
       const p = this.randomSpawnPos(45)
-      const t = Math.floor(Math.random() * 2) + (elite ? 1 : 0)
+      const t = Math.floor(Math.random() * 2) + (elite ? 1 : 0) + (this.theme.mods.enemyTierPlus ?? 0) // 赛季主题：敌人阶级提升
       const hrHp = hr ? { hp: Math.round((70 + t * 30) * 1.5) } : {} // 高危禁区：敌人血量 ×1.5
       this.enemies.spawn(p, t,
         isSnow ? { armor: 0xdde4ea, kind: kindPool(), ...hrHp } : isDesert ? { armor: 0xcbb26a, kind: kindPool(), ...hrHp } : { kind: kindPool(), ...hrHp }) // 雪地白色/沙漠土黄迷彩装甲
@@ -2456,16 +2477,17 @@ export class Game {
     const W = this.world
     const R = W.size - 25
     if (id === 'supplyRain') {
-      // 空投雨：一次落 3 个空投在全图随机位置
-      for (let i = 0; i < 3; i++) {
+      // 空投雨：一次落 N 个空投在全图随机位置（数量可由赛季主题调整）
+      const nDrops = this.theme.mods.supplyRainCount ?? 3
+      for (let i = 0; i < nDrops; i++) {
         const x = (Math.random() - 0.5) * 2 * R
         const z = (Math.random() - 0.5) * 2 * R
         const y = this.groundHeightAt(x, z, 10)
         spawnAirDrop(W, x, z, y)
         W.mapMarkers.push({ x, z, kind: 'airdrop', name: '空投' })
       }
-      this.toast('🪂 空投雨！3 个空投已落在全图随机位置（看地图 M）', 'cyan')
-      uiState.killFeed = ['🪂 空投雨：3 个空投落地', ...uiState.killFeed].slice(0, 4)
+      this.toast(`🪂 空投雨！${nDrops} 个空投已落在全图随机位置（看地图 M）`, 'cyan')
+      uiState.killFeed = [`🪂 空投雨：${nDrops} 个空投落地`, ...uiState.killFeed].slice(0, 4)
       try { sfx.extract() } catch { /* 忽略 */ }
     } else if (id === 'elitePatrol') {
       // 精英巡逻队：4 人精英小队中途入场，沿主路巡逻，掉军用物资
@@ -2600,7 +2622,7 @@ export class Game {
         }
         const canSprint = this.weightTier < 3
         const sprintNow = sprint && canSprint
-        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul()
+        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) // 赛季主题：移速倍率
         const f = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw))
         const r = new THREE.Vector3(-f.z, 0, f.x)
         const move = new THREE.Vector3()
@@ -2727,7 +2749,7 @@ export class Game {
       // 高塔天台直升机坪：重载/超重无法登机（直升机载重有限）
       const padHeavy = atPad2 && this.world.mapId === 'tower' && this.weightTier >= 2
       if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
-        this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / this.opMods.extract) // 高危禁区：撤离读条 +3 秒
+        this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
         if (this.extractT >= 1) { uiState.extractProgress = -1; this.endRaid(true) }
       } else {
@@ -2775,7 +2797,7 @@ export class Game {
       this.raidLeft -= rawDt
       if (this.raidLeft <= 0) { this.endRaid(false) }
       // 沙海古城：开局 8 分钟后沙暴来袭——地表能见度骤降且持续掉血，墓道内安全
-      if (this.world.mapId === 'desert' && !this.stormOn && RAID_SECONDS - this.raidLeft >= 480) {
+      if (this.world.mapId === 'desert' && !this.stormOn && this.raidDuration - this.raidLeft >= this.raidDuration - 120) { // 最后 2 分钟沙暴来袭
         this.stormOn = true
         const fog = this.world.scene.fog as THREE.Fog | null
         if (fog) { fog.near = 3; fog.far = 20; fog.color.setHex(0xc79a55) }
@@ -2795,7 +2817,7 @@ export class Game {
       }
 
       // ===== 局内随机事件触发（广播 + 小地图图标） =====
-      const elapsed = RAID_SECONDS - this.raidLeft
+      const elapsed = this.raidDuration - this.raidLeft
       for (const ev of this.raidEvents) {
         if (ev.fired || elapsed < ev.at) continue
         ev.fired = true
@@ -2836,7 +2858,7 @@ export class Game {
         m.emissiveIntensity = 1.5 + Math.sin(performance.now() / 60) * 1.2 // 急促闪烁
         if (this.charge.t <= 0) {
           const cp = this.charge.mesh.position.clone()
-          const chargeDmg = this.charge.dmg
+          const chargeDmg = this.charge.dmg * (this.theme.mods.explosiveMul ?? 1) // 赛季主题：爆炸伤害倍率
           this.world.scene.remove(this.charge.mesh)
           this.charge = null
           sfx.boom()
@@ -2847,7 +2869,7 @@ export class Game {
             if (d < 8) {
               const killed = this.enemies.damage(e, chargeDmg * (e.markedT > 0 ? 1 + this.markBonus : 1))
               hit++
-              if (killed) this.onEnemyKilled(e); else this.checkBossFrenzy(e)
+              if (killed) this.onEnemyKilled(e, 'explosive'); else this.checkBossFrenzy(e)
             }
           }
           this.toast(hit > 0 ? `💥 爆炸命中 ${hit} 个敌人！` : '💥 炸药爆炸，没炸到敌人', hit > 0 ? 'cyan' : 'white')
@@ -2888,9 +2910,9 @@ export class Game {
           if (e.dead) continue
           if (Math.hypot(e.group.position.x - mn.x, e.group.position.z - mn.z) < 4.5
             && Math.abs(e.group.position.y - mn.floorY) < 3) {
-            const killed = this.enemies.damage(e, 130)
+            const killed = this.enemies.damage(e, Math.round(130 * (this.theme.mods.explosiveMul ?? 1))) // 赛季主题：爆炸伤害倍率
             hit++
-            if (killed) this.onEnemyKilled(e); else this.checkBossFrenzy(e)
+            if (killed) this.onEnemyKilled(e, 'explosive'); else this.checkBossFrenzy(e)
           }
         }
         this.world.mapMarkers.push({ x: mn.x, z: mn.z, kind: 'patrol', name: '绊雷爆炸' })
@@ -2916,7 +2938,7 @@ export class Game {
       this.spawnTimer -= dt
       if (this.spawnTimer <= 0 && this.enemies.aliveCount() < 7) {
         this.spawnTimer = 9
-        const tier = Math.min(3, Math.floor((RAID_SECONDS - this.raidLeft) / 90))
+        const tier = Math.min(3, Math.floor((this.raidDuration - this.raidLeft) / 90))
         const rk = Math.random()
         const k = rk < 0.12 ? 'heavy' : rk < 0.22 ? 'grenadier' : rk < 0.32 ? 'scout' : 'normal'
         this.enemies.spawn(this.randomSpawnPos(50), tier + Math.floor(Math.random() * 2), { kind: k })

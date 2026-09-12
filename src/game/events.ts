@@ -83,30 +83,137 @@ export function fmtCountdown(ms: number): string {
   return h > 0 ? `${h}时${m}分${ss}秒` : `${m}分${String(ss).padStart(2, '0')}秒`
 }
 
-// ===================== 赛季主题玩法轮换（P3 #20） =====================
-// 每个赛季（自然月）固定一个主题，按月轮换：感染爆发 → 武装押运 → 停电夜 → ……
+// ============ 赛季主题（每月一个全新主题，永不重复）============
+// 规则：一个主题在某个月登场之后就永久退役，之后每个月都是玩家没见过的新主题。
+// 实现：手工排期表（每月一格，写完即用尽）+ 排期用尽后由「焦点 × 环境」组合生成器
+// 产出全新组合主题（组合本身随月份递增，亦不复用）；两个来源互不重叠，天然不重复。
+
+export interface SeasonThemeMods {
+  night?: boolean          // 强制夜战
+  luck?: number            // 全局容器加成（fillContainer luck 加值）
+  infect?: number          // 容器被感染概率（开箱需净化，计入赛季任务）
+  fogMul?: number          // 雾浓度倍率
+  raidTimeMul?: number     // 对局时长倍率
+  speedMul?: number        // 玩家移速倍率
+  extractMul?: number      // 撤离读条速率倍率
+  enemyTierPlus?: number   // 敌人阶级整体提升
+  enemyCountMul?: number   // 敌人数量倍率
+  explosiveMul?: number    // 玩家手雷/炸药伤害倍率（用爆炸物击杀计入赛季任务）
+  extraEvents?: RaidEventId[] // 额外触发的局内事件（如连续空投雨）
+  supplyRainCount?: number // 空投雨每次空投数量（默认 3）
+}
+
+export interface SeasonThemeQuest {
+  name: string
+  desc: string
+  target: number
+  /** 计入进度的触发标签：infected 开感染箱 / convoy 截停押运 / power 合闸送电 /
+   *  airdrop 开空投 / eliteDrop 精英掉落实力箱 / gas 毒雾里杀怪 / explosive 爆炸物击杀 / * 开任意战利品容器 */
+  tag: 'infected' | 'convoy' | 'power' | 'airdrop' | 'eliteDrop' | 'gas' | 'explosive' | '*'
+  /** 进度统计口径：默认 themeActions（按 tag 计数）；extracts = 成功撤离次数 */
+  stat?: 'themeActions' | 'extracts'
+}
+
 export interface SeasonTheme {
-  id: 'infection' | 'convoy' | 'blackout'
+  id: string
   icon: string
   name: string
   desc: string
+  mods: SeasonThemeMods
+  quest: SeasonThemeQuest
 }
 
-export const SEASON_THEMES: SeasonTheme[] = [
-  { id: 'infection', icon: '🦠', name: '感染爆发', desc: '部分容器被污染：开箱扣血但出货率翻倍；消毒喷雾可短暂免疫（当季任务围绕主题设计）' },
-  { id: 'convoy',    icon: '🚚', name: '武装押运', desc: '局内随机刷 AI 押运车队：劫车得军用物资，但会惊动全图敌人（当季任务围绕主题设计）' },
-  { id: 'blackout',  icon: '🌑', name: '停电夜',   desc: '全赛季固定夜战 + 爆率提升；找到配电室可恢复局部照明（当季任务围绕主题设计）' },
+export type RaidEventId = 'supplyRain' | 'elitePatrol' | 'gasLeak' | 'convoy'
+
+// —— 旧主题（2026-09 之前的档期由这套 3 主题轮换服务，之后全部永久退役）——
+const LEGACY_THEMES: SeasonTheme[] = [
+  { id: 'infection', icon: '☣️', name: '感染狂潮', desc: '容器被感染，开启需净化（+变异体出没）',
+    mods: { infect: 0.3 }, quest: { name: '净化源头', desc: '净化并开启 3 个被感染的容器', target: 3, tag: 'infected' } },
+  { id: 'convoy', icon: '🚚', name: '武装押运', desc: '押运队巡行全图，截停可夺军备箱',
+    mods: { extraEvents: ['convoy'] }, quest: { name: '拦路劫案', desc: '截停武装押运并开启押运箱', target: 1, tag: 'convoy' } },
+  { id: 'blackout', icon: '🌃', name: '停电夜', desc: '全图强制夜战，物资出率提升',
+    mods: { night: true, luck: 0.3 }, quest: { name: '暗夜猎手', desc: '于黑夜中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
 ]
 
-/** 赛季主题手动调整：口碑差的赛季主题在此按「年*12+月」替换，不影响后续自然轮换 */
-const SEASON_THEME_OVERRIDES: Record<number, SeasonTheme['id']> = {
-  [2026 * 12 + 8]: 'convoy', // 2026-09 赛季：停电夜（固定夜战）反响差，换成武装押运
+// —— 排期起点：2026-09（key = year*12 + monthIndex）——
+export const SCHEDULE_START = 2026 * 12 + 8
+
+// —— 手工排期：每月一个全新主题，永不复用 ——
+const SEASON_SCHEDULE: SeasonTheme[] = [
+  { id: 'airdrop-carnival', icon: '🪂', name: '空投季', desc: '空投雨连绵不断，全图补给箱密度翻倍',
+    mods: { extraEvents: ['supplyRain', 'supplyRain'], supplyRainCount: 5 },
+    quest: { name: '捡到手软', desc: '开启 3 个空投补给箱', target: 3, tag: 'airdrop' } },
+  { id: 'ace-hunt', icon: '🎖️', name: '王牌猎手', desc: '精英巡逻队倾巢而出，猎杀精英掉落实力箱',
+    mods: { extraEvents: ['elitePatrol', 'elitePatrol'] },
+    quest: { name: '以强者为饵', desc: '拾取 2 个精英巡逻兵的掉落实力箱', target: 2, tag: 'eliteDrop' } },
+  { id: 'fog-zone', icon: '🌫️', name: '迷雾禁区', desc: '浓雾锁图视野骤降，但物资出率提升',
+    mods: { fogMul: 1.8, luck: 0.3 },
+    quest: { name: '雾中寻宝', desc: '在迷雾中开启 4 个战利品容器', target: 4, tag: '*' } },
+  { id: 'gas-plague', icon: '☣️', name: '毒雾蔓延', desc: '毒雾泄漏频发，毒区里的击杀都有悬赏',
+    mods: { extraEvents: ['gasLeak', 'gasLeak'], luck: 0.2 },
+    quest: { name: '毒区清道夫', desc: '在毒雾区域内击杀 4 个敌人', target: 4, tag: 'gas' } },
+  { id: 'demolition', icon: '🧨', name: '爆破月', desc: '爆炸物补给充足，手雷与炸药伤害提升 40%',
+    mods: { explosiveMul: 1.4 },
+    quest: { name: '艺术就是爆炸', desc: '用爆炸物击杀 3 个敌人', target: 3, tag: 'explosive' } },
+  { id: 'gold-rush', icon: '💰', name: '淘金热', desc: '矿脉暴走：变卖物价值飙升，但敌人也更多',
+    mods: { luck: 0.5, enemyCountMul: 1.25 },
+    quest: { name: '满载而归', desc: '单局累计开启 5 个战利品容器', target: 5, tag: '*' } },
+  { id: 'blitz', icon: '⚡', name: '闪电战', desc: '对局缩短至 7 分钟，全员移速提升，撤离更快',
+    mods: { raidTimeMul: 0.7, speedMul: 1.12, extractMul: 1.4 },
+    quest: { name: '快进快出', desc: '在闪电战节奏下成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { id: 'iron-tide', icon: '🪖', name: '钢铁洪流', desc: '敌方精锐换装上阵：数量与阶级全面提升',
+    mods: { enemyCountMul: 1.35, enemyTierPlus: 1, luck: 0.2 },
+    quest: { name: '硬碰硬', desc: '在钢铁洪流中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { id: 'night-hunt', icon: '🌙', name: '暗夜猎场', desc: '永夜降临：全程夜战，精英队夜间巡猎',
+    mods: { night: true, extraEvents: ['elitePatrol'], luck: 0.2 },
+    quest: { name: '夜行动物', desc: '于黑夜中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { id: 'supply-storm', icon: '🚁', name: '补给风暴', desc: '空投与毒气同时来袭：补给密度翻倍、毒雾频发',
+    mods: { extraEvents: ['supplyRain', 'supplyRain', 'gasLeak'], supplyRainCount: 4, luck: 0.2 },
+    quest: { name: '风暴中心', desc: '开启 3 个空投补给箱', target: 3, tag: 'airdrop' } },
+  { id: 'lull', icon: '🕊️', name: '休整月', desc: '敌方偃旗息鼓：敌人减少，安稳发育的一月',
+    mods: { enemyCountMul: 0.7, luck: 0.3, extractMul: 1.2 },
+    quest: { name: '全身而退', desc: '在休整月成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { id: 'black-market', icon: '🏴‍☠️', name: '黑市横财', desc: '黑市泛滥：高价值容器出率大增，押运队倾巢而出',
+    mods: { luck: 0.4, extraEvents: ['convoy'] },
+    quest: { name: '黑吃黑', desc: '截停武装押运并开启押运箱', target: 1, tag: 'convoy' } },
+]
+
+// —— 组合生成器：排期用尽后，焦点×环境逐月产出全新组合（亦不重复）——
+const COMBO_FOCUS: SeasonTheme[] = [
+  SEASON_SCHEDULE[0], SEASON_SCHEDULE[1], SEASON_SCHEDULE[4],
+  SEASON_SCHEDULE[5], SEASON_SCHEDULE[7], SEASON_SCHEDULE[3],
+]
+const COMBO_ENV: { id: string; icon: string; name: string; mods: SeasonThemeMods }[] = [
+  { id: 'night', icon: '🌙', name: '永夜', mods: { night: true } },
+  { id: 'fog', icon: '🌫️', name: '迷雾', mods: { fogMul: 1.8 } },
+  { id: 'blitz', icon: '⚡', name: '疾风', mods: { raidTimeMul: 0.85, speedMul: 1.08 } },
+  { id: 'rich', icon: '💰', name: '富矿', mods: { luck: 0.3 } },
+  { id: 'war', icon: '🪖', name: '战区', mods: { enemyCountMul: 1.25 } },
+]
+
+function comboTheme(n: number): SeasonTheme {
+  const cycle = Math.floor(n / (COMBO_FOCUS.length * COMBO_ENV.length))
+  const jj = n % (COMBO_FOCUS.length * COMBO_ENV.length)
+  const A = COMBO_FOCUS[jj % COMBO_FOCUS.length]
+  const B = COMBO_ENV[Math.floor(jj / COMBO_FOCUS.length) % COMBO_ENV.length]
+  const suf = cycle > 0 ? `S${cycle + 1}` : ''
+  const mods: SeasonThemeMods = { ...A.mods, ...B.mods,
+    extraEvents: [...(A.mods.extraEvents ?? []), ...(B.mods.extraEvents ?? [])] }
+  // 焦点与环境都提供同一数值词条时取较强者，避免环境把焦点的效果压掉
+  for (const k of ['luck', 'enemyCountMul', 'speedMul', 'extractMul', 'explosiveMul', 'supplyRainCount'] as const) {
+    if (A.mods[k] != null && B.mods[k] != null) mods[k] = Math.max(A.mods[k]!, B.mods[k]!)
+  }
+  if (!mods.extraEvents || mods.extraEvents.length === 0) delete mods.extraEvents
+  return { id: `${A.id}-x-${B.id}${suf}`, icon: `${A.icon}${B.icon}`,
+    name: `${A.name}·${B.name}${suf}`, desc: `${A.desc}；叠加环境：${B.name}`,
+    mods, quest: { ...A.quest, name: `${A.quest.name}${suf}` } }
 }
 
-/** 当前赛季主题（按月份确定性轮换，所有玩家同一赛季同一主题；个别赛季可手动覆盖） */
+/** 当前赛季主题：历史档期用旧轮换，之后每月一个全新主题且永不重复 */
 export function currentSeasonTheme(d = new Date()): SeasonTheme {
   const key = d.getFullYear() * 12 + d.getMonth()
-  const ov = SEASON_THEME_OVERRIDES[key]
-  const idx = ov ? SEASON_THEMES.findIndex(t => t.id === ov) : -1
-  return SEASON_THEMES[idx >= 0 ? idx : key % SEASON_THEMES.length]
+  if (key < SCHEDULE_START) return LEGACY_THEMES[key % LEGACY_THEMES.length]
+  const i = key - SCHEDULE_START
+  return i < SEASON_SCHEDULE.length ? SEASON_SCHEDULE[i] : comboTheme(i - SEASON_SCHEDULE.length)
 }
+
