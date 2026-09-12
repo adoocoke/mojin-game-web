@@ -98,8 +98,15 @@ export const SEASON_THEMES: SeasonTheme[] = [
   { id: 'blackout',  icon: '🌑', name: '停电夜',   desc: '全赛季固定夜战 + 爆率提升；找到配电室可恢复局部照明（当季任务围绕主题设计）' },
 ]
 
-/** 当前赛季主题（按月份确定性轮换，所有玩家同一赛季同一主题） */
+/** 赛季主题手动调整：口碑差的赛季主题在此按「年*12+月」替换，不影响后续自然轮换 */
+const SEASON_THEME_OVERRIDES: Record<number, SeasonTheme['id']> = {
+  [2026 * 12 + 8]: 'convoy', // 2026-09 赛季：停电夜（固定夜战）反响差，换成武装押运
+}
+
+/** 当前赛季主题（按月份确定性轮换，所有玩家同一赛季同一主题；个别赛季可手动覆盖） */
 export function currentSeasonTheme(d = new Date()): SeasonTheme {
-  const idx = (d.getFullYear() * 12 + d.getMonth()) % SEASON_THEMES.length
-  return SEASON_THEMES[idx]
+  const key = d.getFullYear() * 12 + d.getMonth()
+  const ov = SEASON_THEME_OVERRIDES[key]
+  const idx = ov ? SEASON_THEMES.findIndex(t => t.id === ov) : -1
+  return SEASON_THEMES[idx >= 0 ? idx : key % SEASON_THEMES.length]
 }
