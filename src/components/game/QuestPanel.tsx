@@ -78,15 +78,15 @@ export function QuestPanel() {
             <div className="mb-4 rounded-xl border border-purple-500/40 bg-purple-950/30 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-black text-purple-300">{story.icon} 本赛季剧情 · {story.title}</div>
-                <div className="text-[10px] text-purple-400/80">第 {phaseNow}/4 章已解锁</div>
+                <div className="text-[10px] text-purple-400/80">第 {Math.min(phaseNow * 2, story.chapters.length)}/{story.chapters.length} 章已解锁</div>
               </div>
               <div className="text-[11px] text-zinc-300 mt-1.5 leading-relaxed">{story.intro}</div>
               <div className="mt-2 space-y-1.5">
                 {story.chapters.map((c, i) => {
-                  const unlocked = i + 1 <= phaseNow
+                  const unlocked = i < phaseNow * 2 // 每阶段解锁 2 章
                   return (
                     <div key={i} className={`text-[11px] leading-relaxed rounded px-2 py-1 ${unlocked ? 'text-zinc-200 bg-purple-500/10' : 'text-zinc-600 bg-black/30'}`}>
-                      {unlocked ? c : `🔒 第 ${i + 1} 章 · 完成第 ${i + 1} 阶段主线后解锁`}
+                      {unlocked ? c : `🔒 第 ${i + 1} 章 · 完成第 ${Math.floor(i / 2) + 1} 阶段主线后解锁`}
                     </div>
                   )
                 })}

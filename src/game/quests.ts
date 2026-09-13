@@ -114,6 +114,10 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_m1_3', phase: 1, main: true,  icon: '💰', name: '小有收获',   desc: '单局带出价值 3,000',     stat: 'raidValue',    target: 3000,  reward: 800 },
   { id: 'q_s1_1', phase: 1, main: false, icon: '📦', name: '勤快搜刮',   desc: '累计搜索 10 个容器',     stat: 'searches',     target: 10,    reward: 300 },
   { id: 'q_s1_2', phase: 1, main: false, icon: '💵', name: '万元户',     desc: '累计带出价值 10,000',    stat: 'totalValue',   target: 10000, reward: 400 },
+  { id: 'q_m1_4', phase: 1, main: true,  icon: '🗺️', name: '老鬼的遗物', desc: '【剧情】前往废弃矿区的「碎石堆」，寻找老鬼留下的线索', stat: 'scout', target: 1, reward: 600 },
+  { id: 'q_s1_3', phase: 1, main: false, icon: '📻', name: '气象站残响', desc: '【剧情】前往雪原「气象站」，查看废弃终端里的录音',   stat: 'scout', target: 1, reward: 400 },
+  { id: 'q_m1_5', phase: 1, main: true,  icon: '📦', name: '中转货单',   desc: '【剧情】前往矿区东侧「装卸台」，查扣暗河会的中转货单', stat: 'scout', target: 1, reward: 600 },
+  { id: 'q_s1_4', phase: 1, main: false, icon: '🛢️', name: '油料账本',   desc: '【剧情】查看雪原「燃料库」的出入库记录',           stat: 'scout', target: 1, reward: 400 },
 
   // ---------- 第二阶段（完成主线解锁第三阶段） ----------
   { id: 'q_m2_1', phase: 2, main: true,  icon: '⚔️', name: '老练猎手',   desc: '累计击杀 12 名敌人',     stat: 'kills',        target: 12,   reward: 600 },
@@ -124,6 +128,8 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_s2_2', phase: 2, main: false, icon: '💜', name: '紫色运气',   desc: '带出 2 件紫色及以上物品', stat: 'purplePlus',   target: 2,    reward: 500 },
   { id: 'q_m2_5', phase: 2, main: true,  icon: '📁', name: '黑市中转站', desc: '【剧情】潜入潮汐监狱的「办公楼」，寻找地图的另一半',   stat: 'scout', target: 1, reward: 1000 },
   { id: 'q_s2_3', phase: 2, main: false, icon: '🐫', name: '驿站见闻',   desc: '【剧情】前往沙海古城的「驿站」，打探货物的去向',     stat: 'scout', target: 1, reward: 600 },
+  { id: 'q_m2_6', phase: 2, main: true,  icon: '🖋️', name: '典狱长的密约', desc: '【剧情】潜入潮汐监狱「典狱长办公室」，找出暗河会的通关密函', stat: 'scout', target: 1, reward: 1000 },
+  { id: 'q_s2_4', phase: 2, main: false, icon: '🪧', name: '神庙刻痕',   desc: '【剧情】查看沙海古城「神庙方尖碑」上的新刻痕',         stat: 'scout', target: 1, reward: 600 },
 
   // ---------- 第三阶段（完成主线 → 保险箱 9 格） ----------
   { id: 'q_m3_1', phase: 3, main: true,  icon: '🌾', name: '战场收割',   desc: '累计击杀 25 名敌人',     stat: 'kills',        target: 25,   reward: 800 },
@@ -133,6 +139,8 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_s3_2', phase: 3, main: false, icon: '💠', name: '传说之光',   desc: '带出 1 件青色及以上物品', stat: 'cyanPlus',     target: 1,    reward: 800 },
   { id: 'q_m3_4', phase: 3, main: true,  icon: '🏺', name: '沙漠祭坛',   desc: '【剧情】前往沙海古城的「雕像群」，查明暗河会在挖掘什么', stat: 'scout', target: 1, reward: 1200 },
   { id: 'q_s3_3', phase: 3, main: false, icon: '🚚', name: '伏击现场',   desc: '【剧情】勘查雪地南路的「车队残骸」，寻找幸存的运单',   stat: 'scout', target: 1, reward: 700 },
+  { id: 'q_m3_5', phase: 3, main: true,  icon: '🏺', name: '耳室陶罐',   desc: '【剧情】深入古城地下「西耳室」，检查守陵人的陶罐',     stat: 'scout', target: 1, reward: 1200 },
+  { id: 'q_s3_4', phase: 3, main: false, icon: '🛗', name: '电梯日志',   desc: '【剧情】检查高塔「货运电梯」的运行日志',             stat: 'scout', target: 1, reward: 700 },
 
   // ---------- 第四阶段（完成主线 → 保险箱 12 格） ----------
   { id: 'q_m4_1', phase: 4, main: true,  icon: '🏆', name: '战区传奇',   desc: '累计击杀 50 名敌人',     stat: 'kills',        target: 50,   reward: 1000 },
@@ -143,6 +151,8 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_s4_2', phase: 4, main: false, icon: '🔑', name: '门禁大师',   desc: '累计刷卡开门 6 次',      stat: 'doorsOpened',  target: 6,    reward: 500 },
   { id: 'q_m4_5', phase: 4, main: true,  icon: '⚱️', name: '法老的字迹', desc: '【剧情】深入沙海古城地下「主墓室」，查看石棺上的刻字', stat: 'scout', target: 1, reward: 1500 },
   { id: 'q_s4_3', phase: 4, main: false, icon: '📡', name: '加密频道',   desc: '【剧情】登上雪地「雷达站」二层主控台，监听加密频道',   stat: 'scout', target: 1, reward: 900 },
+  { id: 'q_m4_6', phase: 4, main: true,  icon: '🚁', name: '天台追缉',   desc: '【剧情】登上高塔「天台直升机坪」，追踪掮客的去向',     stat: 'scout', target: 1, reward: 1500 },
+  { id: 'q_s4_4', phase: 4, main: false, icon: '🖼️', name: '陪葬殿壁画', desc: '【剧情】查看古城地下「陪葬殿」的壁画',               stat: 'scout', target: 1, reward: 900 },
 ]
 
 // ===== 赛季主题任务（P3 #20）：与当前赛季主题联动 =====
