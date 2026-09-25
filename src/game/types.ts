@@ -26,6 +26,8 @@ export interface ItemDef {
   icon: string       // 图标字符
   gunId?: string     // kind === weapon 时关联枪械
   heal?: number      // kind === med
+  drink?: DrinkBuff  // kind === med 的特调饮品：饮用后获得限时增益（黑暗特调为醉酒减益）
+  openable?: 'luckybag' | 'mandelbrick'  // 可在仓库开启的活动道具（红运福袋 / 猩红曼德尔砖）
   stack?: number     // 最大堆叠
   slot?: AttSlot     // kind === attachment 时的配件槽位
   pen?: number       // kind === ammo：穿透等级 1-6
@@ -36,6 +38,16 @@ export interface ItemDef {
 }
 
 export type AttSlot = 'scope' | 'muzzle' | 'mag' | 'stock' | 'grip' | 'laser'
+
+/** 特调饮品增益（数值为本游戏等价映射，持续时间为秒） */
+export interface DrinkBuff {
+  hot?: number    // 每秒持续回血
+  speed?: number  // 移速倍率（<1 为减速负面）
+  search?: number // 搜索速度倍率
+  reload?: number // 换弹时间倍率（<1 为加快）
+  dur: number     // 持续秒数
+  drunk?: boolean // 醉酒：视野摇晃 + 减速 + 打嗝
+}
 
 export interface ItemInstance {
   uid: string

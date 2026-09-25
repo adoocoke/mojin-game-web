@@ -1,13 +1,14 @@
 import * as THREE from 'three'
 import { buildWorld, buildDeathCrateMesh, spawnAirDrop, type World, type Container, type MapId, type Door } from './world'
 import { EnemyManager, type Enemy } from './enemies'
-import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, type OpMods } from './data'
-import { RARITY_INFO, RARITY_ORDER, itemValue, itemWeight, type GunDef, type Rarity, type AttSlot, type ItemInstance, type ItemDef, type PlacedItem } from './types'
+import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, DRINK_MATS, type OpMods } from './data'
+import { RARITY_INFO, RARITY_ORDER, itemValue, itemWeight, type GunDef, type Rarity, type AttSlot, type ItemInstance, type ItemDef, type PlacedItem, type DrinkBuff } from './types'
 import { makeGrid, autoPlace, removeItem, findPlaced, placeAt, hitTest, defOf } from './inventory'
 import { uiState, notify, engine } from './store'
 import { sfx } from './audio'
 import { loadStash, addToStash, saveStash, clearStash, sellFromStash, saveMoney, sortStash, sellAllValuables } from './stash'
-import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards } from './events'
+import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards, activeOfficialLoot } from './events'
+import { claimVoucherRaid } from './vouchers'
 import { equippedSkin } from './skins'
 import { skinDef } from './skins'
 import { loadSeason, recordRaid, safeLv, SAFE_DIMS, SAFE_CELLS, phaseUnlocked, QUESTS } from './quests'
@@ -88,6 +89,15 @@ export class Game {
   private theme = currentSeasonTheme()
   private themeActions = 0   // 当季主题行动次数（任务统计）
   private sprayBuffT = 0     // 消毒喷雾免疫剩余
+  private drinkBuffs: (DrinkBuff & { until: number })[] = []  // 特调饮品增益（官方饮品特调活动）
+  private drunkT = 0           // 醉酒剩余秒数（黑暗特调：视野摇晃+减速）
+  /** 饮品增益倍率（叠加所有未过期饮品） */
+  private drinkMul(key: 'speed' | 'search' | 'reload') {
+    let m = 1
+    const now = performance.now()
+    for (const b of this.drinkBuffs) { const v = b[key]; if (b.until > now && v != null) m *= v }
+    return m
+  }
   private convoyAlerted = false // 押运车队已被惊动
   private powerStation: { x: number; z: number; floorY: number; mesh: THREE.Group; on: boolean } | null = null
   // ===== 局内随机事件（P3 #21）：开局不预告，局内广播 + 小地图图标 =====
@@ -854,6 +864,10 @@ export class Game {
           sfx.kill()
         }
       }
+      // 官方活动「红运福袋」：Boss 盒子概率产出
+      if (activeOfficialLoot().has('luckybag') && Math.random() < 0.5) {
+        if (autoPlace(grid, makeItem('ev_luckybag', 1))) this.toast('🧧 Boss 盒子产出：红运福袋！带出到仓库开启', 'red')
+      }
       // Boss 战利品：顶级货（必含一把枪）
       autoPlace(grid, rollLootItem(WEAPON_LOOT_POOL, 1.2))
       const n = 3 + Math.floor(Math.random() * 2)
@@ -879,7 +893,7 @@ export class Game {
   private startReload() {
     if (this.gunDef.melee || this.reloading || this.mag >= this.gunDef.mag) return
     this.reloading = true
-    this.reloadEnd = performance.now() + this.effGun().reloadTime * this.opMods.reload * (this.rallyT > 0 ? 0.7 : 1) * (this.weightTier === 3 ? 1.3 : 1)
+    this.reloadEnd = performance.now() + this.effGun().reloadTime * this.opMods.reload * (this.rallyT > 0 ? 0.7 : 1) * (this.weightTier === 3 ? 1.3 : 1) * this.drinkMul('reload')
     sfx.reload()
     uiState.reloading = true
     notify()
@@ -1302,6 +1316,13 @@ export class Game {
     // 任何容器都有机会出本图房卡（活动「门禁解禁」掉率翻倍以上，自动档按强度浮动）
     const cardChance = this.world.mapId === 'desert' ? 0.17 : 0.09 // 沙海古城房卡更好出（陵寝双门双卡）
     if (Math.random() < (ev === 'cards' ? cardChance + 0.13 * pw : cardChance)) autoPlace(c.grid, rollLootItem(CARD_POOLS[this.world.mapId], luck))
+    // 官方活动道具掉落注入（窗口期内全程生效，不随活动轮换）
+    const evLoot = activeOfficialLoot()
+    if (evLoot.size > 0 && c.title !== '售货机' && c.tag !== 'lift_switch' && c.tag !== 'campObj') {
+      if (evLoot.has('drinkMat') && Math.random() < 0.15) autoPlace(c.grid, makeItem(DRINK_MATS[Math.floor(Math.random() * DRINK_MATS.length)], 1))
+      if (evLoot.has('luckybag') && Math.random() < 0.1) autoPlace(c.grid, makeItem('ev_luckybag', 1))
+      if (evLoot.has('mandelbrick') && Math.random() < 0.04) autoPlace(c.grid, makeItem('ev_mandelbrick', 1))
+    }
     if (c.title !== '售货机') c.searched = true // 售货机可反复投币
     this.raidSearches++ // 赛季任务统计
     uiState.raidLive = { ...uiState.raidLive, searches: this.raidSearches }
@@ -1513,6 +1534,49 @@ export class Game {
       if (mult > 1) this.toast(`金市上涨！双倍金币 +${(gained * mult).toLocaleString()}`, 'cyan')
       notify()
     }
+    engine.openStashItem = (uid) => {
+      if (!uiState.stash) return null
+      const placed = findPlaced(uiState.stash, uid)
+      if (!placed) return null
+      const def = defOf(placed.item)
+      if (!def.openable) return null
+      removeItem(uiState.stash, uid)
+      let msg = ''
+      if (def.openable === 'luckybag') {
+        // 红运福袋：金币 5,000-18,000 或随机物资（对应官方：哈夫币/制式券/制造材料）
+        if (Math.random() < 0.65) {
+          const gold = 5000 + Math.floor(Math.random() * 13001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🧧 红运福袋开出 ${gold.toLocaleString()} 金币！`
+        } else {
+          const it = rollLootItem(LOOT_POOL, 1.5)
+          if (autoPlace(uiState.stash, it)) {
+            msg = `🧧 红运福袋开出「${ITEMS[it.defId].name}」！`
+          } else {
+            const gold = itemValue(defOf(it), it.rarity) * it.count
+            uiState.money += gold
+            saveMoney(uiState.money)
+            msg = `🧧 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
+          }
+        }
+      } else {
+        // 猩红曼德尔砖：破译开启，保底红色物资
+        const reds = Object.values(ITEMS).filter(d => d.rarity === 'red' && d.kind === 'valuable' && !d.openable)
+        const pick = reds[Math.floor(Math.random() * reds.length)]
+        if (autoPlace(uiState.stash, makeItem(pick.id, 1))) {
+          msg = `🧱 曼德尔砖破译完成：「${pick.name}」！`
+        } else {
+          uiState.money += pick.baseValue
+          saveMoney(uiState.money)
+          msg = `🧱 破译出「${pick.name}」，仓库已满折现 +${pick.baseValue.toLocaleString()} 金币`
+        }
+      }
+      saveStash(uiState.stash)
+      sfx.extract()
+      notify()
+      return msg
+    }
     engine.pickupFromLoot = (uid) => {
       if (!this.activeLoot) return
       if (!this.lootRevealed(uid)) return // 还在扫描，不能拿
@@ -1629,6 +1693,25 @@ export class Game {
         if (placed.item.count <= 0) removeItem(this.backpack, uid)
         sfx.pickup(0)
         this.toast('🧴 消毒喷雾：60 秒内开启感染容器不扣血', 'green')
+        this.syncGrids()
+      } else if (def.drink) {
+        // 特调饮品：饮用获得限时增益；黑暗特调 → 醉酒
+        const d = def.drink
+        placed.item.count--
+        if (placed.item.count <= 0) removeItem(this.backpack, uid)
+        sfx.pickup(0)
+        if (d.drunk) {
+          this.drunkT = d.dur
+          this.toast(`🤢 黑暗特调下肚……天旋地转 ${d.dur} 秒（打嗝 + 视野眩晕）`, 'red')
+        } else {
+          this.drinkBuffs.push({ ...d, until: performance.now() + d.dur * 1000 })
+          const parts: string[] = []
+          if (d.hot) parts.push(`持续回血 ${d.dur} 秒`)
+          if (d.speed && d.speed !== 1) parts.push(`移速${d.speed > 1 ? '+' : ''}${Math.round((d.speed - 1) * 100)}%`)
+          if (d.search) parts.push(`搜索+${Math.round((d.search - 1) * 100)}%`)
+          if (d.reload && d.reload !== 1) parts.push(`换弹${d.reload < 1 ? '加快' : '减慢'} ${Math.abs(Math.round((1 - d.reload) * 100))}%`)
+          this.toast(`🍹 饮下「${def.name}」：${parts.join(' · ')}`, 'green')
+        }
         this.syncGrids()
       } else if (def.kind === 'med' && def.heal) {
         if (this.hp >= uiState.maxHp) { this.toast('生命值已满', 'white'); return }
@@ -2007,6 +2090,8 @@ export class Game {
     this.theme = currentSeasonTheme()
     this.themeActions = 0
     this.sprayBuffT = 0
+    this.drinkBuffs = []
+    this.drunkT = 0
     this.convoyAlerted = false
     // 赛季主题：容器感染（出货率翻倍但开箱扣血，概率由主题定义）
     const infectP = this.theme.mods.infect ?? 0
@@ -2364,6 +2449,11 @@ export class Game {
         themeActions: this.themeActions,
         scouts: this.raidScouts,
       }
+      // 官方活动「限时三角券狂欢」：每日首次成功撤离 +150 券
+      if (extracted) {
+        const vGot = claimVoucherRaid()
+        if (vGot > 0) this.toast(`🎟️ 限时三角券 +${vGot}（每日首次撤离奖励）`, 'cyan')
+      }
       const qres = recordRaid(season, raidStats)
       const lines: string[] = []
       let rewardSum = 0
@@ -2641,7 +2731,7 @@ export class Game {
         }
         const canSprint = this.weightTier < 3
         const sprintNow = sprint && canSprint
-        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) // 赛季主题：移速倍率
+        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) * this.drinkMul('speed') * (this.drunkT > 0 ? 0.85 : 1) // 赛季主题 / 特调饮品 / 醉酒
         const f = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw))
         const r = new THREE.Vector3(-f.z, 0, f.x)
         const move = new THREE.Vector3()
@@ -2746,7 +2836,7 @@ export class Game {
           this.searchT = -1
           uiState.searching = -1
         } else {
-          this.searchT += dt / (2.2 / this.opMods.search)
+          this.searchT += dt / (2.2 / this.opMods.search / this.drinkMul('search'))
           uiState.searching = Math.min(1, this.searchT)
           if (this.searchT >= 1) {
             this.fillContainer(this.searchTarget)
@@ -2868,6 +2958,20 @@ export class Game {
       }
       if (this.invisT > 0) this.invisT = Math.max(0, this.invisT - rawDt)
       if (this.sprayBuffT > 0) this.sprayBuffT = Math.max(0, this.sprayBuffT - rawDt)
+      // 特调饮品：持续回血 + 过期清理
+      if (this.drinkBuffs.length) {
+        const nowMs = performance.now()
+        let hot = 0
+        for (const b of this.drinkBuffs) if (b.until > nowMs && b.hot) hot += b.hot
+        if (hot > 0 && this.hp > 0) { this.hp = Math.min(uiState.maxHp, this.hp + hot * rawDt); uiState.hp = this.hp }
+        this.drinkBuffs = this.drinkBuffs.filter(b => b.until > nowMs)
+      }
+      // 醉酒：视野摇晃 + 打嗝
+      if (this.drunkT > 0) {
+        this.drunkT = Math.max(0, this.drunkT - rawDt)
+        this.yaw += Math.sin(performance.now() * 0.004) * 0.6 * rawDt
+        if (Math.random() < rawDt * 0.2) this.toast('🥴 嗝——', 'white')
+      }
       if (this.armorT > 0) this.armorT = Math.max(0, this.armorT - rawDt)
       if (this.rallyT > 0) this.rallyT = Math.max(0, this.rallyT - rawDt)
       // 遥控炸药：落地倒计时 → 爆炸 AoE

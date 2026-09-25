@@ -20,6 +20,7 @@ export function WarehousePanel() {
   const ui = useUI()
   const [drag, setDrag] = useState<DragState | null>(null)
   const [sel, setSel] = useState<string | null>(null) // 选中的物品（待出售）
+  const [openMsg, setOpenMsg] = useState('') // 活动道具开启结果
   const [confirming, setConfirming] = useState(false)
   const [filter, setFilter] = useState('all')
   const [confirmSell, setConfirmSell] = useState(false)
@@ -186,6 +187,13 @@ export function WarehousePanel() {
 
         <div className="mt-2 text-[11px] text-zinc-500">点击物品可出售换金币 · 拖拽可整理位置</div>
 
+        {openMsg && (
+          <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 flex items-center justify-between">
+            <span>{openMsg}</span>
+            <button className="text-zinc-500 hover:text-zinc-200 px-1" onClick={() => setOpenMsg('')}>✕</button>
+          </div>
+        )}
+
         {/* 出售栏 */}
         {selPlaced && selDef && (
           <div className="mt-2 flex items-center gap-3 rounded-lg border border-yellow-600/40 bg-zinc-900/90 p-2.5">
@@ -198,6 +206,18 @@ export function WarehousePanel() {
                 {RARITY_INFO[selPlaced.item.rarity].name} · 单价 {itemValue(selDef).toLocaleString()} 金币
               </div>
             </div>
+            {selDef.openable && (
+              <button
+                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-400 text-white font-black text-sm transition-colors animate-pulse"
+                onClick={() => {
+                  const msg = engine.openStashItem(selPlaced.item.uid)
+                  if (msg) setOpenMsg(msg)
+                  setSel(null)
+                }}
+              >
+                {selDef.openable === 'mandelbrick' ? '🧱 破译开启' : '🎁 开启'}
+              </button>
+            )}
             <button
               className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm transition-colors"
               onClick={() => { engine.sellStashItem(selPlaced.item.uid); setSel(null) }}

@@ -5,7 +5,7 @@ import { loadSkins, grantSkin } from './skins'
 // 空档窗口由系统自动生成一个随机活动填补（随机效果 × 随机名字 × 随机强度），无需人工维护
 
 export interface GameEvent {
-  id: 'lucky' | 'goldrush' | 'airdrop' | 'bounty' | 'gunsale' | 'cards' | 'nests' | 'elite' | 'medic'
+  id: 'lucky' | 'goldrush' | 'airdrop' | 'bounty' | 'gunsale' | 'cards' | 'nests' | 'elite' | 'medic' | 'official'
   icon: string
   name: string
   desc: string       // 主页面展示的效果说明
@@ -36,6 +36,7 @@ const GEN_NAMES: Record<GameEvent['id'], string[]> = {
   nests:    ['候鸟迁徙', '金蛋时节', '鸟巢繁盛', '百鸟归林'],
   elite:    ['强敌压境', '精英集结', '猎手对决', '硬核战区'],
   medic:    ['医疗驰援', '战地医院', '特效药剂', '生命线'],
+  official: ['官方活动'], // 中性 id：仅官方镜像使用，不参与自动生成
 }
 // 自动活动的强度档位描述
 const POWER_LABEL: Record<number, string> = { 0.8: '小幅', 1.15: '中幅', 1.5: '大幅' }
@@ -43,7 +44,7 @@ const POWER_LABEL: Record<number, string> = { 0.8: '小幅', 1.15: '中幅', 1.5
 // ===================== 三角洲行动官方活动镜像 =====================
 // 官方无活动数据接口，此表人工维护：官方活动更新后同步修改本表即可，引擎零改动。
 // 处于官方活动窗口时，当期官方活动按 2 小时轮换上阵（名称与官方一致，效果等价映射到本游戏系统）；
-// 官方活动空档期回退到上方的常驻轮换。皮肤/外观/点券类官方活动（本游戏无对应系统）不收录。
+// 官方活动空档期回退到上方的常驻轮换。道具掉落类活动（lootTag）在窗口期内全程生效，数值效果类仍按轮换。
 export interface OfficialEvent {
   id: GameEvent['id'] // 复用现有效果挂钩
   icon: string
@@ -52,31 +53,32 @@ export interface OfficialEvent {
   start: string       // 活动窗口（北京时间，ISO 格式）
   end: string
   skin?: string       // 「登录领皮肤」类活动：窗口期内首次开局发放该皮肤（skins.ts 中的皮肤 id）
+  lootTag?: 'drinkMat' | 'luckybag' | 'mandelbrick'  // 局内道具掉落注入（窗口期内所有此类活动同时生效）
 }
 
 const OFFICIAL_EVENTS: OfficialEvent[] = [
   // —— 二周年庆（洲年庆）周期：2026-09 ——
   { id: 'airdrop', icon: '🪂', name: '洲年空投', start: '2026-09-17T00:00:00+08:00', end: '2026-09-30T23:59:59+08:00',
-    desc: '每张地图额外掉落空投航空箱（对应官方：局内空投舱 ×2）' },
-  { id: 'lucky', icon: '🧱', name: '猩红曼德尔砖返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '所有容器爆率大幅提升（对应官方：全图刷新大红曼德尔砖，破译出高价值物资）' },
-  { id: 'gunsale', icon: '🏷️', name: '周年神秘折扣商店', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '交易行全场半价（对应官方：神秘折扣商店，每人专属折扣最低 5 折）' },
-  { id: 'lucky', icon: '🧧', name: '红运福袋', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '容器出货率提升，大金概率大增（对应官方：搜刮容器概率掉落红运福袋）' },
+    desc: '局内空投舱加倍：每张地图额外掉落空投航空箱' },
+  { id: 'official', icon: '🧱', name: '猩红曼德尔砖返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', lootTag: 'mandelbrick',
+    desc: '全图容器概率刷出猩红曼德尔砖，带出到仓库破译开启，保底出红色物资' },
+  { id: 'official', icon: '🏷️', name: '周年神秘折扣商店', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '皮肤商店全场 5 折，支持限时三角券购买（🎨 皮肤页）' },
+  { id: 'official', icon: '🧧', name: '红运福袋', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', lootTag: 'luckybag',
+    desc: '击杀 Boss、搜刮容器概率掉落红运福袋（1 格），带出到仓库开启：金币、物资好礼' },
   { id: 'elite', icon: '🛡️', name: '哈夫克保险小队', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '更强的精英敌人入场，击杀掉落更加丰厚（对应官方：盾兵+机枪兵保险小队，大保险级爆率）' },
-  { id: 'goldrush', icon: '🎟️', name: '限时三角券狂欢', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '仓库出售物资获得双倍金币（对应官方：保底 3900 限时三角券）' },
-  { id: 'medic', icon: '🍹', name: '饮品特调返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
-    desc: '医疗物资效果提升 50%（对应官方：调配对局增益特调饮品）' },
+    desc: '精英保险小队入场（盾兵+机枪兵组合），击杀掉落大保险级物资' },
+  { id: 'official', icon: '🎟️', name: '限时三角券狂欢', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '登录领 500 券、10月1日再领 1000 券，每日首次撤离 +150 券（保底 3900）；券可购皮肤，活动结束清零' },
+  { id: 'official', icon: '🍹', name: '饮品特调返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', lootTag: 'drinkMat',
+    desc: '容器掉落调酒材料，按配方+摇晃时间调制 12 种增益饮品（调错会喝醉），局内饮用获得增益' },
   // —— 外观/皮肤类：窗口期内首次开局直接发放对应皮肤（皮肤系统见 skins.ts） ——
-  { id: 'goldrush', icon: '🕶️', name: '彦祖回归联动', start: '2026-09-10T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_daniel',
-    desc: '首次开局发放皮肤「彦祖同行」，期间仓库出售双倍金币（对应官方：登录领彦祖联动头像/喷漆/军牌）' },
-  { id: 'goldrush', icon: '🎖️', name: '传说外观登录领', start: '2026-09-04T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_aug_congee',
-    desc: '首次开局发放 AUG 皮肤「金粥年」，期间仓库出售双倍金币（对应官方：登录领传说外观 AUG-金粥年）' },
-  { id: 'goldrush', icon: '🏎️', name: '洲年限定载具造型', start: '2026-09-24T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_zhouyear',
-    desc: '首次开局发放皮肤「洲年限定」，期间仓库出售双倍金币（对应官方：洲年限定载具造型上架）' },
+  { id: 'official', icon: '🕶️', name: '彦祖回归联动', start: '2026-09-10T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_daniel',
+    desc: '登录即领联动皮肤「彦祖同行」（对应官方：登录领彦祖联动头像/喷漆/军牌）' },
+  { id: 'official', icon: '🎖️', name: '传说外观登录领', start: '2026-09-04T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_aug_congee',
+    desc: '登录即领 AUG 传说皮肤「金粥年」（对应官方：登录领传说外观 AUG-金粥年）' },
+  { id: 'official', icon: '🏎️', name: '洲年限定载具造型', start: '2026-09-24T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_zhouyear',
+    desc: '登录即领皮肤「洲年限定」（对应官方：洲年限定载具造型上架）' },
 ]
 
 /** 官方「登录领皮肤」类活动：窗口期内首次开局发放对应皮肤（已拥有则跳过），返回新获得的皮肤 id 与来源活动名 */
@@ -89,6 +91,20 @@ export function claimOfficialSkinRewards(now = Date.now()): { skinId: string; fr
     if (grantSkin(save, e.skin!)) out.push({ skinId: e.skin!, from: e.name })
   }
   return out
+}
+
+/** 当前处于窗口期的全部官方道具掉落标签（引擎注入用：窗口内全程生效，不随轮换） */
+export function activeOfficialLoot(now = Date.now()): Set<string> {
+  const s = new Set<string>()
+  for (const e of OFFICIAL_EVENTS) {
+    if (e.lootTag && now >= Date.parse(e.start) && now <= Date.parse(e.end)) s.add(e.lootTag)
+  }
+  return s
+}
+
+/** 指定名称的官方活动当前是否处于窗口期 */
+export function officialEventActive(name: string, now = Date.now()): boolean {
+  return OFFICIAL_EVENTS.some(e => e.name === name && now >= Date.parse(e.start) && now <= Date.parse(e.end))
 }
 
 export type OfficialEventStatus = 'active' | 'upcoming' | 'ended'

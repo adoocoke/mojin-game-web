@@ -185,6 +185,72 @@ export const ITEMS: Record<string, ItemDef> = {
   k_s_hangar: { id: 'k_s_hangar', name: '机库钥匙',     kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
   k_s_ctrl:   { id: 'k_s_ctrl',   name: '雷达控制室卡', kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
   k_s_office: { id: 'k_s_office', name: '站长办公室卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
+  // ===== 官方活动道具：饮品特调（调酒材料，活动期间容器掉落，用于调制特调饮品） =====
+  mat_honey:   { id: 'mat_honey',   name: '蜜糖汁',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍯', stack: 5 },
+  mat_cola:    { id: 'mat_cola',    name: '可乐',     kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🥤', stack: 5 },
+  mat_mint:    { id: 'mat_mint',    name: '薄荷',     kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🌿', stack: 5 },
+  mat_lemon:   { id: 'mat_lemon',   name: '柠檬',     kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍋', stack: 5 },
+  mat_juniper: { id: 'mat_juniper', name: '杜松灵',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🫒', stack: 5 },
+  mat_tonic:   { id: 'mat_tonic',   name: '汤力汁',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🫗', stack: 5 },
+  mat_soda:    { id: 'mat_soda',    name: '苏打水',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🧊', stack: 5 },
+  mat_breeze:  { id: 'mat_breeze',  name: '清逸饮',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍶', stack: 5 },
+  mat_cran:    { id: 'mat_cran',    name: '蔓越莓汁', kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍒', stack: 5 },
+  mat_amber:   { id: 'mat_amber',   name: '琥珀露',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🥃', stack: 5 },
+  mat_syrup:   { id: 'mat_syrup',   name: '糖浆',     kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍬', stack: 5 },
+  mat_lemonj:  { id: 'mat_lemonj',  name: '柠檬汁',   kind: 'valuable', rarity: 'white', w: 1, h: 1, baseValue: 60, icon: '🍋‍🟩', stack: 5 },
+  // ===== 官方活动道具：特调饮品成品（局内饮用获得限时增益；配方与官方一致，效果等价映射） =====
+  dk_leisi:     { id: 'dk_leisi',     name: '雷斯舞步',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 800,  icon: '🍸', drink: { hot: 1.2, dur: 180 } },
+  dk_asara:     { id: 'dk_asara',     name: '阿萨拉风情', kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 800,  icon: '🍹', drink: { hot: 2, dur: 120 } },
+  dk_mist:      { id: 'dk_mist',      name: '迷雾晨',     kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 700,  icon: '🥂', drink: { hot: 3, speed: 0.95, dur: 60 } },
+  dk_tulip:     { id: 'dk_tulip',     name: '郁金香',     kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '🌷', drink: { speed: 1.1, dur: 300 } },
+  dk_rain:      { id: 'dk_rain',      name: '空山灵雨',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '🌧️', drink: { speed: 1.15, dur: 300 } },
+  dk_farewell:  { id: 'dk_farewell',  name: '漫长告别',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 700,  icon: '🥾', drink: { speed: 1.25, dur: 60 } },
+  dk_skyland:   { id: 'dk_skyland',   name: '空岛',       kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '🏝️', drink: { reload: 0.75, dur: 300 } },
+  dk_starlight: { id: 'dk_starlight', name: '星光熠熠',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 800,  icon: '✨', drink: { reload: 0.8, dur: 180 } },
+  dk_heart:     { id: 'dk_heart',     name: '怦然心动',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '💗', drink: { reload: 0.7, dur: 300 } },
+  dk_rose:      { id: 'dk_rose',      name: '野玫瑰',     kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '🌹', drink: { search: 1.4, reload: 1.1, dur: 300 } },
+  dk_guanshan:  { id: 'dk_guanshan',  name: '关山难越',   kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 900,  icon: '⛰️', drink: { search: 1.4, speed: 0.9, dur: 300 } },
+  dk_highball:  { id: 'dk_highball',  name: '嗨棒',       kind: 'med', rarity: 'blue', w: 1, h: 1, baseValue: 800,  icon: '🥃', drink: { search: 1.25, speed: 1.05, dur: 300 } },
+  dk_dark:      { id: 'dk_dark',      name: '黑暗特调',   kind: 'med', rarity: 'green', w: 1, h: 1, baseValue: 50, icon: '🤢', drink: { dur: 45, drunk: true } },
+  // ===== 官方活动道具：红运福袋 / 猩红曼德尔砖（带出到仓库开启） =====
+  ev_luckybag:    { id: 'ev_luckybag',    name: '红运福袋',     kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '🧧', stack: 3, openable: 'luckybag' },
+  ev_mandelbrick: { id: 'ev_mandelbrick', name: '猩红曼德尔砖', kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 20000, icon: '🧱', openable: 'mandelbrick' },
+}
+
+// ===================== 饮品特调：官方配方表（材料组合 + 摇晃秒数窗 → 成品） =====================
+export const DRINK_MATS = ['mat_honey', 'mat_cola', 'mat_mint', 'mat_lemon', 'mat_juniper', 'mat_tonic', 'mat_soda', 'mat_breeze', 'mat_cran', 'mat_amber', 'mat_syrup', 'mat_lemonj'] as const
+
+export interface DrinkRecipe {
+  out: string            // 成品饮品 defId
+  mats: readonly string[] // 3 种材料（无序）
+  shake: [number, number] // 摇晃秒数窗口
+  cat: string            // 官方分类
+  eff: string            // 官方效果说明
+}
+
+export const DRINK_RECIPES: DrinkRecipe[] = [
+  { out: 'dk_leisi',     mats: ['mat_honey', 'mat_cola', 'mat_mint'],        shake: [2, 3],      cat: '医疗恢复', eff: '持续治疗 180 秒' },
+  { out: 'dk_asara',     mats: ['mat_honey', 'mat_cola', 'mat_lemon'],       shake: [4, 5],      cat: '医疗恢复', eff: '持续治疗 120 秒' },
+  { out: 'dk_mist',      mats: ['mat_honey', 'mat_lemonj', 'mat_syrup'],     shake: [2, 3],      cat: '医疗恢复', eff: '持续治疗 60 秒，冲刺略降' },
+  { out: 'dk_tulip',     mats: ['mat_juniper', 'mat_tonic', 'mat_lemon'],    shake: [7, 9],      cat: '体力恢复', eff: '负重提升 300 秒' },
+  { out: 'dk_rain',      mats: ['mat_juniper', 'mat_soda', 'mat_lemon'],     shake: [6, 8],      cat: '体力恢复', eff: '体力大幅提升 300 秒' },
+  { out: 'dk_farewell',  mats: ['mat_juniper', 'mat_lemonj', 'mat_syrup'],   shake: [7, 9],      cat: '体力恢复', eff: '体力快速回复 60 秒' },
+  { out: 'dk_skyland',   mats: ['mat_breeze', 'mat_cran', 'mat_mint'],       shake: [8.5, 10.5], cat: '枪械操控', eff: '换弹与消耗品使用加速 300 秒' },
+  { out: 'dk_starlight', mats: ['mat_breeze', 'mat_cola', 'mat_mint'],       shake: [8.5, 10.5], cat: '枪械操控', eff: '操控提升 180 秒' },
+  { out: 'dk_heart',     mats: ['mat_breeze', 'mat_lemonj', 'mat_mint'],     shake: [8.5, 10.5], cat: '枪械操控', eff: '换弹大幅加速 300 秒' },
+  { out: 'dk_rose',      mats: ['mat_amber', 'mat_syrup', 'mat_mint'],       shake: [4, 5],      cat: '搜索',     eff: '搜索速度大幅提升 300 秒' },
+  { out: 'dk_guanshan',  mats: ['mat_amber', 'mat_lemonj', 'mat_syrup'],     shake: [4, 5],      cat: '搜索',     eff: '搜索大幅提升，附带虚弱' },
+  { out: 'dk_highball',  mats: ['mat_amber', 'mat_soda', 'mat_lemonj'],      shake: [6, 7],      cat: '搜索',     eff: '搜索中幅提升 300 秒' },
+]
+
+/** 按材料组合 + 摇晃秒数匹配配方（完全匹配才成功，否则调出黑暗特调） */
+export function matchRecipe(mats: string[], shakeSec: number): DrinkRecipe | null {
+  if (mats.length !== 3) return null
+  const key = [...mats].sort().join('+')
+  for (const r of DRINK_RECIPES) {
+    if ([...r.mats].sort().join('+') === key && shakeSec >= r.shake[0] && shakeSec <= r.shake[1]) return r
+  }
+  return null
 }
 
 // 通用容器战利品池（weight 为基础权重，luck 会按稀有度档位放大高稀有度权重）

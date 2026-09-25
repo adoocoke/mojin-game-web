@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { engine, useUI } from '@/game/store'
 import { officialEventsList, type OfficialEventInfo } from '@/game/events'
 import { loadSkins, skinDef } from '@/game/skins'
+import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
 
 /** 由活动名生成稳定色相，让每个活动有专属配色的横幅 */
 function hueOf(str: string): number {
@@ -69,6 +70,19 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
               ? `⏰ 剩余 ${fmtLeft(ev.endAt - now)}（${fmtDate(ev.endAt)} 结束）`
               : `📅 ${fmtDate(ev.startAt)} 开启 · 倒计时 ${fmtLeft(ev.startAt - now)}`}
           </span>
+          {active && ev.name === '饮品特调返场' && (
+            <button
+              onClick={e => { e.stopPropagation(); engine.openMix() }}
+              className="text-[11px] rounded px-2 py-0.5 border border-emerald-500/50 bg-emerald-500/15 text-emerald-200 font-bold hover:bg-emerald-500/30 transition-colors"
+            >
+              🍹 前往调制 ›
+            </button>
+          )}
+          {ev.name === '限时三角券狂欢' && voucherEventActive() && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-cyan-500/40 bg-cyan-500/10 text-cyan-200 font-mono">
+              🎟️ 余额 {loadVouchers().total.toLocaleString()} · 任务 {loadVouchers().taskEarned}/{VOUCHER_TASK_CAP}
+            </span>
+          )}
           {skin && (
             <span className="text-[11px] flex items-center gap-1.5 rounded px-2 py-0.5 border border-pink-500/40 bg-pink-500/10 text-pink-200">
               <span
@@ -92,8 +106,12 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
 export function EventPanel() {
   const ui = useUI()
   const [, force] = useReducer((x: number) => x + 1, 0)
+  const [voucherMsg, setVoucherMsg] = useState('')
   useEffect(() => {
     if (!ui.eventsOpen) return
+    // 官方「限时三角券狂欢」：登录即领（9/26 +500、10/1 +1000，幂等）
+    const got = claimVoucherLogins()
+    if (got > 0) setVoucherMsg(`🎟️ 登录奖励：限时三角券 +${got.toLocaleString()}！可到 🎨 皮肤 页使用`)
     const t = setInterval(force, 1000)
     return () => clearInterval(t)
   }, [ui.eventsOpen])
@@ -118,6 +136,13 @@ export function EventPanel() {
           与三角洲行动官方活动同步（名称与官方一致，效果等价映射到本游戏系统），官方活动更新后每周同步。
           带 🎁 的活动在窗口期内首次开局自动发放皮肤，可到 🎨 皮肤 页装备。
         </div>
+
+        {voucherMsg && (
+          <div className="mb-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 flex items-center justify-between">
+            <span>{voucherMsg}</span>
+            <button className="text-zinc-500 hover:text-zinc-200 px-1" onClick={() => setVoucherMsg('')}>✕</button>
+          </div>
+        )}
 
         <div className="text-sm font-bold text-emerald-300 mb-2">进行中 · {act.length} 场</div>
         <div className="space-y-2.5 mb-5">

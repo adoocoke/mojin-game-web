@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { engine, useUI } from '@/game/store'
 import { GUNS, KNIFE } from '@/game/data'
 import { RARITY_INFO } from '@/game/types'
-import { SKINS, loadSkins, buySkin, equipSkin, unequipSkin, type SkinDef } from '@/game/skins'
+import { SKINS, loadSkins, grantSkin, equipSkin, unequipSkin, type SkinDef } from '@/game/skins'
+import { officialEventActive } from '@/game/events'
+import { loadVouchers, spendVouchers, skinVoucherPrice, voucherEventActive } from '@/game/vouchers'
 import { saveMoney } from '@/game/stash'
 import { notify } from '@/game/store'
 
@@ -20,13 +22,27 @@ function SkinCard({ skin, money }: { skin: SkinDef; money: number }) {
   const [pick, setPick] = useState(applicable[0]?.id ?? '')
   const r = RARITY_INFO[skin.rarity]
 
+  // 官方活动「周年神秘折扣商店」：全场 5 折；「限时三角券狂欢」：可用券购买
+  const sale = officialEventActive('周年神秘折扣商店')
+  const goldPrice = skin.price ? (sale ? Math.ceil(skin.price / 2) : skin.price) : undefined
+  const vPrice = goldPrice ? skinVoucherPrice(goldPrice) : undefined
+  const vBalance = loadVouchers().total
+  const vActive = voucherEventActive()
+
   const doBuy = () => {
-    const res = buySkin(loadSkins(), skin.id, ui.money)
-    if (res.ok) {
-      ui.money -= res.cost
-      saveMoney(ui.money)
-    }
+    if (goldPrice == null || ui.money < goldPrice) return
+    ui.money -= goldPrice
+    saveMoney(ui.money)
+    grantSkin(loadSkins(), skin.id)
     notify()
+  }
+
+  const doBuyVoucher = () => {
+    if (vPrice == null) return
+    if (spendVouchers(vPrice)) {
+      grantSkin(loadSkins(), skin.id)
+      notify()
+    }
   }
 
   return (
@@ -41,8 +57,14 @@ function SkinCard({ skin, money }: { skin: SkinDef; money: number }) {
         </div>
         {owned
           ? <span className="text-[10px] text-emerald-400 border border-emerald-600/40 rounded px-1">已拥有</span>
-          : skin.price
-            ? <span className="text-[10px] text-yellow-300 font-mono">{skin.price.toLocaleString()} 金币</span>
+          : goldPrice
+            ? (
+              <span className="text-[10px] text-yellow-300 font-mono flex items-center gap-1">
+                {sale && <span className="line-through text-zinc-500">{skin.price!.toLocaleString()}</span>}
+                {goldPrice.toLocaleString()} 金币
+                {sale && <span className="text-red-300 border border-red-500/50 rounded px-0.5 bg-red-500/10 font-sans">5折</span>}
+              </span>
+            )
             : <span className="text-[10px] text-amber-300 border border-amber-600/40 rounded px-1">活动限定</span>}
       </div>
       <div className="text-[11px] text-zinc-400 mt-1">{skin.desc}</div>
@@ -51,10 +73,16 @@ function SkinCard({ skin, money }: { skin: SkinDef; money: number }) {
         {equippedTo.length > 0 && <span className="text-pink-300 ml-2">已装备：{equippedTo.map(id => ALL_GUNS.find(g => g.id === id)?.name).join('、')}</span>}
       </div>
       <div className="flex items-center gap-2 mt-2">
-        {!owned && skin.price != null && (
-          <button onClick={doBuy} disabled={money < (skin.price ?? 0)}
+        {!owned && goldPrice != null && (
+          <button onClick={doBuy} disabled={money < goldPrice}
             className="px-3 py-1 rounded bg-yellow-600/80 hover:bg-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white">
-            购买
+            💰 {goldPrice.toLocaleString()}
+          </button>
+        )}
+        {!owned && vActive && vPrice != null && (
+          <button onClick={doBuyVoucher} disabled={vBalance < vPrice}
+            className="px-3 py-1 rounded bg-cyan-600/80 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white">
+            🎟️ {vPrice.toLocaleString()} 券
           </button>
         )}
         {owned && (
@@ -101,7 +129,10 @@ export function SkinPanel() {
         </div>
         <div className="text-xs text-zinc-400 mb-3 flex justify-between">
           <span>已收藏 <span className="text-pink-300 font-bold">{ownedCount}</span> / {SKINS.length}</span>
-          <span>💰 <span className="text-yellow-300 font-mono font-bold">{ui.money.toLocaleString()}</span></span>
+          <span className="flex gap-3">
+            {voucherEventActive() && <span>🎟️ <span className="text-cyan-300 font-mono font-bold">{loadVouchers().total.toLocaleString()}</span></span>}
+            <span>💰 <span className="text-yellow-300 font-mono font-bold">{ui.money.toLocaleString()}</span></span>
+          </span>
         </div>
         <div className="text-[10px] text-zinc-500 mb-3 leading-relaxed">
           皮肤永久保留、按枪装备，进局后第一人称视模生效。带「活动限定」标记的皮肤由官方活动镜像发放（见主界面活动横幅）。
