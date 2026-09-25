@@ -935,41 +935,43 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       dbox(rockDark, x1 - x0 + 1, 0.2, z1 - z0 + 1, (x0 + x1) / 2, UY - 0.1, (z0 + z1) / 2, false)
     }
 
-    // —— 塌陷矿洞入口（24,-103）：坑沿石板 + 老井架 + 下行坡道 ——
-    dbox(rockMat, 7, 0.4, 16, 17.5, 0.2, -103, false)   // 坑沿西侧石板
-    dbox(rockMat, 7, 0.4, 16, 30.5, 0.2, -103, false)   // 坑沿东侧石板
-    walkables.push({ minX: 14, maxX: 21, minZ: -111, maxZ: -95, y0: 0.4, y1: 0.4 })
-    walkables.push({ minX: 27, maxX: 34, minZ: -111, maxZ: -95, y0: 0.4, y1: 0.4 })
-    for (const [px, pz] of [[21.2, -96.8], [26.8, -96.8], [21.2, -100.2], [26.8, -100.2]] as const) {
+    // —— 塌陷矿洞入口（24,-50）：坑沿石板 + 老井架 + 下行坡道 ——
+    // 入口设在主巷道南端（z=-58 接口）：坡道与巷道地板仅交界不重叠，
+    // 否则「就近面优先」会让玩家在北行时被头顶坡道吸回地表，永远进不了巷道。
+    dbox(rockMat, 7, 0.4, 16, 17.5, 0.2, -50, false)   // 坑沿西侧石板
+    dbox(rockMat, 7, 0.4, 16, 30.5, 0.2, -50, false)   // 坑沿东侧石板
+    walkables.push({ minX: 14, maxX: 21, minZ: -58, maxZ: -42, y0: 0.4, y1: 0.4 })
+    walkables.push({ minX: 27, maxX: 34, minZ: -58, maxZ: -42, y0: 0.4, y1: 0.4 })
+    for (const [px, pz] of [[21.2, -43.8], [26.8, -43.8], [21.2, -47.2], [26.8, -47.2]] as const) {
       dbox(timberMat, 0.4, 5.4, 0.4, px, 2.7, pz) // 井架立柱
     }
-    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -96.8, false)  // 井架顶梁
-    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -100.2, false)
+    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -43.8, false)  // 井架顶梁
+    dbox(timberMat, 6.4, 0.4, 0.5, 24, 5.4, -47.2, false)
     const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.14, 8, 18),
       new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.5, metalness: 0.7 }))
-    pulley.position.set(24, 5.0, -98.5)
+    pulley.position.set(24, 5.0, -45.5)
     scene.add(pulley); obstacleMeshes.push(pulley)
     const warnSign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.08),
       new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.6, emissive: 0x4a3a00, emissiveIntensity: 0.4 }))
-    warnSign.position.set(20.6, 1.3, -95.6)
+    warnSign.position.set(20.6, 1.3, -42.6)
     warnSign.rotation.y = 0.5
     scene.add(warnSign); obstacleMeshes.push(warnSign)
     // 坡道两侧石壁（从地表深入地下）
-    dbox(rockMat, 1.0, 4.8, 15, 21.3, -1.8, -103)
-    dbox(rockMat, 1.0, 4.8, 15, 26.7, -1.8, -103)
-    // 下行坡道：坑沿 0.4m 降到地下 -4m
-    walkables.push({ minX: 22, maxX: 26, minZ: -110.5, maxZ: -95.5, y0: UY, y1: 0.4, axis: 'z' })
+    dbox(rockMat, 1.0, 4.8, 16, 21.3, -1.8, -50.5)
+    dbox(rockMat, 1.0, 4.8, 16, 26.7, -1.8, -50.5)
+    // 下行坡道：坑沿 0.4m 降到地下 -4m（底端 z=-57.5 与巷道地板 z=-58 交叠 0.5m 衔接）
+    walkables.push({ minX: 22, maxX: 26, minZ: -57.5, maxZ: -42.5, y0: UY, y1: 0.4, axis: 'z' })
     {
       const rampLen = Math.hypot(15, 4.4)
       const rampMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, rampLen), rockMat)
-      rampMesh.position.set(24, -1.95, -103)
+      rampMesh.position.set(24, -1.95, -50)
       rampMesh.rotation.x = -Math.atan2(4.4, 15)
       rampMesh.receiveShadow = true
       scene.add(rampMesh); obstacleMeshes.push(rampMesh)
     }
 
     // —— 主巷道（南北向）+ 东西两条支巷 + 两间矿室 ——
-    ufloor(22, 26, -110, -58)   // 主巷道
+    ufloor(22, 26, -111, -58)   // 主巷道（北端探入坡道底 0.5m，消除断层）
     ufloor(26, 46, -86, -82)    // 东支巷
     ufloor(46, 58, -94, -74)    // 东矿室（矿脉核心区）
     ufloor(4, 22, -70, -66)     // 西支巷
@@ -979,7 +981,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     uwall(21.75, -62, 0.5, 8)
     uwall(26.25, -98, 0.5, 24)
     uwall(26.25, -70, 0.5, 24)
-    uwall(24, -57.75, 5, 0.5)     // 北端封口
+    uwall(24, -111.25, 5, 0.5)    // 北端封口（坡道底旧址，防止走出地板尽头的口袋区）
     // 东支巷
     uwall(36, -86.25, 20, 0.5)
     uwall(36, -81.75, 20, 0.5)
@@ -1049,7 +1051,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(55, -78, '医疗物资', 0.8, UY, rng)
     mkContainer(-5, -59, '保险箱', 1.5, UY, rng)   // 西矿室
     mkContainer(-5, -74, '高级旅行箱', 0.9, UY, rng)
-    mapMarkers.push({ x: 24, z: -103, kind: 'block', name: '塌陷矿洞' })
+    mapMarkers.push({ x: 24, z: -50, kind: 'block', name: '塌陷矿洞' })
     mapMarkers.push({ x: 24, z: -84, kind: 'block', name: '地下矿井' })
 
     // ================= 矿区扩充②：东侧矿车轨道（循环矿车 + 装卸台） =================
