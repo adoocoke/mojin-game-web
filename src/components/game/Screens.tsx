@@ -28,6 +28,7 @@ function EventBanner() {
       <div className="flex items-center justify-center gap-2 text-sm">
         <span className="text-lg">{event.icon}</span>
         <span className="font-black text-fuchsia-300">限时活动 · {event.name}</span>
+        {event.official && <span className="text-[10px] text-amber-300 border border-amber-500/50 rounded px-1 bg-amber-500/10">官方同步</span>}
         <span className="text-zinc-400">剩余 <span className="font-mono text-fuchsia-200">{remain}</span></span>
       </div>
       <div className="text-xs text-zinc-400 text-center mt-0.5">{event.desc}</div>

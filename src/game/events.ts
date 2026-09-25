@@ -8,6 +8,7 @@ export interface GameEvent {
   name: string
   desc: string       // 主页面展示的效果说明
   power?: number     // 自动生成活动的强度倍率（0.8 / 1.15 / 1.5，手工活动为 1）
+  official?: boolean // true = 三角洲行动官方活动镜像（名称与官方一致，效果按本游戏系统等价映射）
 }
 
 export const EVENTS: GameEvent[] = [
@@ -37,6 +38,37 @@ const GEN_NAMES: Record<GameEvent['id'], string[]> = {
 // 自动活动的强度档位描述
 const POWER_LABEL: Record<number, string> = { 0.8: '小幅', 1.15: '中幅', 1.5: '大幅' }
 
+// ===================== 三角洲行动官方活动镜像 =====================
+// 官方无活动数据接口，此表人工维护：官方活动更新后同步修改本表即可，引擎零改动。
+// 处于官方活动窗口时，当期官方活动按 2 小时轮换上阵（名称与官方一致，效果等价映射到本游戏系统）；
+// 官方活动空档期回退到上方的常驻轮换。皮肤/外观/点券类官方活动（本游戏无对应系统）不收录。
+interface OfficialEvent {
+  id: GameEvent['id'] // 复用现有效果挂钩
+  icon: string
+  name: string        // 官方活动名
+  desc: string        // 本游戏内的等价效果说明
+  start: string       // 活动窗口（北京时间，ISO 格式）
+  end: string
+}
+
+const OFFICIAL_EVENTS: OfficialEvent[] = [
+  // —— 二周年庆（洲年庆）周期：2026-09 ——
+  { id: 'airdrop', icon: '🪂', name: '洲年空投', start: '2026-09-17T00:00:00+08:00', end: '2026-09-30T23:59:59+08:00',
+    desc: '每张地图额外掉落空投航空箱（对应官方：局内空投舱 ×2）' },
+  { id: 'lucky', icon: '🧱', name: '猩红曼德尔砖返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '所有容器爆率大幅提升（对应官方：全图刷新大红曼德尔砖，破译出高价值物资）' },
+  { id: 'gunsale', icon: '🏷️', name: '周年神秘折扣商店', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '交易行全场半价（对应官方：神秘折扣商店，每人专属折扣最低 5 折）' },
+  { id: 'lucky', icon: '🧧', name: '红运福袋', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '容器出货率提升，大金概率大增（对应官方：搜刮容器概率掉落红运福袋）' },
+  { id: 'elite', icon: '🛡️', name: '哈夫克保险小队', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '更强的精英敌人入场，击杀掉落更加丰厚（对应官方：盾兵+机枪兵保险小队，大保险级爆率）' },
+  { id: 'goldrush', icon: '🎟️', name: '限时三角券狂欢', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '仓库出售物资获得双倍金币（对应官方：保底 3900 限时三角券）' },
+  { id: 'medic', icon: '🍹', name: '饮品特调返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
+    desc: '医疗物资效果提升 50%（对应官方：调配对局增益特调饮品）' },
+]
+
 export const EVENT_WINDOW_MS = 2 * 60 * 60 * 1000 // 2 小时一轮
 
 function mulberry(a: number) {
@@ -52,6 +84,12 @@ function mulberry(a: number) {
 export function currentEvent(now = Date.now()): { event: GameEvent | null; endsAt: number; nextAt: number } {
   const win = Math.floor(now / EVENT_WINDOW_MS)
   const endsAt = (win + 1) * EVENT_WINDOW_MS
+  // 官方活动镜像优先：当前处于官方活动窗口时，当期官方活动按 2 小时轮换上阵
+  const act = OFFICIAL_EVENTS.filter(e => now >= Date.parse(e.start) && now <= Date.parse(e.end))
+  if (act.length) {
+    const pick = act[win % act.length]
+    return { event: { id: pick.id, icon: pick.icon, name: pick.name, desc: pick.desc, official: true }, endsAt, nextAt: endsAt }
+  }
   // 约 70% 的窗口排手工活动，其余为「空档」→ 自动生成填补
   const handcrafted = mulberry(win * 7919)() < 0.7
   if (handcrafted) {
