@@ -1,7 +1,7 @@
 import { useUI, engine, uiState } from '@/game/store'
 import { RARITY_INFO, RARITY_ORDER, type Rarity } from '@/game/types'
 import { loadStash, stashValue } from '@/game/stash'
-import { currentEvent, fmtCountdown, currentSeasonTheme } from '@/game/events'
+import { currentEvent, fmtCountdown, currentSeasonTheme, officialEventsList } from '@/game/events'
 import { OPERATORS } from '@/game/data'
 import { opLevel, lvProgress, effDesc, MAX_OP_LV } from '@/game/oplevel'
 import { useEffect, useMemo, useReducer, useState } from 'react'
@@ -16,6 +16,7 @@ function EventBanner() {
   }, [])
   const { event, endsAt } = currentEvent()
   const remain = fmtCountdown(endsAt - Date.now())
+  const actCount = officialEventsList().filter(e => e.status === 'active').length
   if (!event) {
     return (
       <div className="mb-5 rounded-xl border border-zinc-700/60 bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-500 flex items-center justify-center gap-2">
@@ -24,7 +25,10 @@ function EventBanner() {
     )
   }
   return (
-    <div className="mb-5 rounded-xl border border-fuchsia-500/50 bg-fuchsia-500/10 px-4 py-2.5 shadow-[0_0_20px_rgba(217,70,239,0.15)]">
+    <div
+      onClick={() => engine.openEvents()}
+      className="mb-5 rounded-xl border border-fuchsia-500/50 bg-fuchsia-500/10 px-4 py-2.5 shadow-[0_0_20px_rgba(217,70,239,0.15)] cursor-pointer hover:bg-fuchsia-500/20 transition-colors"
+    >
       <div className="flex items-center justify-center gap-2 text-sm">
         <span className="text-lg">{event.icon}</span>
         <span className="font-black text-fuchsia-300">限时活动 · {event.name}</span>
@@ -32,6 +36,9 @@ function EventBanner() {
         <span className="text-zinc-400">剩余 <span className="font-mono text-fuchsia-200">{remain}</span></span>
       </div>
       <div className="text-xs text-zinc-400 text-center mt-0.5">{event.desc}</div>
+      {actCount > 0 && (
+        <div className="text-[10px] text-fuchsia-400/80 text-center mt-1">共 {actCount} 场官方活动进行中 · 点击进入活动中心 ›</div>
+      )}
     </div>
   )
 }
@@ -368,6 +375,12 @@ export function MenuScreen() {
             className="px-6 py-2.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-amber-300 font-bold border border-amber-600/40 transition-all hover:scale-105"
           >
             🏆 成就
+          </button>
+          <button
+            onClick={() => engine.openEvents()}
+            className="px-6 py-2.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-fuchsia-300 font-bold border border-fuchsia-600/40 transition-all hover:scale-105"
+          >
+            🎉 活动
           </button>
           <button
             onClick={() => engine.openSkins()}

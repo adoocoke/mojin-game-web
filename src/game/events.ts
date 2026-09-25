@@ -44,7 +44,7 @@ const POWER_LABEL: Record<number, string> = { 0.8: '小幅', 1.15: '中幅', 1.5
 // 官方无活动数据接口，此表人工维护：官方活动更新后同步修改本表即可，引擎零改动。
 // 处于官方活动窗口时，当期官方活动按 2 小时轮换上阵（名称与官方一致，效果等价映射到本游戏系统）；
 // 官方活动空档期回退到上方的常驻轮换。皮肤/外观/点券类官方活动（本游戏无对应系统）不收录。
-interface OfficialEvent {
+export interface OfficialEvent {
   id: GameEvent['id'] // 复用现有效果挂钩
   icon: string
   name: string        // 官方活动名
@@ -89,6 +89,24 @@ export function claimOfficialSkinRewards(now = Date.now()): { skinId: string; fr
     if (grantSkin(save, e.skin!)) out.push({ skinId: e.skin!, from: e.name })
   }
   return out
+}
+
+export type OfficialEventStatus = 'active' | 'upcoming' | 'ended'
+export interface OfficialEventInfo extends OfficialEvent {
+  status: OfficialEventStatus
+  startAt: number
+  endAt: number
+}
+
+/** 全部官方活动镜像及当前状态（活动中心页面用）：进行中 → 即将开启 → 已结束 */
+export function officialEventsList(now = Date.now()): OfficialEventInfo[] {
+  const rank: Record<OfficialEventStatus, number> = { active: 0, upcoming: 1, ended: 2 }
+  return OFFICIAL_EVENTS.map(e => {
+    const startAt = Date.parse(e.start)
+    const endAt = Date.parse(e.end)
+    const status: OfficialEventStatus = now < startAt ? 'upcoming' : now > endAt ? 'ended' : 'active'
+    return { ...e, status, startAt, endAt }
+  }).sort((a, b) => rank[a.status] - rank[b.status] || a.startAt - b.startAt)
 }
 
 export const EVENT_WINDOW_MS = 2 * 60 * 60 * 1000 // 2 小时一轮
