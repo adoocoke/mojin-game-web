@@ -36,7 +36,7 @@ function EventBanner() {
   )
 }
 
-/** 赛季主题横幅（P3 #20）：每月一个全新主题，出现过即永久退役 */
+/** 赛季主题横幅：与三角洲行动官方赛季同步（主题效果等价映射） */
 function ThemeBanner() {
   const t = currentSeasonTheme()
   return (
@@ -44,7 +44,7 @@ function ThemeBanner() {
       <div className="flex items-center justify-center gap-2 text-sm">
         <span className="text-lg">{t.icon}</span>
         <span className="font-black text-orange-300">本赛季主题 · {t.name}</span>
-        <span className="text-[10px] text-zinc-500">每月新主题 · 永不重复</span>
+        <span className="text-[10px] text-zinc-500">与官方赛季同步</span>
       </div>
       <div className="text-xs text-zinc-400 text-center mt-0.5">{t.desc}</div>
     </div>

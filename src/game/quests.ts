@@ -109,46 +109,46 @@ export interface QuestDef {
 
 export const QUESTS: QuestDef[] = [
   // ---------- 第一阶段（保险箱 2 格起步，完成主线 → 4 格） ----------
-  { id: 'q_m1_1', phase: 1, main: true,  icon: '🏃', name: '初次撤离',   desc: '成功撤离 1 次',         stat: 'extracts',   target: 1,    reward: 500 },
-  { id: 'q_m1_2', phase: 1, main: true,  icon: '🔫', name: '初露锋芒',   desc: '累计击杀 5 名敌人',      stat: 'kills',        target: 5,    reward: 500 },
-  { id: 'q_m1_3', phase: 1, main: true,  icon: '💰', name: '小有收获',   desc: '单局带出价值 3,000',     stat: 'raidValue',    target: 3000,  reward: 800 },
-  { id: 'q_s1_1', phase: 1, main: false, icon: '📦', name: '勤快搜刮',   desc: '累计搜索 10 个容器',     stat: 'searches',     target: 10,    reward: 300 },
-  { id: 'q_s1_2', phase: 1, main: false, icon: '💵', name: '万元户',     desc: '累计带出价值 10,000',    stat: 'totalValue',   target: 10000, reward: 400 },
+  { id: 'q_m1_1', phase: 1, main: true,  icon: '🏃', name: '战略转进-1', desc: '【赛季主线】在任意行动中成功撤离 1 次',         stat: 'extracts',   target: 1,    reward: 500 },
+  { id: 'q_m1_2', phase: 1, main: true,  icon: '🔫', name: '火力支点',   desc: '【赛季主线】累计击败 5 名敌方士兵',      stat: 'kills',        target: 5,    reward: 500 },
+  { id: 'q_m1_3', phase: 1, main: true,  icon: '💰', name: '聚沙成塔',   desc: '【赛季主线】单局成功撤离并带出价值 3,000 的物资',     stat: 'raidValue',    target: 3000,  reward: 800 },
+  { id: 'q_s1_1', phase: 1, main: false, icon: '📦', name: '搜索与歼灭-1', desc: '【赛季支线】累计搜索 10 个容器',     stat: 'searches',     target: 10,    reward: 300 },
+  { id: 'q_s1_2', phase: 1, main: false, icon: '💵', name: '略施巧思',   desc: '【赛季支线】累计带出价值 10,000 的物资',    stat: 'totalValue',   target: 10000, reward: 400 },
   { id: 'q_m1_4', phase: 1, main: true,  icon: '🗺️', name: '老鬼的遗物', desc: '【剧情】前往废弃矿区的「碎石堆」，寻找老鬼留下的线索', stat: 'scout', target: 1, reward: 600 },
   { id: 'q_s1_3', phase: 1, main: false, icon: '📻', name: '气象站残响', desc: '【剧情】前往雪原「气象站」，查看废弃终端里的录音',   stat: 'scout', target: 1, reward: 400 },
   { id: 'q_m1_5', phase: 1, main: true,  icon: '📦', name: '中转货单',   desc: '【剧情】前往矿区东侧「装卸台」，查扣暗河会的中转货单', stat: 'scout', target: 1, reward: 600 },
   { id: 'q_s1_4', phase: 1, main: false, icon: '🛢️', name: '油料账本',   desc: '【剧情】查看雪原「燃料库」的出入库记录',           stat: 'scout', target: 1, reward: 400 },
 
   // ---------- 第二阶段（完成主线解锁第三阶段） ----------
-  { id: 'q_m2_1', phase: 2, main: true,  icon: '⚔️', name: '老练猎手',   desc: '累计击杀 12 名敌人',     stat: 'kills',        target: 12,   reward: 600 },
-  { id: 'q_m2_2', phase: 2, main: true,  icon: '👹', name: '首领挑战',   desc: '击杀 1 名 Boss',         stat: 'bossKills',    target: 1,    reward: 1000 },
-  { id: 'q_m2_3', phase: 2, main: true,  icon: '🎒', name: '满载而归',   desc: '单局带出价值 8,000',     stat: 'raidValue',    target: 8000,  reward: 800 },
-  { id: 'q_m2_4', phase: 2, main: true,  icon: '🚁', name: '稳定发挥',   desc: '累计成功撤离 3 次',      stat: 'extracts',     target: 3,    reward: 600 },
-  { id: 'q_s2_1', phase: 2, main: false, icon: '🔑', name: '门禁破解',   desc: '刷卡开门 2 次',          stat: 'doorsOpened',  target: 2,    reward: 300 },
-  { id: 'q_s2_2', phase: 2, main: false, icon: '💜', name: '紫色运气',   desc: '带出 2 件紫色及以上物品', stat: 'purplePlus',   target: 2,    reward: 500 },
+  { id: 'q_m2_1', phase: 2, main: true,  icon: '⚔️', name: '最高通缉',   desc: '【赛季主线】累计击败 12 名敌方士兵',     stat: 'kills',        target: 12,   reward: 600 },
+  { id: 'q_m2_2', phase: 2, main: true,  icon: '👹', name: '斩首行动',   desc: '【赛季主线】击败任意首领 1 次',         stat: 'bossKills',    target: 1,    reward: 1000 },
+  { id: 'q_m2_3', phase: 2, main: true,  icon: '🎒', name: '得心应手',   desc: '【赛季主线】单局成功撤离并带出价值 8,000 的物资',     stat: 'raidValue',    target: 8000,  reward: 800 },
+  { id: 'q_m2_4', phase: 2, main: true,  icon: '🚁', name: '战略转进-2', desc: '【赛季主线】累计成功撤离 3 次',      stat: 'extracts',     target: 3,    reward: 600 },
+  { id: 'q_s2_1', phase: 2, main: false, icon: '🔑', name: '保障有力·门禁', desc: '【赛季支线】刷卡开门 2 次',          stat: 'doorsOpened',  target: 2,    reward: 300 },
+  { id: 'q_s2_2', phase: 2, main: false, icon: '💜', name: '深度定制-1', desc: '【赛季支线】成功撤离并累计带出 2 件紫色及以上物品', stat: 'purplePlus',   target: 2,    reward: 500 },
   { id: 'q_m2_5', phase: 2, main: true,  icon: '📁', name: '黑市中转站', desc: '【剧情】潜入潮汐监狱的「办公楼」，寻找地图的另一半',   stat: 'scout', target: 1, reward: 1000 },
   { id: 'q_s2_3', phase: 2, main: false, icon: '🐫', name: '驿站见闻',   desc: '【剧情】前往沙海古城的「驿站」，打探货物的去向',     stat: 'scout', target: 1, reward: 600 },
   { id: 'q_m2_6', phase: 2, main: true,  icon: '🖋️', name: '典狱长的密约', desc: '【剧情】潜入潮汐监狱「典狱长办公室」，找出暗河会的通关密函', stat: 'scout', target: 1, reward: 1000 },
   { id: 'q_s2_4', phase: 2, main: false, icon: '🪧', name: '神庙刻痕',   desc: '【剧情】查看沙海古城「神庙方尖碑」上的新刻痕',         stat: 'scout', target: 1, reward: 600 },
 
   // ---------- 第三阶段（完成主线 → 保险箱 9 格） ----------
-  { id: 'q_m3_1', phase: 3, main: true,  icon: '🌾', name: '战场收割',   desc: '累计击杀 25 名敌人',     stat: 'kills',        target: 25,   reward: 800 },
-  { id: 'q_m3_2', phase: 3, main: true,  icon: '👹', name: 'Boss 猎手',  desc: '累计击杀 3 名 Boss',     stat: 'bossKills',    target: 3,    reward: 1500 },
-  { id: 'q_m3_3', phase: 3, main: true,  icon: '💎', name: '一票大的',   desc: '单局带出价值 15,000',    stat: 'raidValue',    target: 15000, reward: 1000 },
-  { id: 'q_s3_1', phase: 3, main: false, icon: '📦', name: '深度搜刮',   desc: '累计搜索 40 个容器',     stat: 'searches',     target: 40,   reward: 400 },
-  { id: 'q_s3_2', phase: 3, main: false, icon: '💠', name: '传说之光',   desc: '带出 1 件青色及以上物品', stat: 'cyanPlus',     target: 1,    reward: 800 },
+  { id: 'q_m3_1', phase: 3, main: true,  icon: '🌾', name: '搜索与歼灭-2', desc: '【赛季主线】累计击败 25 名敌方士兵',     stat: 'kills',        target: 25,   reward: 800 },
+  { id: 'q_m3_2', phase: 3, main: true,  icon: '👹', name: '猎首时刻',   desc: '【赛季主线】累计击败 3 名首领',     stat: 'bossKills',    target: 3,    reward: 1500 },
+  { id: 'q_m3_3', phase: 3, main: true,  icon: '💎', name: '插翅飞升',   desc: '【赛季主线】单局成功撤离并带出价值 15,000 的物资',    stat: 'raidValue',    target: 15000, reward: 1000 },
+  { id: 'q_s3_1', phase: 3, main: false, icon: '📦', name: '控制与保障-1', desc: '【赛季支线】累计搜索 40 个容器',     stat: 'searches',     target: 40,   reward: 400 },
+  { id: 'q_s3_2', phase: 3, main: false, icon: '💠', name: '博物强识',   desc: '【赛季支线】成功撤离并带出 1 件青色及以上物品', stat: 'cyanPlus',     target: 1,    reward: 800 },
   { id: 'q_m3_4', phase: 3, main: true,  icon: '🏺', name: '沙漠祭坛',   desc: '【剧情】前往沙海古城的「雕像群」，查明暗河会在挖掘什么', stat: 'scout', target: 1, reward: 1200 },
   { id: 'q_s3_3', phase: 3, main: false, icon: '🚚', name: '伏击现场',   desc: '【剧情】勘查雪地南路的「车队残骸」，寻找幸存的运单',   stat: 'scout', target: 1, reward: 700 },
   { id: 'q_m3_5', phase: 3, main: true,  icon: '🏺', name: '耳室陶罐',   desc: '【剧情】深入古城地下「西耳室」，检查守陵人的陶罐',     stat: 'scout', target: 1, reward: 1200 },
   { id: 'q_s3_4', phase: 3, main: false, icon: '🛗', name: '电梯日志',   desc: '【剧情】检查高塔「货运电梯」的运行日志',             stat: 'scout', target: 1, reward: 700 },
 
   // ---------- 第四阶段（完成主线 → 保险箱 12 格） ----------
-  { id: 'q_m4_1', phase: 4, main: true,  icon: '🏆', name: '战区传奇',   desc: '累计击杀 50 名敌人',     stat: 'kills',        target: 50,   reward: 1000 },
-  { id: 'q_m4_2', phase: 4, main: true,  icon: '💰', name: '巨富之路',   desc: '累计带出价值 80,000',    stat: 'totalValue',   target: 80000, reward: 1200 },
-  { id: 'q_m4_3', phase: 4, main: true,  icon: '🌟', name: '终极一票',   desc: '单局带出价值 30,000',    stat: 'raidValue',    target: 30000, reward: 1500 },
-  { id: 'q_m4_4', phase: 4, main: true,  icon: '🚁', name: '常胜将军',   desc: '累计成功撤离 8 次',      stat: 'extracts',     target: 8,    reward: 1000 },
-  { id: 'q_s4_1', phase: 4, main: false, icon: '❤️', name: '绝世珍品',   desc: '带出 1 件红色物品',      stat: 'redPlus',      target: 1,    reward: 1000 },
-  { id: 'q_s4_2', phase: 4, main: false, icon: '🔑', name: '门禁大师',   desc: '累计刷卡开门 6 次',      stat: 'doorsOpened',  target: 6,    reward: 500 },
+  { id: 'q_m4_1', phase: 4, main: true,  icon: '🏆', name: '本土作战',   desc: '【赛季主线】累计击败 50 名敌方士兵',     stat: 'kills',        target: 50,   reward: 1000 },
+  { id: 'q_m4_2', phase: 4, main: true,  icon: '💰', name: '救赎之道',   desc: '【赛季主线】累计带出价值 80,000 的物资',    stat: 'totalValue',   target: 80000, reward: 1200 },
+  { id: 'q_m4_3', phase: 4, main: true,  icon: '🌟', name: '观光客·康庄大道', desc: '【赛季主线】单局成功撤离并带出价值 30,000 的物资',    stat: 'raidValue',    target: 30000, reward: 1500 },
+  { id: 'q_m4_4', phase: 4, main: true,  icon: '🚁', name: '战略转进-4', desc: '【赛季主线】累计成功撤离 8 次',      stat: 'extracts',     target: 8,    reward: 1000 },
+  { id: 'q_s4_1', phase: 4, main: false, icon: '❤️', name: '失去联系',   desc: '【赛季支线】成功撤离并带出 1 件红色物品',      stat: 'redPlus',      target: 1,    reward: 1000 },
+  { id: 'q_s4_2', phase: 4, main: false, icon: '🔑', name: '保障有力·磐石', desc: '【赛季支线】累计刷卡开门 6 次',      stat: 'doorsOpened',  target: 6,    reward: 500 },
   { id: 'q_m4_5', phase: 4, main: true,  icon: '⚱️', name: '法老的字迹', desc: '【剧情】深入沙海古城地下「主墓室」，查看石棺上的刻字', stat: 'scout', target: 1, reward: 1500 },
   { id: 'q_s4_3', phase: 4, main: false, icon: '📡', name: '加密频道',   desc: '【剧情】登上雪地「雷达站」二层主控台，监听加密频道',   stat: 'scout', target: 1, reward: 900 },
   { id: 'q_m4_6', phase: 4, main: true,  icon: '🚁', name: '天台追缉',   desc: '【剧情】登上高塔「天台直升机坪」，追踪掮客的去向',     stat: 'scout', target: 1, reward: 1500 },
@@ -156,7 +156,7 @@ export const QUESTS: QuestDef[] = [
 ]
 
 // ===== 赛季主题任务（P3 #20）：与当前赛季主题联动 =====
-import { currentSeasonTheme } from './events'
+import { currentSeasonTheme, currentOfficialSeason } from './events'
 export function themeQuests(): QuestDef[] {
   const t = currentSeasonTheme()
   const stat = t.quest.stat ?? 'themeActions'
@@ -375,15 +375,17 @@ export function trackedQuests(s: SeasonProgress, live: LiveRaid, max = 4): { q: 
 const KEY = 'mojin_season_v1'
 
 export function seasonKey(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return currentSeasonTheme(d).id // 与官方赛季同步（官方赛季窗口内为 s1/s2/…）
 }
 
 export function seasonName(d = new Date()): string {
-  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月赛季`
+  return `${currentSeasonTheme(d).name} 赛季`
 }
 
-/** 本赛季剩余天数 */
+/** 本赛季剩余天数（官方赛季有明确窗口时按窗口计，兜底按自然月） */
 export function seasonDaysLeft(d = new Date()): number {
+  const s = currentOfficialSeason(d)
+  if (s) return Math.max(1, Math.ceil((Date.parse(s.end) - d.getTime()) / 86400000))
   const end = new Date(d.getFullYear(), d.getMonth() + 1, 1)
   return Math.max(1, Math.ceil((end.getTime() - d.getTime()) / 86400000))
 }

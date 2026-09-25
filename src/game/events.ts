@@ -143,10 +143,10 @@ export function fmtCountdown(ms: number): string {
   return h > 0 ? `${h}时${m}分${ss}秒` : `${m}分${String(ss).padStart(2, '0')}秒`
 }
 
-// ============ 赛季主题（每月一个全新主题，永不重复）============
-// 规则：一个主题在某个月登场之后就永久退役，之后每个月都是玩家没见过的新主题。
-// 实现：手工排期表（每月一格，写完即用尽）+ 排期用尽后由「焦点 × 环境」组合生成器
-// 产出全新组合主题（组合本身随月份递增，亦不复用）；两个来源互不重叠，天然不重复。
+// ============ 赛季主题（与三角洲行动官方赛季同步）============
+// 官方赛季每季约 2-3 个月，本表人工维护：官方新赛季上线后同步追加一行即可，引擎零改动。
+// 赛季主题效果（mods）按官方赛季内容做等价映射（如 S4 黑夜之子=全季夜战、S10 裂变=辐射感染）；
+// 超出已知赛季档期时由组合生成器兜底，直到下次同步。赛季名引用官方名称（事实信息），效果说明为原创。
 
 export interface SeasonThemeMods {
   night?: boolean          // 强制夜战
@@ -185,63 +185,68 @@ export interface SeasonTheme {
 
 export type RaidEventId = 'supplyRain' | 'elitePatrol' | 'gasLeak' | 'convoy'
 
-// —— 旧主题（2026-09 之前的档期由这套 3 主题轮换服务，之后全部永久退役）——
-const LEGACY_THEMES: SeasonTheme[] = [
-  { id: 'infection', icon: '☣️', name: '感染狂潮', desc: '容器被感染，开启需净化（+变异体出没）',
-    mods: { infect: 0.3 }, quest: { name: '净化源头', desc: '净化并开启 3 个被感染的容器', target: 3, tag: 'infected' } },
-  { id: 'convoy', icon: '🚚', name: '武装押运', desc: '押运队巡行全图，截停可夺军备箱',
-    mods: { extraEvents: ['convoy'] }, quest: { name: '拦路劫案', desc: '截停武装押运并开启押运箱', target: 1, tag: 'convoy' } },
-  { id: 'blackout', icon: '🌃', name: '停电夜', desc: '全图强制夜战，物资出率提升',
-    mods: { night: true, luck: 0.3 }, quest: { name: '暗夜猎手', desc: '于黑夜中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+interface OfficialSeason {
+  num: number            // 官方赛季序号
+  icon: string
+  name: string           // 官方赛季名
+  desc: string           // 本游戏内的主题效果说明
+  start: string          // 赛季窗口（北京时间，ISO 格式）
+  end: string
+  mods: SeasonThemeMods
+  quest: SeasonThemeQuest
+}
+
+// —— 三角洲行动官方赛季编年史（国服） ——
+const OFFICIAL_SEASONS: OfficialSeason[] = [
+  { num: 1, icon: '🌱', name: '起源', start: '2024-09-26T00:00:00+08:00', end: '2024-11-20T23:59:59+08:00',
+    desc: '梦开始的地方：原汁原味的摸金战场，无额外修正',
+    mods: {}, quest: { name: '初入烽火', desc: '成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { num: 2, icon: '⚛️', name: '聚变', start: '2024-11-21T00:00:00+08:00', end: '2025-01-14T23:59:59+08:00',
+    desc: '聚变之力：爆炸物伤害提升 20%',
+    mods: { explosiveMul: 1.2 }, quest: { name: '聚变打击', desc: '用爆炸物击杀 3 个敌人', target: 3, tag: 'explosive' } },
+  { num: 3, icon: '🎆', name: '焰火', start: '2025-01-15T00:00:00+08:00', end: '2025-04-16T23:59:59+08:00',
+    desc: '焰火漫天：爆炸物伤害提升 30%，空投雨更频繁',
+    mods: { explosiveMul: 1.3, extraEvents: ['supplyRain'] }, quest: { name: '焰火齐射', desc: '用爆炸物击杀 3 个敌人', target: 3, tag: 'explosive' } },
+  { num: 4, icon: '🌑', name: '黑夜之子', start: '2025-04-17T00:00:00+08:00', end: '2025-07-03T23:59:59+08:00',
+    desc: '永夜降临：全赛季固定夜战，配电室可恢复局部照明',
+    mods: { night: true }, quest: { name: '暗夜猎手', desc: '于黑夜中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { num: 5, icon: '🔨', name: '破壁', start: '2025-07-04T00:00:00+08:00', end: '2025-09-16T23:59:59+08:00',
+    desc: '破壁突入：敌人数量提升 20%，撤离读条加快 10%',
+    mods: { enemyCountMul: 1.2, extractMul: 1.1 }, quest: { name: '破壁而出', desc: '成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { num: 6, icon: '🔥', name: '烈火冲天', start: '2025-09-17T00:00:00+08:00', end: '2025-11-13T23:59:59+08:00',
+    desc: '烈火燎原：爆炸物伤害提升 30%，毒气泄漏频发',
+    mods: { explosiveMul: 1.3, extraEvents: ['gasLeak'] }, quest: { name: '纵火犯', desc: '用爆炸物击杀 3 个敌人', target: 3, tag: 'explosive' } },
+  { num: 7, icon: '🛡️', name: '阿萨拉', start: '2025-11-14T00:00:00+08:00', end: '2026-01-28T23:59:59+08:00',
+    desc: '阿萨拉卫队压境：敌人阶级 +1、数量提升 15%',
+    mods: { enemyTierPlus: 1, enemyCountMul: 1.15 }, quest: { name: '卫队猎手', desc: '拾取 2 个精英掉落实力箱', target: 2, tag: 'eliteDrop' } },
+  { num: 8, icon: '🦋', name: '蝶变时刻', start: '2026-01-29T00:00:00+08:00', end: '2026-04-15T23:59:59+08:00',
+    desc: '破茧蝶变：全员移速提升 8%，撤离读条加快 20%',
+    mods: { speedMul: 1.08, extractMul: 1.2 }, quest: { name: '蝶变新生', desc: '成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { num: 9, icon: '📡', name: '回声', start: '2026-04-16T00:00:00+08:00', end: '2026-06-25T23:59:59+08:00',
+    desc: '声波迷雾：雾浓度提升 50%，精英巡逻队频繁入场',
+    mods: { fogMul: 1.5, extraEvents: ['elitePatrol'] }, quest: { name: '回声定位', desc: '在迷雾中开启 4 个战利品容器', target: 4, tag: '*' } },
+  { num: 10, icon: '☢️', name: '裂变', start: '2026-06-26T00:00:00+08:00', end: '2026-09-03T23:59:59+08:00',
+    desc: '核子裂变：25% 容器被辐射污染（开箱需净化），毒气泄漏频发，爆率提升 20%',
+    mods: { infect: 0.25, extraEvents: ['gasLeak', 'gasLeak'], luck: 0.2 }, quest: { name: '辐射净化', desc: '净化并开启 3 个被污染的容器', target: 3, tag: 'infected' } },
+  { num: 11, icon: '🌟', name: '群星', start: '2026-09-04T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00',
+    desc: '二周年群星：空投雨连绵（每次 4 个），爆率提升 30%',
+    mods: { extraEvents: ['supplyRain', 'supplyRain'], supplyRainCount: 4, luck: 0.3 }, quest: { name: '群星馈赠', desc: '开启 3 个空投补给箱', target: 3, tag: 'airdrop' } },
 ]
 
-// —— 排期起点：2026-09（key = year*12 + monthIndex）——
-export const SCHEDULE_START = 2026 * 12 + 8
-
-// —— 手工排期：每月一个全新主题，永不复用 ——
-const SEASON_SCHEDULE: SeasonTheme[] = [
-  { id: 'airdrop-carnival', icon: '🪂', name: '空投季', desc: '空投雨连绵不断，全图补给箱密度翻倍',
-    mods: { extraEvents: ['supplyRain', 'supplyRain'], supplyRainCount: 5 },
+// —— 组合生成器：已知赛季档期之外的兜底（官方新赛季上线后同步上表即被取代） ——
+const COMBO_FOCUS: { id: string; icon: string; name: string; desc: string; mods: SeasonThemeMods; quest: SeasonThemeQuest }[] = [
+  { id: 'airdrop', icon: '🪂', name: '空投季', desc: '空投雨连绵不断，全图补给箱密度翻倍', mods: { extraEvents: ['supplyRain', 'supplyRain'], supplyRainCount: 5 },
     quest: { name: '捡到手软', desc: '开启 3 个空投补给箱', target: 3, tag: 'airdrop' } },
-  { id: 'ace-hunt', icon: '🎖️', name: '王牌猎手', desc: '精英巡逻队倾巢而出，猎杀精英掉落实力箱',
-    mods: { extraEvents: ['elitePatrol', 'elitePatrol'] },
-    quest: { name: '以强者为饵', desc: '拾取 2 个精英巡逻兵的掉落实力箱', target: 2, tag: 'eliteDrop' } },
-  { id: 'fog-zone', icon: '🌫️', name: '迷雾禁区', desc: '浓雾锁图视野骤降，但物资出率提升',
-    mods: { fogMul: 1.8, luck: 0.3 },
-    quest: { name: '雾中寻宝', desc: '在迷雾中开启 4 个战利品容器', target: 4, tag: '*' } },
-  { id: 'gas-plague', icon: '☣️', name: '毒雾蔓延', desc: '毒雾泄漏频发，毒区里的击杀都有悬赏',
-    mods: { extraEvents: ['gasLeak', 'gasLeak'], luck: 0.2 },
-    quest: { name: '毒区清道夫', desc: '在毒雾区域内击杀 4 个敌人', target: 4, tag: 'gas' } },
-  { id: 'demolition', icon: '🧨', name: '爆破月', desc: '爆炸物补给充足，手雷与炸药伤害提升 40%',
-    mods: { explosiveMul: 1.4 },
+  { id: 'ace', icon: '🎖️', name: '王牌猎手', desc: '精英巡逻队倾巢而出，猎杀与反猎杀', mods: { extraEvents: ['elitePatrol', 'elitePatrol'] },
+    quest: { name: '以强者为饵', desc: '拾取 2 个精英掉落实力箱', target: 2, tag: 'eliteDrop' } },
+  { id: 'demolition', icon: '🧨', name: '爆破月', desc: '爆炸物伤害提升 40%，艺术就是爆炸', mods: { explosiveMul: 1.4 },
     quest: { name: '艺术就是爆炸', desc: '用爆炸物击杀 3 个敌人', target: 3, tag: 'explosive' } },
-  { id: 'gold-rush', icon: '💰', name: '淘金热', desc: '矿脉暴走：变卖物价值飙升，但敌人也更多',
-    mods: { luck: 0.5, enemyCountMul: 1.25 },
+  { id: 'gold', icon: '💰', name: '淘金热', desc: '变卖物价值飙升，但人人都想分一杯羹', mods: { luck: 0.5, enemyCountMul: 1.25 },
     quest: { name: '满载而归', desc: '单局累计开启 5 个战利品容器', target: 5, tag: '*' } },
-  { id: 'blitz', icon: '⚡', name: '闪电战', desc: '对局缩短至 7 分钟，全员移速提升，撤离更快',
-    mods: { raidTimeMul: 0.7, speedMul: 1.12, extractMul: 1.4 },
-    quest: { name: '快进快出', desc: '在闪电战节奏下成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
-  { id: 'iron-tide', icon: '🪖', name: '钢铁洪流', desc: '敌方精锐换装上阵：数量与阶级全面提升',
-    mods: { enemyCountMul: 1.35, enemyTierPlus: 1, luck: 0.2 },
-    quest: { name: '硬碰硬', desc: '在钢铁洪流中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
-  { id: 'night-hunt', icon: '🌙', name: '暗夜猎场', desc: '永夜降临：全程夜战，精英队夜间巡猎',
-    mods: { night: true, extraEvents: ['elitePatrol'], luck: 0.2 },
-    quest: { name: '夜行动物', desc: '于黑夜中成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
-  { id: 'supply-storm', icon: '🚁', name: '补给风暴', desc: '空投与毒气同时来袭：补给密度翻倍、毒雾频发',
-    mods: { extraEvents: ['supplyRain', 'supplyRain', 'gasLeak'], supplyRainCount: 4, luck: 0.2 },
-    quest: { name: '风暴中心', desc: '开启 3 个空投补给箱', target: 3, tag: 'airdrop' } },
-  { id: 'lull', icon: '🕊️', name: '休整月', desc: '敌方偃旗息鼓：敌人减少，安稳发育的一月',
-    mods: { enemyCountMul: 0.7, luck: 0.3, extractMul: 1.2 },
-    quest: { name: '全身而退', desc: '在休整月成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
-  { id: 'black-market', icon: '🏴‍☠️', name: '黑市横财', desc: '黑市泛滥：高价值容器出率大增，押运队倾巢而出',
-    mods: { luck: 0.4, extraEvents: ['convoy'] },
-    quest: { name: '黑吃黑', desc: '截停武装押运并开启押运箱', target: 1, tag: 'convoy' } },
-]
-
-// —— 组合生成器：排期用尽后，焦点×环境逐月产出全新组合（亦不重复）——
-const COMBO_FOCUS: SeasonTheme[] = [
-  SEASON_SCHEDULE[0], SEASON_SCHEDULE[1], SEASON_SCHEDULE[4],
-  SEASON_SCHEDULE[5], SEASON_SCHEDULE[7], SEASON_SCHEDULE[3],
+  { id: 'iron', icon: '🪖', name: '钢铁洪流', desc: '敌人数量与阶级全面提升，硬碰硬', mods: { enemyCountMul: 1.35, enemyTierPlus: 1, luck: 0.2 },
+    quest: { name: '硬碰硬', desc: '成功撤离 1 次', target: 1, tag: '*', stat: 'extracts' } },
+  { id: 'gas', icon: '☣️', name: '毒雾蔓延', desc: '毒雾泄漏频发，防毒面具就是第二条命', mods: { extraEvents: ['gasLeak', 'gasLeak'], luck: 0.2 },
+    quest: { name: '毒区清道夫', desc: '在毒雾区域内击杀 4 个敌人', target: 4, tag: 'gas' } },
 ]
 const COMBO_ENV: { id: string; icon: string; name: string; mods: SeasonThemeMods }[] = [
   { id: 'night', icon: '🌙', name: '永夜', mods: { night: true } },
@@ -269,11 +274,26 @@ function comboTheme(n: number): SeasonTheme {
     mods, quest: { ...A.quest, name: `${A.quest.name}${suf}` } }
 }
 
-/** 当前赛季主题：历史档期用旧轮换，之后每月一个全新主题且永不重复 */
-export function currentSeasonTheme(d = new Date()): SeasonTheme {
-  const key = d.getFullYear() * 12 + d.getMonth()
-  if (key < SCHEDULE_START) return LEGACY_THEMES[key % LEGACY_THEMES.length]
-  const i = key - SCHEDULE_START
-  return i < SEASON_SCHEDULE.length ? SEASON_SCHEDULE[i] : comboTheme(i - SEASON_SCHEDULE.length)
+/** 当前所处的官方赛季（无匹配 = 超出已知档期） */
+export function currentOfficialSeason(d = new Date()): OfficialSeason | null {
+  const now = d.getTime()
+  for (const s of OFFICIAL_SEASONS) {
+    if (now >= Date.parse(s.start) && now <= Date.parse(s.end)) return s
+  }
+  return null
 }
 
+/** 当前赛季主题：优先与官方赛季同步；超出已知档期用组合生成器兜底（逐月不重复） */
+export function currentSeasonTheme(d = new Date()): SeasonTheme {
+  const s = currentOfficialSeason(d)
+  if (s) return { id: `s${s.num}`, icon: s.icon, name: `S${s.num} · ${s.name}`, desc: s.desc, mods: s.mods, quest: s.quest }
+  // 兜底：S1 之前的日期按 S1 计；之后的按月份组合生成
+  const first = OFFICIAL_SEASONS[0]
+  if (d.getTime() < Date.parse(first.start)) {
+    return { id: 's1', icon: first.icon, name: `S1 · ${first.name}`, desc: first.desc, mods: first.mods, quest: first.quest }
+  }
+  const last = OFFICIAL_SEASONS[OFFICIAL_SEASONS.length - 1]
+  const months = Math.max(0, (d.getFullYear() * 12 + d.getMonth())
+    - (Number(last.end.slice(0, 4)) * 12 + Number(last.end.slice(5, 7)) - 1))
+  return comboTheme(months)
+}

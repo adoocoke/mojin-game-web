@@ -63,7 +63,7 @@ export function QuestPanel() {
           <button onClick={() => engine.closeQuests()} className="text-zinc-500 hover:text-zinc-200 text-xl px-2">✕</button>
         </div>
         <div className="flex items-center justify-between text-xs text-zinc-400 mb-3 flex-wrap gap-2">
-          <span>{seasonName()} · 剩余 <span className="text-emerald-300 font-mono">{seasonDaysLeft()}</span> 天（跨月自动重置）</span>
+          <span>{seasonName()} · 剩余 <span className="text-emerald-300 font-mono">{seasonDaysLeft()}</span> 天（随官方赛季重置）</span>
           <span>保险箱：<span className="text-cyan-300 font-bold">{SAFE_CELLS[lv]} 格</span>
             {lv < 4 && <span className="text-zinc-500">（完成第 {lv === 1 ? 1 : lv === 2 ? 3 : 4} 阶段主线可扩容）</span>}
           </span>
