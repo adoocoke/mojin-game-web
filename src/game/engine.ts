@@ -7,7 +7,9 @@ import { makeGrid, autoPlace, removeItem, findPlaced, placeAt, hitTest, defOf } 
 import { uiState, notify, engine } from './store'
 import { sfx } from './audio'
 import { loadStash, addToStash, saveStash, clearStash, sellFromStash, saveMoney, sortStash, sellAllValuables } from './stash'
-import { currentEvent, currentSeasonTheme } from './events'
+import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards } from './events'
+import { equippedSkin } from './skins'
+import { skinDef } from './skins'
 import { loadSeason, recordRaid, safeLv, SAFE_DIMS, SAFE_CELLS, phaseUnlocked, QUESTS } from './quests'
 import { SCOUT_SPOTS } from './story'
 import { findLevel, chapterOf, loadCampaign, saveCampaign, clearReward, type CampaignLevel } from './campaign'
@@ -499,7 +501,9 @@ export class Game {
 
     if (d.melee) {
       // ===== 匕首模型：刀刃 + 护手 + 握柄 =====
-      const bladeMat = new THREE.MeshStandardMaterial({ color: 0xc8cfd8, roughness: 0.25, metalness: 0.9 })
+      const knifeSkin = equippedSkin('knife')
+      const bladeMat = new THREE.MeshStandardMaterial({ color: knifeSkin?.main ?? 0xc8cfd8, roughness: 0.25, metalness: 0.9,
+        emissive: knifeSkin?.emissive ?? 0x000000, emissiveIntensity: knifeSkin?.emissiveIntensity ?? 0 })
       const dark = new THREE.MeshStandardMaterial({ color: 0x1a1c1f, roughness: 0.6, metalness: 0.4 })
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.045, d.barrelLen), bladeMat)
       blade.position.set(0, 0.02, -d.barrelLen / 2 - 0.06)
@@ -572,6 +576,16 @@ export class Game {
     if (idx >= 2) {
       main.emissive = new THREE.Color(RARITY_INFO[this.gunRarity].color)
       main.emissiveIntensity = 0.08 + idx * 0.04
+    }
+    // 枪皮：覆盖配色与发光（皮肤优先于稀有度泛光）
+    const skin = equippedSkin(d.id)
+    if (skin) {
+      main.color.setHex(skin.main)
+      if (skin.accent) dark.color.setHex(skin.accent)
+      if (skin.emissive) {
+        main.emissive = new THREE.Color(skin.emissive)
+        main.emissiveIntensity = skin.emissiveIntensity ?? 0.3
+      }
     }
 
     g.traverse(o => { o.frustumCulled = false })
@@ -2031,6 +2045,11 @@ export class Game {
     uiState.hp = this.hp
     uiState.extractProgress = -1
     uiState.searching = -1
+    // 官方「登录领皮肤」类活动镜像：窗口期内首次开局发放对应皮肤
+    for (const r of claimOfficialSkinRewards()) {
+      const sd = skinDef(r.skinId)
+      this.toast(`🎁 ${r.from}：获得皮肤「${sd?.name ?? r.skinId}」！主菜单 🎨 皮肤 可装备`, 'cyan')
+    }
     if (uiState.creator) this.grantCreatorLoadout()
     this.syncGunUI()
     this.syncGrids()

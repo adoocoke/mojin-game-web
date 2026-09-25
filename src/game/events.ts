@@ -1,4 +1,6 @@
 // ===================== 定期轮换活动系统 =====================
+import { loadSkins, grantSkin } from './skins'
+
 // 每 2 小时轮换一个活动（按时间窗口确定性选取，所有玩家同一时段看到同一个）
 // 空档窗口由系统自动生成一个随机活动填补（随机效果 × 随机名字 × 随机强度），无需人工维护
 
@@ -49,6 +51,7 @@ interface OfficialEvent {
   desc: string        // 本游戏内的等价效果说明
   start: string       // 活动窗口（北京时间，ISO 格式）
   end: string
+  skin?: string       // 「登录领皮肤」类活动：窗口期内首次开局发放该皮肤（skins.ts 中的皮肤 id）
 }
 
 const OFFICIAL_EVENTS: OfficialEvent[] = [
@@ -67,7 +70,26 @@ const OFFICIAL_EVENTS: OfficialEvent[] = [
     desc: '仓库出售物资获得双倍金币（对应官方：保底 3900 限时三角券）' },
   { id: 'medic', icon: '🍹', name: '饮品特调返场', start: '2026-09-26T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
     desc: '医疗物资效果提升 50%（对应官方：调配对局增益特调饮品）' },
+  // —— 外观/皮肤类：窗口期内首次开局直接发放对应皮肤（皮肤系统见 skins.ts） ——
+  { id: 'goldrush', icon: '🕶️', name: '彦祖回归联动', start: '2026-09-10T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_daniel',
+    desc: '首次开局发放皮肤「彦祖同行」，期间仓库出售双倍金币（对应官方：登录领彦祖联动头像/喷漆/军牌）' },
+  { id: 'goldrush', icon: '🎖️', name: '传说外观登录领', start: '2026-09-04T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_aug_congee',
+    desc: '首次开局发放 AUG 皮肤「金粥年」，期间仓库出售双倍金币（对应官方：登录领传说外观 AUG-金粥年）' },
+  { id: 'goldrush', icon: '🏎️', name: '洲年限定载具造型', start: '2026-09-24T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_zhouyear',
+    desc: '首次开局发放皮肤「洲年限定」，期间仓库出售双倍金币（对应官方：洲年限定载具造型上架）' },
 ]
+
+/** 官方「登录领皮肤」类活动：窗口期内首次开局发放对应皮肤（已拥有则跳过），返回新获得的皮肤 id 与来源活动名 */
+export function claimOfficialSkinRewards(now = Date.now()): { skinId: string; from: string }[] {
+  const act = OFFICIAL_EVENTS.filter(e => e.skin && now >= Date.parse(e.start) && now <= Date.parse(e.end))
+  if (!act.length) return []
+  const save = loadSkins()
+  const out: { skinId: string; from: string }[] = []
+  for (const e of act) {
+    if (grantSkin(save, e.skin!)) out.push({ skinId: e.skin!, from: e.name })
+  }
+  return out
+}
 
 export const EVENT_WINDOW_MS = 2 * 60 * 60 * 1000 // 2 小时一轮
 

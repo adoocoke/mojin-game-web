@@ -369,6 +369,12 @@ export function MenuScreen() {
           >
             🏆 成就
           </button>
+          <button
+            onClick={() => engine.openSkins()}
+            className="px-6 py-2.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-pink-300 font-bold border border-pink-600/40 transition-all hover:scale-105"
+          >
+            🎨 皮肤
+          </button>
         </div>
         <div className="mt-4 text-zinc-500 text-sm flex justify-center gap-5">
           <span>💰 金币：<span className="text-yellow-300 font-mono font-bold">{ui.creator ? '∞' : ui.money.toLocaleString()}</span></span>

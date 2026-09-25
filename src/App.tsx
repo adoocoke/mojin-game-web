@@ -12,6 +12,7 @@ import { LoadoutPanel } from '@/components/game/LoadoutPanel'
 import { QuestPanel } from '@/components/game/QuestPanel'
 import { PassPanel } from '@/components/game/PassPanel'
 import { AchPanel } from '@/components/game/AchPanel'
+import { SkinPanel } from '@/components/game/SkinPanel'
 import { OnlinePanel } from '@/components/game/OnlinePanel'
 import { CampaignScreen, CampaignResultOverlay } from '@/components/game/CampaignScreen'
 import { InspectOverlay } from '@/components/game/InspectOverlay'
@@ -90,6 +91,7 @@ function GameUI() {
       <QuestPanel />
       <PassPanel />
       <AchPanel />
+      <SkinPanel />
       <OnlinePanel />
         <CampaignScreen />
         <CampaignResultOverlay />

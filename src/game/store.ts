@@ -55,6 +55,7 @@ export interface UIState {
   questOpen: boolean      // 赛季任务面板
   passOpen: boolean       // 赛季通行证面板
   achOpen: boolean        // 成就面板
+  skinOpen: boolean       // 皮肤面板
   vsOpen: boolean         // 联机面板（建房/加入）
   vsRoomUrl: string | null  // URL 带入的房间号（好友分享链接）
   vsSession: import('./net').VsSession | null
@@ -107,7 +108,7 @@ export const uiState: UIState = {
   carryDefs: JSON.parse(localStorage.getItem('mojin_loadout') || '[]') as string[],
   operator: localStorage.getItem('mojin_operator') || 'assault',
   skillCd: 0, skillActive: '', revealEnemies: [],
-  questOpen: false, passOpen: false, achOpen: false, resultQuests: [], lootReveal: {},
+  questOpen: false, passOpen: false, achOpen: false, skinOpen: false, resultQuests: [], lootReveal: {},
   opXp: JSON.parse(localStorage.getItem('mojin_op_xp') || '{}') as Record<string, number>,
   raidLive: { searches: 0, doors: 0, bossKills: 0, scouts: [] },
   questHudHide: localStorage.getItem('mojin_questhud_hide') === '1',
@@ -213,6 +214,8 @@ export interface EngineAPI {
   claimAllBp: () => void
   openAch: () => void
   closeAch: () => void
+  openSkins: () => void
+  closeSkins: () => void
   claimAch: (id: string) => void
   placeOrder: (defId: string) => void
   cancelOrder: (id: string) => void
@@ -294,6 +297,8 @@ export const engine: EngineAPI = {
   claimBp: () => {}, claimAllBp: () => {},
   openAch: () => { uiState.achOpen = true; notify() },
   closeAch: () => { uiState.achOpen = false; notify() },
+  openSkins: () => { uiState.skinOpen = true; notify() },
+  closeSkins: () => { uiState.skinOpen = false; notify() },
   claimAch: () => {},
   placeOrder: () => {}, cancelOrder: () => {}, claimOrder: () => {},
   attachMod: () => {}, detachMod: () => {},
