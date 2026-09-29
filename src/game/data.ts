@@ -46,8 +46,8 @@ export const ITEMS: Record<string, ItemDef> = {
   g_c1l1: { id: 'g_c1l1', name: '铁爪的布防图',     kind: 'valuable', rarity: 'purple', w: 1, h: 2, baseValue: 1600, icon: '🗺️' },
   g_c1l2: { id: 'g_c1l2', name: '井下爆破记录',     kind: 'valuable', rarity: 'cyan',   w: 1, h: 2, baseValue: 3200, icon: '📋' },
   g_c1l3: { id: 'g_c1l3', name: '铁爪的随身信物',   kind: 'valuable', rarity: 'red',    w: 1, h: 1, baseValue: 6800, icon: '⛏️' },
-  g_c2l1: { id: 'g_c2l1', name: '典狱长巡逻日志',   kind: 'valuable', rarity: 'purple', w: 1, h: 2, baseValue: 1800, icon: '📔' },
-  g_c2l2: { id: 'g_c2l2', name: '封存的囚徒档案',   kind: 'valuable', rarity: 'cyan',   w: 2, h: 2, baseValue: 3500, icon: '🗃️' },
+  g_c2l1: { id: 'g_c2l1', name: '总控官巡逻日志',   kind: 'valuable', rarity: 'purple', w: 1, h: 2, baseValue: 1800, icon: '📔' },
+  g_c2l2: { id: 'g_c2l2', name: '封存的发射档案',   kind: 'valuable', rarity: 'cyan',   w: 2, h: 2, baseValue: 3500, icon: '🗃️' },
   g_c2l3: { id: 'g_c2l3', name: '旧秩序勋章',       kind: 'valuable', rarity: 'red',    w: 1, h: 1, baseValue: 7200, icon: '🎖️' },
   g_c3l1: { id: 'g_c3l1', name: '雷达站情报芯片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 1900, icon: '💾' },
   g_c3l2: { id: 'g_c3l2', name: '雪原狙击记录',     kind: 'valuable', rarity: 'cyan',   w: 1, h: 2, baseValue: 3800, icon: '🎯' },
@@ -56,7 +56,7 @@ export const ITEMS: Record<string, ItemDef> = {
   g_c4l2: { id: 'g_c4l2', name: '陪葬宝石面具',     kind: 'valuable', rarity: 'cyan',   w: 2, h: 2, baseValue: 4200, icon: '🎭' },
   g_c4l3: { id: 'g_c4l3', name: '伊姆霍特的祭司杖', kind: 'valuable', rarity: 'red',    w: 1, h: 3, baseValue: 8800, icon: '🪄' },
   c_claw:   { id: 'c_claw',   name: '铁爪徽记',         kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 8000,  icon: '🪝' },
-  c_keys:   { id: 'c_keys',   name: '典狱长的钥匙串',   kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 9600,  icon: '🗝️' },
+  c_keys:   { id: 'c_keys',   name: '总控官的钥匙串',   kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 9600,  icon: '🗝️' },
   c_wolf:   { id: 'c_wolf',   name: '白狼之瞳',         kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 11200, icon: '👁️' },
   c_scarab: { id: 'c_scarab', name: '伊姆霍特的圣甲虫', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 13600, icon: '🪲' },
   t_mine:  { id: 't_mine',  name: '绊雷',       kind: 'tactical', rarity: 'blue',  w: 1, h: 1, baseValue: 700, icon: '🪤' },
@@ -105,14 +105,14 @@ export const ITEMS: Record<string, ItemDef> = {
   v_crown:  { id: 'v_crown',  name: '黄金王冠',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 6000, icon: '👑' },
   v_super:  { id: 'v_super',  name: '曼德尔超算单元', kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 9000, icon: '🖥️' },
   // ===== 房卡：对局内任何容器都可能出，用于开对应地图的专属锁房 =====
-  k_w_shed:   { id: 'k_w_shed',   name: '工棚房卡',   kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
-  k_w_cave:   { id: 'k_w_cave',   name: '矿洞房卡',   kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
-  k_w_store:  { id: 'k_w_store',  name: '仓储房卡',   kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
-  k_w_core:   { id: 'k_w_core',   name: '核心区房卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
+  k_w_shed:   { id: 'k_w_shed',   name: '水泥厂房卡',   kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
+  k_w_cave:   { id: 'k_w_cave',   name: '变电站房卡',   kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
+  k_w_store:  { id: 'k_w_store',  name: '游客中心卡',   kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
+  k_w_core:   { id: 'k_w_core',   name: '行政楼房卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
   k_t_dorm:   { id: 'k_t_dorm',   name: '宿舍房卡',   kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
   k_t_arch:   { id: 'k_t_arch',   name: '档案室房卡', kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
   k_t_arm:    { id: 'k_t_arm',    name: '军械库房卡', kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
-  k_t_warden: { id: 'k_t_warden', name: '典狱长密卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
+  k_t_warden: { id: 'k_t_warden', name: '主控官密卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
   k_d_gate:   { id: 'k_d_gate',   name: '陵寝外门卡', kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 9000,  icon: '💳' },
   k_d_tomb:   { id: 'k_d_tomb',   name: '法老金卡',   kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 13000, icon: '💳' },
   k_d_crypt:  { id: 'k_d_crypt',  name: '侧墓室房卡', kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 4000,  icon: '💳' },
@@ -158,7 +158,7 @@ export const ITEMS: Record<string, ItemDef> = {
   v_sat:      { id: 'v_sat',      name: '军用卫星组件', kind: 'valuable', rarity: 'red', w: 3, h: 4, baseValue: 17800, icon: '📡', weight: 21 }, // 航空箱专属
   // ===== Boss 专属掉落（仅对应 Boss 低概率掉落，不在普通容器池中） =====
   v_core:      { id: 'v_core',      name: '铁爪的动力核心', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 15000, icon: '⚙️' },
-  v_blueprint: { id: 'v_blueprint', name: '巴别塔蓝图',     kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 18000, icon: '🗼' },
+  v_blueprint: { id: 'v_blueprint', name: '发射塔蓝图',     kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 18000, icon: '🗼' },
   v_scepter:   { id: 'v_scepter',   name: '典狱长的权杖',   kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 16000, icon: '👑' },
   v_sharktooth:{ id: 'v_sharktooth',name: '狂鲨的牙齿项链', kind: 'valuable', rarity: 'red', w: 1, h: 2, baseValue: 13000, icon: '🦈' },
   v_wolfcamo:  { id: 'v_wolfcamo',  name: '白狼的雪地迷彩', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 17000, icon: '🐺' },
@@ -180,7 +180,7 @@ export const ITEMS: Record<string, ItemDef> = {
   k_p_med:    { id: 'k_p_med',    name: '医务室房卡',     kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
   k_p_arm:    { id: 'k_p_arm',    name: '狱警军械库房卡', kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
   k_p_warden: { id: 'k_p_warden', name: '典狱长办公室卡', kind: 'key', rarity: 'red',    w: 1, h: 1, baseValue: 12000, icon: '💳' },
-  // ===== 雪地雷达站房卡 =====
+  // ===== 长弓溪谷房卡 =====
   k_s_post:   { id: 'k_s_post',   name: '哨所房卡',     kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
   k_s_hangar: { id: 'k_s_hangar', name: '机库钥匙',     kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
   k_s_ctrl:   { id: 'k_s_ctrl',   name: '雷达控制室卡', kind: 'key', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '💳' },
@@ -381,8 +381,8 @@ export const AIR_LOOT_POOL: { defId: string; weight: number }[] = [
 // ===================== Boss 专属掉落表（稀有爆率 1%） =====================
 export const BOSS_DROP_RATE = 0.01
 export const BOSS_DROPS: { boss: string; defId: string }[] = [
-  { boss: '矿区霸主·铁爪', defId: 'v_core' },
-  { boss: '塔主·典狱长', defId: 'v_blueprint' },
+  { boss: '大坝霸主·铁爪', defId: 'v_core' },
+  { boss: '塔主·总控官', defId: 'v_blueprint' },
   { boss: '监狱长·洛克', defId: 'v_scepter' },
   { boss: '狱警队长·狂鲨', defId: 'v_sharktooth' },
   { boss: '「雪盲」·白狼', defId: 'v_wolfcamo' },

@@ -144,11 +144,11 @@ export function MenuScreen() {
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
           {([
-            { id: 'wild' as const, icon: '🏚️', name: '废弃矿区', tags: '物资一般 · 敌人分散', desc: '开阔矿区，稳扎稳打积累财富' },
-            { id: 'tower' as const, icon: '🗼', name: '高塔禁区', tags: '四层高塔 · Boss 镇守', desc: '塔内物资极品，整体爆率更高' },
+            { id: 'wild' as const, icon: '🏗️', name: '零号大坝', tags: '物资一般 · 敌人分散', desc: '大坝与水泥厂区，稳扎稳打积累财富' },
+            { id: 'tower' as const, icon: '🚀', name: '航天基地', tags: '四层高塔 · Boss 镇守', desc: '发射塔内物资极品，整体爆率更高' },
             { id: 'prison' as const, icon: '⛓️', name: '潮汐监狱', tags: '双 Boss · 航空箱', desc: '重兵把守的海边监狱，风险与宝藏并存' },
-            { id: 'snow' as const, icon: '❄️', name: '雪地雷达站', tags: '低能见度 · 狙击 Boss', desc: '冰封雷达站，白狼在雾中等你' },
-            { id: 'desert' as const, icon: '🏜️', name: '沙海古城', tags: '双层墓道 · 沙暴机制', desc: '沙海之下的法老陵寝，点亮四座长明灯开启石门' },
+            { id: 'snow' as const, icon: '❄️', name: '长弓溪谷', tags: '低能见度 · 狙击 Boss', desc: '溪谷深处的雷达站，白狼在雾中等你' },
+            { id: 'desert' as const, icon: '🏜️', name: '巴克什', tags: '双层墓道 · 沙暴机制', desc: '扎尔瓦特古城下的陵寝，点亮四座长明灯开启石门' },
           ]).map(m => {
             const active = ui.mapId === m.id
             return (

@@ -18,13 +18,13 @@ export interface MapMission {
 export const MAP_MISSIONS: Record<MapId, MapMission> = {
   wild: {
     mapId: 'wild', icon: '🧨', name: '破壁行动',
-    desc: '在矿区碎石堆安放炸药，炸开掩体取出里面的物资',
+    desc: '在大坝下游碎石堆安放炸药，炸开掩体取出里面的物资',
     acceptPos: { x: 8, z: -80 }, objPos: { x: -15, z: -32.4 },
     type: 'breach', holdTime: 3, wave: 0, reward: 2200,
   },
   tower: {
     mapId: 'tower', icon: '📶', name: '塔顶信号',
-    desc: '登上高塔顶层启动信号发射器，坚守 20 秒直到传输完成',
+    desc: '登上发射塔顶层启动信号发射器，坚守 20 秒直到传输完成',
     acceptPos: { x: -95, z: 6 }, objPos: { x: 5, z: 5, floorY: 10.2 },
     type: 'defend', holdTime: 20, wave: 4, reward: 3000,
   },

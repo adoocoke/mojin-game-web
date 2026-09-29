@@ -29,23 +29,23 @@ export interface CampaignChapter {
 
 export const CAMPAIGN: CampaignChapter[] = [
   {
-    chapter: 1, mapId: 'wild', icon: '⛏️', title: '第一章 · 铁爪之陨', boss: '矿区霸主·铁爪',
-    story: '铁爪曾是矿区最好的爆破手。塌方那天，他被埋在井下三天三夜，爬出来时右手换成了铁钩，人心也换成了铁。如今他盘踞废矿，把每一批闯入者当成当年见死不救的工友复仇。你奉命潜入矿区，夺取他的军用布防图。',
+    chapter: 1, mapId: 'wild', icon: '🏗️', title: '第一章 · 铁爪之陨', boss: '大坝霸主·铁爪',
+    story: '铁爪曾是大坝工程队最好的爆破手。塌方那天，他被埋在地下廊道里三天三夜，爬出来时右手换成了铁钩，人心也换成了铁。如今他盘踞零号大坝，把每一批闯入者当成当年见死不救的工友复仇。你奉命潜入大坝，夺取他的军用布防图。',
     rewardItem: 'c_claw', rewardGold: 3000,
     levels: [
-      { id: 'c1l1', chapter: 1, level: 1, mapId: 'wild', name: '潜入矿区', stageText: ['【潜入】摸进矿区腹地，接近铁爪的巢穴。', '【夺取】铁爪的布防图就藏在他的老窝里，找到它。', '【撤离】拿到布防图了！快撤到撤离点！'], targetItem: 'g_c1l1' },
-      { id: 'c1l2', chapter: 1, level: 2, mapId: 'wild', name: '井下旧账', stageText: ['【潜入】铁爪加强了戒备，再次潜入矿区。', '【夺取】夺回他私藏的第二份爆破记录。', '【撤离】拿到了！趁铁爪还没反应过来，撤！'], targetItem: 'g_c1l2' },
-      { id: 'c1l3', chapter: 1, level: 3, mapId: 'wild', name: '铁爪之陨', stageText: ['【潜入】决战的时刻到了，潜入矿区心脏。', '【夺取】取走铁爪的随身信物，终结这段恩怨。', '【撤离】一切结束了。带着铁爪的故事离开这里。'], targetItem: 'g_c1l3' },
+      { id: 'c1l1', chapter: 1, level: 1, mapId: 'wild', name: '潜入大坝', stageText: ['【潜入】摸进大坝腹地，接近铁爪的巢穴。', '【夺取】铁爪的布防图就藏在他的老窝里，找到它。', '【撤离】拿到布防图了！快撤到撤离点！'], targetItem: 'g_c1l1' },
+      { id: 'c1l2', chapter: 1, level: 2, mapId: 'wild', name: '廊道旧账', stageText: ['【潜入】铁爪加强了戒备，再次潜入大坝。', '【夺取】夺回他私藏的第二份爆破记录。', '【撤离】拿到了！趁铁爪还没反应过来，撤！'], targetItem: 'g_c1l2' },
+      { id: 'c1l3', chapter: 1, level: 3, mapId: 'wild', name: '铁爪之陨', stageText: ['【潜入】决战的时刻到了，潜入大坝心脏。', '【夺取】取走铁爪的随身信物，终结这段恩怨。', '【撤离】一切结束了。带着铁爪的故事离开这里。'], targetItem: 'g_c1l3' },
     ],
   },
   {
-    chapter: 2, mapId: 'tower', icon: '🗼', title: '第二章 · 典狱长的塔', boss: '塔主·典狱长',
-    story: '没有人记得典狱长的名字。高塔禁区曾是战时的最后秩序，他一个人守着整栋塔的犯人，直到外面的世界比塔里更乱。他把钥匙挂在腰上三十年，谁来拿，谁就是他的新犯人。你要登上塔顶，取下那串钥匙。',
+    chapter: 2, mapId: 'tower', icon: '🚀', title: '第二章 · 总控官的塔', boss: '塔主·总控官',
+    story: '没有人记得总控官的名字。航天基地停运那年，他一个人锁死发射塔的大门留了下来，守着整座塔的秘密。他把钥匙串挂在腰上三十年，谁来拿，谁就得永远留下。你要登上塔顶，取下那串钥匙。',
     rewardItem: 'c_keys', rewardGold: 3600,
     levels: [
-      { id: 'c2l1', chapter: 2, level: 1, mapId: 'tower', name: '塔底风声', stageText: ['【潜入】从高塔底层潜入，躲开巡逻上楼。', '【夺取】典狱长的钥匙串挂在塔顶他的身边。', '【撤离】钥匙到手！趁他拉响警报前撤出去！'], targetItem: 'g_c2l1' },
-      { id: 'c2l2', chapter: 2, level: 2, mapId: 'tower', name: '囚徒档案', stageText: ['【潜入】再入高塔，塔里的"犯人"都认得你了。', '【夺取】取回塔顶封存的囚徒档案。', '【撤离】档案到手，快离开这座塔！'], targetItem: 'g_c2l2' },
-      { id: 'c2l3', chapter: 2, level: 3, mapId: 'tower', name: '最后秩序', stageText: ['【潜入】最后一次登塔，直面典狱长。', '【夺取】取下那串挂了三十年的钥匙。', '【撤离】塔的门终于全部打开了。撤离！'], targetItem: 'g_c2l3' },
+      { id: 'c2l1', chapter: 2, level: 1, mapId: 'tower', name: '塔底风声', stageText: ['【潜入】从发射塔底层潜入，躲开巡逻上楼。', '【夺取】总控官的钥匙串挂在塔顶他的身边。', '【撤离】钥匙到手！趁他拉响警报前撤出去！'], targetItem: 'g_c2l1' },
+      { id: 'c2l2', chapter: 2, level: 2, mapId: 'tower', name: '发射档案', stageText: ['【潜入】再入高塔，塔里的守卫都认得你了。', '【夺取】取回塔顶封存的发射档案。', '【撤离】档案到手，快离开这座塔！'], targetItem: 'g_c2l2' },
+      { id: 'c2l3', chapter: 2, level: 3, mapId: 'tower', name: '最后秩序', stageText: ['【潜入】最后一次登塔，直面总控官。', '【夺取】取下那串挂了三十年的钥匙。', '【撤离】塔的门终于全部打开了。撤离！'], targetItem: 'g_c2l3' },
     ],
   },
   {

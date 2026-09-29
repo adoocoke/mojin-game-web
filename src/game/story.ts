@@ -241,7 +241,7 @@ export const SCOUT_SPOTS: ScoutSpot[] = [
   // 第三阶段
   { questId: 'q_m3_4', mapId: 'desert', x: -60,  z: -10,  spotName: '古城雕像群',
     foundText: '🏺 雕像底座的沙土上有重型履带的辙痕——扎尔瓦特决战那夜，哈姆克的坦克就是从这里碾过去的。' },
-  { questId: 'q_s3_3', mapId: 'snow',   x: 10,   z: 82,   spotName: '山火残骸',
+  { questId: 'q_s3_3', mapId: 'snow',   x: 10,   z: 82,   spotName: '车队残骸',
     foundText: '🚚 烧焦的车厢板呈现出不自然的扭曲——雷斯放的那场长弓山火，烧掉的不只是车队，还有某种他不想让人找到的东西。' },
   { questId: 'q_m3_5', mapId: 'desert', x: -25,  z: -57,  floorY: -4, spotName: '古城西耳室',
     foundText: '🏺 西耳室的陶罐里藏着卫队侦察兵的日记：「雷斯大人带回来一块会发光的砖。他说，阿萨拉的天要变了。」' },
@@ -250,9 +250,9 @@ export const SCOUT_SPOTS: ScoutSpot[] = [
   // 第四阶段
   { questId: 'q_m4_5', mapId: 'desert', x: 0,    z: -104, floorY: -4, spotName: '古城主墓室',
     foundText: '⚱️ 主墓室的石壁上留着弹痕与一行刻字：「毒蛇终死于王座。」——衔尾蛇行动的老兵留下的。' },
-  { questId: 'q_s4_3', mapId: 'snow',   x: 2,    z: -74,  floorY: 3.4, spotName: '发射场主控台',
-    foundText: '📡 主控台加密频道的最后一条记录：「暗星已固定，准备升空。——效能部」下面有人用红笔批注：「它会把空间站炸成烟花。——老太」' },
-  { questId: 'q_m4_6', mapId: 'tower',  x: 0,    z: 28.5, floorY: 13.6, spotName: '巴别塔天台',
+  { questId: 'q_s4_3', mapId: 'snow',   x: 2,    z: -74,  floorY: 3.4, spotName: '雷达站主控台',
+    foundText: '📡 主控台加密频道的最后一条记录：「暗星过境窗口已锁定，引导信号正常。——效能部」下面有人用红笔批注：「它会把空间站炸成烟花。——老太」' },
+  { questId: 'q_m4_6', mapId: 'tower',  x: 0,    z: 28.5, floorY: 13.6, spotName: '发射塔天台',
     foundText: '🚁 天台栏杆上还系着半截安全绳。猎户座最后一次向 G.T.I. 发报就是在这里——随后他被哈德森灭口。' },
   { questId: 'q_s4_4', mapId: 'desert', x: 0,    z: -84,  floorY: -4, spotName: '古城陪葬殿',
     foundText: '🖼️ 陪葬殿的壁画描绘着阿萨拉古国的星图。两周年庆典那夜，烟花与壁画上的星辰恰好重合——「群星」之名由此而来。' },

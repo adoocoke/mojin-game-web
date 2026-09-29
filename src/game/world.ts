@@ -52,7 +52,7 @@ export interface World {
   obstacleMeshes: THREE.Object3D[]
   containers: Container[]
   extractPos: THREE.Vector3
-  extractPos2?: THREE.Vector3   // 第二撤离点（沙海古城地下暗河）
+  extractPos2?: THREE.Vector3   // 第二撤离点（巴克什地下暗河）
   extractMesh: THREE.Mesh
   size: number
   walkables: Walkable[]        // 高处的可行走面（楼梯/楼层），地面默认 y=0
@@ -773,7 +773,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   let lift: World['lift'] = undefined
 
   if (mapId === 'wild') {
-    // ================= 地图一：废弃矿区（爆率下调） =================
+    // ================= 地图一：零号大坝（爆率下调） =================
     const buildingColors = [0x8a8578, 0x9a8f7d, 0x7d8a94, 0x94857a, 0x808a78]
     const buildingSpots: { x: number; z: number }[] = []
     for (let gx = -2; gx <= 2; gx++) {
@@ -815,8 +815,8 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       colliders.push({ minX: x - s / 2, maxX: x + s / 2, minZ: z - s / 2, maxZ: z + s / 2, top: s })
     }
 
-    // 矿区 Boss：坐镇中央空地（建筑/箱子生成时已避开中心 18m）
-    bossSpawns.push({ pos: new THREE.Vector3(0, 0, -10), name: '矿区霸主·铁爪' })
+    // 大坝 Boss：坐镇中央空地（建筑/箱子生成时已避开中心 18m）
+    bossSpawns.push({ pos: new THREE.Vector3(0, 0, -10), name: '大坝霸主·铁爪' })
 
     // 油桶
     const barrelMat = new THREE.MeshStandardMaterial({ color: 0x6a4a3a, roughness: 0.7, metalness: 0.3 })
@@ -849,7 +849,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(90, -90, '保险箱', 1.1)
     mkContainer(-90, -90, '保险箱', 1.1)
 
-    // 四个专属锁棚（矿区房卡才能进，里面有高级保险箱）
+    // 四个专属锁房（大坝房卡才能进，里面有高级保险箱）
     const shackMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5f, roughness: 0.9 })
     const shackRoofMat = new THREE.MeshStandardMaterial({ color: 0x6a5a45, roughness: 0.9 })
     const shack = (sx: number, sz: number, cardId: string, cardName: string, roomName: string, luck: number) => {
@@ -876,15 +876,15 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       mkContainer(sx + 1.6, sz + 1.0, '保险柜', 1.8, 0, rng) // 锁房高价值
       mapMarkers.push({ x: sx, z: sz, kind: 'locked', name: roomName })
     }
-    shack(55, 55, 'k_w_shed', '工棚房卡', '工棚', 1.4)
-    shack(-55, 55, 'k_w_cave', '矿洞房卡', '矿洞', 1.7)
-    shack(55, -55, 'k_w_store', '仓储房卡', '仓储室', 2.0)
-    shack(-55, -55, 'k_w_core', '核心区房卡', '核心区', 2.5)
+    shack(55, 55, 'k_w_shed', '水泥厂房卡', '水泥厂', 1.4)
+    shack(-55, 55, 'k_w_cave', '变电站房卡', '变电站', 1.7)
+    shack(55, -55, 'k_w_store', '游客中心卡', '游客中心', 2.0)
+    shack(-55, -55, 'k_w_core', '行政楼房卡', '行政楼', 2.5)
 
     // 售货机：出生点与撤离点附近
     mkContainer(6, -92, '售货机', 0.2, 0, rng)
-    mkContainer(10, -88, '弹药箱', 0.5, 0, rng)   // 矿区弹药箱（出生路旁）
-    mkContainer(-40, 30, '弹药箱', 0.7, 0, rng)   // 矿区深处
+    mkContainer(10, -88, '弹药箱', 0.5, 0, rng)   // 坝区弹药箱（出生路旁）
+    mkContainer(-40, 30, '弹药箱', 0.7, 0, rng)   // 坝区深处
     mkContainer(4, 118, '售货机', 0.2, 0, rng)
 
     // ---- 专属任务「破壁行动」：任务终端 + 碎石掩埋点（可爆破挡板） ----
@@ -912,8 +912,8 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       mapMarkers.push({ x: MXC, z: MZC, kind: 'mission', name: '掩埋点' })
     }
 
-    // ================= 矿区扩充①：地下矿井（塌陷矿洞入口 + 巷道网络） =================
-    const UY = -4 // 地下矿井地面高度
+    // ================= 坝区扩充①：地下廊道（泄洪道入口 + 巷道网络） =================
+    const UY = -4 // 地下廊道地面高度
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x5a544c, roughness: 1 })
     const rockDark = new THREE.MeshStandardMaterial({ color: 0x3b362f, roughness: 1 })
     const timberMat = new THREE.MeshStandardMaterial({ color: 0x6a5138, roughness: 0.9 })
@@ -935,7 +935,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       dbox(rockDark, x1 - x0 + 1, 0.2, z1 - z0 + 1, (x0 + x1) / 2, UY - 0.1, (z0 + z1) / 2, false)
     }
 
-    // —— 塌陷矿洞入口（24,-50）：坑沿石板 + 老井架 + 下行坡道 ——
+    // —— 泄洪道入口（24,-50）：坑沿石板 + 老井架 + 下行坡道 ——
     // 入口设在主巷道南端（z=-58 接口）：坡道与巷道地板仅交界不重叠，
     // 否则「就近面优先」会让玩家在北行时被头顶坡道吸回地表，永远进不了巷道。
     dbox(rockMat, 7, 0.4, 16, 17.5, 0.2, -50, false)   // 坑沿西侧石板
@@ -973,9 +973,9 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     // —— 主巷道（南北向）+ 东西两条支巷 + 两间矿室 ——
     ufloor(22, 26, -111, -58)   // 主巷道（北端探入坡道底 0.5m，消除断层）
     ufloor(26, 46, -86, -82)    // 东支巷
-    ufloor(46, 58, -94, -74)    // 东矿室（矿脉核心区）
+    ufloor(46, 58, -94, -74)    // 东廊道（核心设备区）
     ufloor(4, 22, -70, -66)     // 西支巷
-    ufloor(-8, 4, -78, -56)     // 西矿室
+    ufloor(-8, 4, -78, -56)     // 西廊道
     // 主巷道墙壁（东墙 z -86~-82 开口接东支巷；西墙 z -70~-66 开口接西支巷；南端通坡道不封口）
     uwall(21.75, -90, 0.5, 40)
     uwall(21.75, -62, 0.5, 8)
@@ -985,7 +985,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     // 东支巷
     uwall(36, -86.25, 20, 0.5)
     uwall(36, -81.75, 20, 0.5)
-    // 东矿室（西侧开口接支巷）
+    // 东廊道（西侧开口接支巷）
     uwall(58.25, -84, 0.5, 20)
     uwall(52, -94.25, 12.5, 0.5)
     uwall(52, -73.75, 12.5, 0.5)
@@ -994,7 +994,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     // 西支巷
     uwall(13, -70.25, 18, 0.5)
     uwall(13, -65.75, 18, 0.5)
-    // 西矿室（东侧开口接支巷）
+    // 西廊道（东侧开口接支巷）
     uwall(-8.25, -67, 0.5, 22)
     uwall(-2, -78.25, 12.5, 0.5)
     uwall(-2, -55.75, 12.5, 0.5)
@@ -1033,7 +1033,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       scene.add(lm)
     }
     mineLamp(24, -100); mineLamp(24, -64); mineLamp(36, -84); mineLamp(52, -84); mineLamp(13, -68); mineLamp(-2, -67)
-    // 矿石堆装饰（东矿室有金矿石）
+    // 矿石堆装饰（东廊道有金矿石）
     const oreMat = new THREE.MeshStandardMaterial({ color: 0x4a4440, roughness: 0.9, metalness: 0.2 })
     const goldOreMat = new THREE.MeshStandardMaterial({ color: 0x8a6a2a, roughness: 0.5, metalness: 0.7, emissive: 0x3a2a00, emissiveIntensity: 0.5 })
     for (const [ox, oz, os, gold] of [[50, -91, 0.9, true], [56, -78, 0.7, false], [-6, -59, 0.8, false], [1, -76, 0.6, true]] as const) {
@@ -1043,18 +1043,18 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       scene.add(ore); obstacleMeshes.push(ore)
       colliders.push({ minX: ox - os * 0.7, maxX: ox + os * 0.7, minZ: oz - os * 0.7, maxZ: oz + os * 0.7, top: UY + os * 1.2, base: UY })
     }
-    // 矿洞容器（越深越肥）
+    // 廊道容器（越深越肥）
     mkContainer(24, -107, '收纳盒', 0.5, UY, rng)
     mkContainer(23, -61, '弹药箱', 0.7, UY, rng)
     mkContainer(36, -84, '武器箱', 0.9, UY, rng)
-    mkContainer(55, -90, '保险柜', 2.2, UY, rng)   // 东矿室·矿脉核心
+    mkContainer(55, -90, '保险柜', 2.2, UY, rng)   // 东廊道·核心设备
     mkContainer(55, -78, '医疗物资', 0.8, UY, rng)
-    mkContainer(-5, -59, '保险箱', 1.5, UY, rng)   // 西矿室
+    mkContainer(-5, -59, '保险箱', 1.5, UY, rng)   // 西廊道
     mkContainer(-5, -74, '高级旅行箱', 0.9, UY, rng)
-    mapMarkers.push({ x: 24, z: -50, kind: 'block', name: '塌陷矿洞' })
-    mapMarkers.push({ x: 24, z: -84, kind: 'block', name: '地下矿井' })
+    mapMarkers.push({ x: 24, z: -50, kind: 'block', name: '泄洪道' })
+    mapMarkers.push({ x: 24, z: -84, kind: 'block', name: '地下廊道' })
 
-    // ================= 矿区扩充②：东侧矿车轨道（循环矿车 + 装卸台） =================
+    // ================= 坝区扩充②：东侧运输轨道（循环斗车 + 装卸台） =================
     const mRailX = 116
     const mRailMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.5, metalness: 0.7 })
     const mTieMat = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 })
@@ -1103,10 +1103,10 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     walkables.push({ minX: 107.5, maxX: 113.5, minZ: -62.5, maxZ: -57.5, y0: 0.5, y1: 0.5 })
     mkContainer(110, -61, '武器箱', 0.8, 0.5, rng)
     mkContainer(111.8, -58.8, '收纳盒', 0.5, 0.5, rng)
-    mapMarkers.push({ x: mRailX, z: 0, kind: 'block', name: '矿车轨道' })
-    mapMarkers.push({ x: 110.5, z: -60, kind: 'block', name: '装卸台' })
+    mapMarkers.push({ x: mRailX, z: 0, kind: 'block', name: '运输轨道' })
+    mapMarkers.push({ x: 110.5, z: -60, kind: 'block', name: '大坝装卸台' })
   } else if (mapId === 'snow') {
-    // ================= 地图四：雪地雷达站 =================
+    // ================= 地图四：长弓溪谷 =================
     // 低温低能见度：60m 雪雾、积雪地面、冰湖减速区，主打中距离交战
     scene.background = new THREE.Color(0xc9d5e2)
     scene.fog = new THREE.Fog(0xc9d5e2, 16, 66)
@@ -1498,7 +1498,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(HT.x + 10, HT.z + 8, '保险箱', 1.3, 0, rng)
     mkContainer(HT.x, HT.z - 8.5, '保险柜', 1.8, 0, rng)
     mkContainer(HT.x + 12, HT.z - 4, '武器箱', 0.85, 0, rng)
-    mapMarkers.push({ x: HT.x, z: HT.z, kind: 'house', name: '皇家酒店' })
+    mapMarkers.push({ x: HT.x, z: HT.z, kind: 'house', name: '钻石皇后酒店' })
     mapMarkers.push({ x: HT.x, z: HT.z - 8, kind: 'house', name: '酒店大堂' })
 
     // ---- 超新铁轨 + 过路火车（东扩区，车厢可搜） ----
@@ -1539,12 +1539,12 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     }
     trainGroup.position.set(railX, 0, -220)
     scene.add(trainGroup)
-    mapMarkers.push({ x: railX, z: 0, kind: 'block', name: '超新铁轨' })
+    mapMarkers.push({ x: railX, z: 0, kind: 'block', name: '溪谷铁轨' })
     mapMarkers.push({ x: railX, z: -220, kind: 'mission', name: '过路火车' })
     train = { group: trainGroup, cars, speed: 18, x: railX, zMin: -280, zMax: 280 }
 
   } else if (mapId === 'desert') {
-    // ================= 地图五：沙海古城（双层：地表遗迹 + 大型地下陵墓群） =================
+    // ================= 地图五：巴克什（双层：地表遗迹 + 大型地下陵墓群） =================
     scene.background = new THREE.Color(0xdfc088)
     scene.fog = new THREE.Fog(0xdfc088, 50, 190)
     sun.color.setHex(0xffe2a8)
@@ -1635,7 +1635,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(60, 26, '弹药箱', 0.7, 0, rng)
     mkContainer(63, 32, '高级旅行箱', 0.6, 0, rng)
     mkContainer(57, 33, '收纳盒', 0.45, 0, rng)
-    mapMarkers.push({ x: 60, z: 30, kind: 'block', name: '驿站' })
+    mapMarkers.push({ x: 60, z: 30, kind: 'block', name: '商路驿站' })
 
     // ================= 地表：雕像群（西侧） =================
     for (let i = 0; i < 6; i++) {
@@ -1918,7 +1918,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       spawnPoints.push(new THREE.Vector3(ex, UY, ez))
     }
   } else if (mapId === 'tower') {
-    // ================= 地图二：高塔禁区 =================
+    // ================= 地图二：航天基地 =================
     playerSpawn = new THREE.Vector3(-110, 0, 0)
     playerYaw = -Math.PI / 2 // 面向地图中心（+x 方向）
 
@@ -2002,7 +2002,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       box(towerMat, 2.6, 1.2, 2.6, sx * (T - 1), FH * FLOORS + 0.6, sz * (T - 1), false)
     }
 
-    // ---- 巴别塔上层结构：蓝色玻璃幕墙摩天楼，对称退台收分 + 尖顶（仿三角洲巴别塔原型，总高约 200 米） ----
+    // ---- 发射塔上层结构：蓝色玻璃幕墙高塔，对称退台收分 + 尖顶（总高约 200 米） ----
     {
       const glassBlue = new THREE.MeshStandardMaterial({ color: 0x4a90d9, roughness: 0.25, metalness: 0.55, emissive: 0x1a4a80, emissiveIntensity: 0.5 })
       const glassPale = new THREE.MeshStandardMaterial({ color: 0xbcdcf5, roughness: 0.28, metalness: 0.5, emissive: 0x2a5a8a, emissiveIntensity: 0.4 })
@@ -2034,7 +2034,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
           box(glassPale, Math.max(1.2, s.w * 0.09), s.h, Math.max(1.2, s.w * 0.09), sx * (s.w / 2 - 0.4), ty + s.h / 2, sz * (s.w / 2 - 0.4), false)
         }
-        // 每面中央深色竖条（巴别塔标志性的中缝）
+        // 每面中央深色竖条（发射塔标志性的中缝）
         box(stripDark, Math.max(1.4, s.w * 0.12), s.h, 0.25, 0, ty + s.h / 2, s.w / 2 + 0.08, false)
         box(stripDark, Math.max(1.4, s.w * 0.12), s.h, 0.25, 0, ty + s.h / 2, -s.w / 2 - 0.08, false)
         box(stripDark, 0.25, s.h, Math.max(1.4, s.w * 0.12), s.w / 2 + 0.08, ty + s.h / 2, 0, false)
@@ -2173,7 +2173,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     lockedRoom(0, 29, 29, 'k_t_dorm', '宿舍房卡', '宿舍')
     lockedRoom(FH, -29, 29, 'k_t_arch', '档案室房卡', '档案室')
     lockedRoom(2 * FH, 29, -29, 'k_t_arm', '军械库房卡', '军械库')
-    lockedRoom(3 * FH, -29, -29, 'k_t_warden', '典狱长密卡', '典狱长密库')
+    lockedRoom(3 * FH, -29, -29, 'k_t_warden', '主控官密卡', '主控官密库')
     mkContainer(29, 29, '收纳盒', 0.9, 0)
     mkContainer(31, 26, '医疗物资', 0.8, 0)
     mkContainer(-29, 29, '高级旅行箱', 1.1, FH)
@@ -2187,8 +2187,8 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(-33, 29, '保险柜', 1.8, 3 * FH)
     mkContainer(33, 29, '保险柜', 1.8, 2 * FH)
     mkContainer(-100, 6, '售货机', 0.2, 0, rng)
-    mkContainer(-96, 2, '弹药箱', 0.5, 0, rng)    // 高塔出生点弹药箱
-    mkContainer(20, 20, '弹药箱', 0.8, 2 * FH, rng) // 高塔三层弹药箱
+    mkContainer(-96, 2, '弹药箱', 0.5, 0, rng)    // 塔底出生点弹药箱
+    mkContainer(20, 20, '弹药箱', 0.8, 2 * FH, rng) // 塔楼三层弹药箱
     mkContainer(120, 6, '售货机', 0.2, 0, rng)
 
     // ---- 专属任务「塔顶信号」：西侧任务终端 + 顶层发射器奖励箱 ----
@@ -2198,7 +2198,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mapMarkers.push({ x: 5, z: 5, kind: 'mission', name: '发射器' })
 
     // Boss 镇守顶层王座大厅
-    bossSpawns.push({ pos: new THREE.Vector3(0, FH * 3, -20), name: '塔主·典狱长' })
+    bossSpawns.push({ pos: new THREE.Vector3(0, FH * 3, -20), name: '塔主·总控官' })
     // 塔内守卫出没层
     spawnPoints.push(new THREE.Vector3(0, FH, 14))
     spawnPoints.push(new THREE.Vector3(-14, 2 * FH, -14))
@@ -2219,7 +2219,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       }
     }
 
-    mapMarkers.push({ x: 0, z: 0, kind: 'tower', name: '巴别塔' })
+    mapMarkers.push({ x: 0, z: 0, kind: 'tower', name: '发射塔' })
 
     // ---- 塔外平房区：密集棚屋环带 ----
     const houseMat = new THREE.MeshStandardMaterial({ color: 0xa89a80, roughness: 0.9 })

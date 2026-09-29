@@ -5,11 +5,11 @@ import { vsClient, roomShareUrl } from '@/game/net'
 import type { MapId } from '@/game/world'
 
 const MAPS: { id: MapId; icon: string; name: string }[] = [
-  { id: 'wild', icon: '⛏️', name: '废弃矿区' },
-  { id: 'tower', icon: '🗼', name: '高塔禁区' },
+  { id: 'wild', icon: '🏗️', name: '零号大坝' },
+  { id: 'tower', icon: '🚀', name: '航天基地' },
   { id: 'prison', icon: '🔒', name: '潮汐监狱' },
-  { id: 'snow', icon: '❄️', name: '雪地雷达站' },
-  { id: 'desert', icon: '🏜️', name: '沙海古城' },
+  { id: 'snow', icon: '❄️', name: '长弓溪谷' },
+  { id: 'desert', icon: '🏜️', name: '巴克什' },
 ]
 
 interface RoomInfo {

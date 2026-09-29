@@ -45,7 +45,7 @@ const INSPECT: Record<string, InspectStyle> = {
   v_sat:     { anim: 'insp-scan',   glow: '#5ab8ff', flavor: '抛物面天线一闪，定位灯钉死了你的坐标。' },
   // ---- Boss 专属掉落 ----
   v_core:      { anim: 'insp-spin',    dur: '2.5s', glow: '#ff8c3c', flavor: '铁爪的动力核心仍在转动，机油味混着铁锈味。' },
-  v_blueprint: { anim: 'insp-unfold',  glow: '#3ca8e0', flavor: '蓝图徐徐展开，巴别塔的每一层都标着典狱长的手迹。' },
+  v_blueprint: { anim: 'insp-unfold',  glow: '#3ca8e0', flavor: '蓝图徐徐展开，发射塔的每一层都标着总控官的手迹。' },
   v_scepter:   { anim: 'insp-raise',   glow: '#b06aff', flavor: '权杖举起又落下——三十年秩序，一声闷响。' },
   v_sharktooth:{ anim: 'insp-bite',    glow: '#5ab8ff', flavor: '鲨齿项链猛地一咬合，仿佛还能听见水下的咆哮。' },
   v_wolfcamo:  { anim: 'insp-stalk',   glow: '#bfe6ff', flavor: '雪地迷彩左潜右行，像白狼贴着雪坡呼吸。' },
@@ -61,8 +61,8 @@ const INSPECT: Record<string, InspectStyle> = {
   g_c3l3: { anim: 'insp-focus',  glow: '#7ec8ff', flavor: '测距仪的镜片由模糊到清晰——风雪千里，尽收眼底。' },
   g_c4l3: { anim: 'insp-cast',   glow: '#ffd700', flavor: '祭司杖凌空画符，金光如沙，从杖尖簌簌落下。' },
   // ---- 红色房卡 / 武器 / 弹药 ----
-  k_w_core:   { anim: 'insp-flip', glow: '#ff4a3c', flavor: '核心区房卡在指间翻转，磁条泛着危险的红光。' },
-  k_t_warden: { anim: 'insp-flip', glow: '#ff4a3c', flavor: '典狱长密卡翻面，塔顶门禁的徽记一闪而过。' },
+  k_w_core:   { anim: 'insp-flip', glow: '#ff4a3c', flavor: '行政楼房卡在指间翻转，磁条泛着危险的红光。' },
+  k_t_warden: { anim: 'insp-flip', glow: '#ff4a3c', flavor: '主控官密卡翻面，塔顶门禁的徽记一闪而过。' },
   k_d_tomb:   { anim: 'insp-flip', glow: '#ffd700', flavor: '法老金卡翻转，陵寝深处的石门仿佛在回应。' },
   k_s_office: { anim: 'insp-flip', glow: '#7ec8ff', flavor: '站长办公室卡在雪中翻面，霜花在卡面上凝结。' },
   w_awm:      { anim: 'insp-bolt', glow: '#ff4a3c', flavor: '拉动枪栓，复进簧一声脆响——下一发已经上膛。' },

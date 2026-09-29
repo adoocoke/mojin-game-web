@@ -17,7 +17,7 @@ export function MapOverlay() {
   const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
   const S = ui.mapSize || 140
-  const mapName = ui.mapId === 'tower' ? '高塔禁区' : ui.mapId === 'prison' ? '潮汐监狱' : ui.mapId === 'snow' ? '雪地雷达站' : ui.mapId === 'desert' ? '沙海古城' : '废弃矿区'
+  const mapName = ui.mapId === 'tower' ? '航天基地' : ui.mapId === 'prison' ? '潮汐监狱' : ui.mapId === 'snow' ? '长弓溪谷' : ui.mapId === 'desert' ? '巴克什' : '零号大坝'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
   const ang = Math.atan2(fx, -fz) * 180 / Math.PI

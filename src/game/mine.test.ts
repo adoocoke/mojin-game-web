@@ -1,4 +1,4 @@
-// 废弃矿区地下矿井可达性回归测试：
+// 零号大坝地下廊道可达性回归测试：
 // 曾有的 bug——坡道与主巷道地板 0.5m 断层 + 巷道延伸到坡道正下方被「就近面优先」吸回地表，
 // 导致地下部分根本进不去。入口已迁至主巷道南端（z=-50），坡道与巷道仅交界不重叠。
 import { describe, it, expect } from 'vitest'
@@ -36,7 +36,7 @@ function walk(x0: number, z0: number, x1: number, z1: number, feet0: number): nu
   return f
 }
 
-describe('废弃矿区地下矿井可达性', () => {
+describe('零号大坝地下廊道可达性', () => {
   it('坡道可下行到地下 -4', () => {
     const f = walk(24, -38, 24, -57.3, 0)
     expect(f).toBeLessThan(-3.8)

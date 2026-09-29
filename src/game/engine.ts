@@ -79,7 +79,7 @@ export class Game {
   private searchTarget: Container | null = null
   private extractT = 0
   private padWarnT = 0 // 天台直升机坪超重告警冷却
-  private stormOn = false      // 沙海古城：沙暴已来袭
+  private stormOn = false      // 巴克什：沙暴已来袭
   private stormHurtT = 0       // 沙暴掉血音效节流
   // ===== 剧情战役（P3 #23） =====
   private camp: CampaignLevel | null = null
@@ -807,7 +807,7 @@ export class Game {
     return false
   }
 
-  /** 矿区 Boss 铁爪二阶段：半血狂暴——提速提射速，并吹哨召唤两名护卫 */
+  /** 大坝 Boss 铁爪二阶段：半血狂暴——提速提射速，并吹哨召唤两名护卫 */
   private checkBossFrenzy(e: Enemy) {
     if (e.dead || !e.boss || e.frenzied || e.hp > e.maxHp / 2) return
     if (!e.name.includes('铁爪')) return
@@ -1314,7 +1314,7 @@ export class Game {
       sfx.extract()
     }
     // 任何容器都有机会出本图房卡（活动「门禁解禁」掉率翻倍以上，自动档按强度浮动）
-    const cardChance = this.world.mapId === 'desert' ? 0.17 : 0.09 // 沙海古城房卡更好出（陵寝双门双卡）
+    const cardChance = this.world.mapId === 'desert' ? 0.17 : 0.09 // 巴克什房卡更好出（陵寝双门双卡）
     if (Math.random() < (ev === 'cards' ? cardChance + 0.13 * pw : cardChance)) autoPlace(c.grid, rollLootItem(CARD_POOLS[this.world.mapId], luck))
     // 官方活动道具掉落注入（窗口期内全程生效，不随活动轮换）
     const evLoot = activeOfficialLoot()
@@ -2263,7 +2263,7 @@ export class Game {
     const nBoss = this.world.bossSpawns.length
     const isSnow = this.world.mapId === 'snow'
     const isDesert = this.world.mapId === 'desert'
-    let total = isSnow ? 11 : nBoss >= 2 ? 12 : nBoss === 1 ? 10 : 8 // 潮汐监狱最大；雪地 11 人
+    let total = isSnow ? 11 : nBoss >= 2 ? 12 : nBoss === 1 ? 10 : 8 // 潮汐监狱最大；长弓溪谷 11 人
     const hr = uiState.highRisk
     if (hr) total = Math.round(total * 1.5) // 高危禁区：敌人数量 ×1.5
     total = Math.round(total * (this.theme.mods.enemyCountMul ?? 1)) // 赛季主题：敌人数量倍率
@@ -2851,7 +2851,7 @@ export class Game {
       // 撤离（用真实时间，避免低帧率下变慢；半径略大于光圈）
       const distExtract = Math.hypot(this.pos.x - this.world.extractPos.x, this.pos.z - this.world.extractPos.z)
       const sameLevel = Math.abs((this.pos.y - EYE) - this.world.extractPos.y) < 2.5
-      const ep2 = uiState.highRisk ? undefined : this.world.extractPos2 // 第二撤离点（沙海古城地下暗河）；高危禁区：撤离点减半
+      const ep2 = uiState.highRisk ? undefined : this.world.extractPos2 // 第二撤离点（巴克什地下暗河）；高危禁区：撤离点减半
       const distExtract2 = ep2 ? Math.hypot(this.pos.x - ep2.x, this.pos.z - ep2.z) : Infinity
       const sameLevel2 = ep2 ? Math.abs((this.pos.y - EYE) - ep2.y) < 2.5 : false
       const atPad2 = distExtract2 < 6.2 && sameLevel2
@@ -2905,7 +2905,7 @@ export class Game {
       // 时间
       this.raidLeft -= rawDt
       if (this.raidLeft <= 0) { this.endRaid(false) }
-      // 沙海古城：开局 8 分钟后沙暴来袭——地表能见度骤降且持续掉血，墓道内安全
+      // 巴克什：开局 8 分钟后沙暴来袭——地表能见度骤降且持续掉血，墓道内安全
       if (this.world.mapId === 'desert' && !this.stormOn && this.raidDuration - this.raidLeft >= this.raidDuration - 120) { // 最后 2 分钟沙暴来袭
         this.stormOn = true
         const fog = this.world.scene.fog as THREE.Fog | null
