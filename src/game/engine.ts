@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { buildWorld, buildDeathCrateMesh, spawnAirDrop, type World, type Container, type MapId, type Door } from './world'
-import { EnemyManager, type Enemy } from './enemies'
+import { EnemyManager, type Enemy, type EnemyKind } from './enemies'
 import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, DRINK_MATS, type OpMods } from './data'
 import { RARITY_INFO, RARITY_ORDER, itemValue, itemWeight, type GunDef, type Rarity, type AttSlot, type ItemInstance, type ItemDef, type PlacedItem, type DrinkBuff } from './types'
 import { makeGrid, autoPlace, removeItem, findPlaced, placeAt, hitTest, defOf } from './inventory'
@@ -123,6 +123,19 @@ export class Game {
   private warBestStreak = 0
   private lastHurtT = 0       // 上次受击时间（脱战回血用）
   private warResupplyT = 0    // 弹药补给计时
+  // ===== 大战场 v2：队友 / 子模式 =====
+  private allies: EnemyManager | null = null      // 己方 AI 队友（蓝色阵营）
+  private allyRespawnQ: { t: number; kind: EnemyKind }[] = []  // 队友复活队列
+  private warTargetList: { pos: THREE.Vector3; alive: boolean; ally: Enemy }[] = []  // 每帧重建的敌人目标表
+  private warMode: 'tdm' | 'ad' = 'tdm'
+  private scoreUs = 0          // 团队死斗：我方击杀
+  private scoreThem = 0        // 团队死斗：敌方击杀
+  private tickets = 0          // 攻防战：进攻方兵力值
+  private capIdx = 0           // 攻防战：当前目标点
+  private capProg = 0          // 攻防战：当前点进度 0-100
+  private capPoints: { pos: THREE.Vector3; label: string; ring: THREE.Mesh; flag: THREE.Mesh; light: THREE.PointLight }[] = []
+  private capGroup: THREE.Group | null = null
+  private adWaveT = 0          // 攻防战：防守方增援波次计时
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
 
@@ -852,6 +865,8 @@ export class Game {
       this.warStreak++
       if (this.warStreak > this.warBestStreak) this.warBestStreak = this.warStreak
       uiState.warStreak = this.warStreak
+      this.scoreUs++
+      uiState.warScoreUs = this.scoreUs
       if (this.warStreak % 5 === 0) this.toast(`🔥 ${this.warStreak} 连杀！无人能挡！`, 'cyan')
     }
     sfx.kill()
@@ -2128,7 +2143,18 @@ export class Game {
     this.war = uiState.mode === 'war' && !uiState.tutorial && !uiState.campLevelId && !this.vs
     this.warLeft = 300; this.respawnT = 0; this.protectT = 0
     this.warStreak = 0; this.warBestStreak = 0; this.warResupplyT = 0; this.lastHurtT = 0
+    this.warMode = uiState.warMode
+    this.scoreUs = 0; this.scoreThem = 0
+    this.tickets = this.warMode === 'ad' ? 75 : 0
+    this.capIdx = 0; this.capProg = 0; this.adWaveT = 0
+    this.allyRespawnQ = []
     uiState.warTime = 300; uiState.warRespawn = 0; uiState.warStreak = 0; uiState.warDeaths = 0
+    uiState.warScoreUs = 0; uiState.warScoreThem = 0
+    uiState.warTickets = this.tickets; uiState.warCapIdx = 0; uiState.warCapProg = 0; uiState.warCapHot = false
+    if (this.war) {
+      this.buildCapturePoints()
+      this.spawnAllies()
+    }
     // 大战场：纯枪法模式，新手无枪则系统配发一把步枪
     if (this.war && this.gunDef.melee && !this.ownedGun
       && !this.backpack.placed.some(p => defOf(p.item).kind === 'weapon' && !!defOf(p.item).gunId)) {
@@ -2301,17 +2327,11 @@ export class Game {
       return
     }
     if (this.war) {
-      // ===== 大战场：高密度纯枪战——12 名常驻 + 每图 Boss，阵亡持续补员 =====
-      const kindPool = (): 'normal' | 'heavy' | 'grenadier' | 'scout' => {
-        const r = Math.random()
-        return r < 0.18 ? 'heavy' : r < 0.34 ? 'grenadier' : r < 0.5 ? 'scout' : 'normal'
-      }
-      for (let i = 0; i < 12; i++) {
-        const p = this.randomSpawnPos(35)
-        this.enemies.spawn(p, Math.floor(Math.random() * 3), { kind: kindPool() })
-      }
-      for (const b of this.world.bossSpawns) {
-        this.enemies.spawn(b.pos.clone(), 3, { boss: true, name: `👑 ${b.name}`, hp: 420, dmg: 12, speed: 3.6, acc: 0.24, fireGap: 0.5, patrolRadius: 16 })
+      // ===== 大战场 v2：阵营对抗——敌方整队（死斗 6 人 / 攻防 8 名防守兵），阵亡持续补员 =====
+      const n = this.warMode === 'ad' ? 8 : 6
+      for (let i = 0; i < n; i++) {
+        const p = this.warEnemySpawnPos()
+        this.enemies.spawn(p, Math.floor(Math.random() * 3), { kind: this.warKindPool() })
       }
       return
     }
@@ -2372,6 +2392,246 @@ export class Game {
   }
 
   /** 玩家生命归零：大战场 → 3 秒后复活（返回 true 拦截结算）；其余模式返回 false 走 endRaid */
+
+  // ================= 大战场 v2：队友与模式 =================
+  private static ALLY_NAMES = ['尖刀', '磐石', '夜莺', '雷鸟', '孤狼', '山猫', '猎鹰', '暴雨']
+  private static ALLY_KINDS: EnemyKind[] = ['normal', 'normal', 'scout', 'normal', 'heavy']
+  /** 攻防战据点位置（各竞技场原创布局） */
+  private static CAPTURE_POINTS: Record<string, { x: number; z: number }[]> = {
+    blocks:   [{ x: 0, z: -34 }, { x: 0, z: 8 }, { x: 0, z: 48 }],
+    pipeline: [{ x: -36, z: 0 }, { x: 6, z: 0 }, { x: 48, z: 0 }],
+    trench:   [{ x: 0, z: -40 }, { x: 0, z: 0 }, { x: 0, z: 40 }],
+  }
+
+  private warKindPool(): EnemyKind {
+    const r = Math.random()
+    return r < 0.16 ? 'heavy' : r < 0.3 ? 'grenadier' : r < 0.46 ? 'scout' : 'normal'
+  }
+
+  /** 敌方出生点：攻防围绕当前据点布防；死斗远离玩家随机 */
+  private warEnemySpawnPos(): THREE.Vector3 {
+    if (this.warMode === 'ad' && this.capPoints.length) {
+      const pt = this.capPoints[Math.min(this.capIdx, this.capPoints.length - 1)].pos
+      const half = this.world.size / 2 - 5
+      for (let i = 0; i < 8; i++) {
+        const ang = Math.random() * Math.PI * 2
+        const r = 13 + Math.random() * 14
+        const p = new THREE.Vector3(
+          THREE.MathUtils.clamp(pt.x + Math.cos(ang) * r, -half, half), 0,
+          THREE.MathUtils.clamp(pt.z + Math.sin(ang) * r, -half, half))
+        if (p.distanceTo(this.pos) > 24) return p
+      }
+      return new THREE.Vector3(pt.x, 0, pt.z)
+    }
+    return this.randomSpawnPos(40)
+  }
+
+  /** 生成己方 AI 队友小队（5 人，蓝色阵营） */
+  private spawnAllies() {
+    this.allies = new EnemyManager(this.world.scene, this.world.colliders)
+    for (let i = 0; i < 5; i++) this.spawnAlly(Game.ALLY_KINDS[i % Game.ALLY_KINDS.length])
+  }
+
+  private spawnAlly(kind: EnemyKind) {
+    if (!this.allies) return
+    const base = this.world.playerSpawn
+    const ang = Math.random() * Math.PI * 2
+    const p = new THREE.Vector3(
+      base.x + Math.cos(ang) * (2.5 + Math.random() * 3.5), base.y,
+      base.z + Math.sin(ang) * (2.5 + Math.random() * 3.5))
+    const name = `战友·${Game.ALLY_NAMES[Math.floor(Math.random() * Game.ALLY_NAMES.length)]}`
+    const ally = this.allies.spawn(p, 1, {
+      kind, name, hp: 150, dmg: 10, speed: 4.4, acc: 0.05, fireGap: 1.2, patrolRadius: 16, armor: 0x2563eb,
+    })
+    ally.bar.material.color.setHex(0x38bdf8) // 蓝色血条区分敌我
+  }
+
+  /** 攻防战：建造 A/B/C 据点（旗杆 + 旗帜 + 光环 + 光源） */
+  private buildCapturePoints() {
+    this.capPoints = []
+    if (this.warMode !== 'ad') return
+    const defs = Game.CAPTURE_POINTS[this.world.mapId] ?? Game.CAPTURE_POINTS.blocks
+    this.capGroup = new THREE.Group()
+    const labels = ['A', 'B', 'C']
+    defs.forEach((d, i) => {
+      const g = new THREE.Group()
+      g.position.set(d.x, 0, d.z)
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4.2, 8),
+        new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.6 }))
+      pole.position.y = 2.1
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.75, 0.07),
+        new THREE.MeshBasicMaterial({ color: 0xef4444 }))
+      flag.position.set(0.7, 3.6, 0)
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(6.5, 0.18, 8, 44),
+        new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.75 }))
+      ring.rotation.x = Math.PI / 2
+      ring.position.y = 0.14
+      const light = new THREE.PointLight(0xef4444, 14, 20)
+      light.position.y = 3
+      g.add(pole); g.add(flag); g.add(ring); g.add(light)
+      this.capGroup!.add(g)
+      this.capPoints.push({ pos: new THREE.Vector3(d.x, 0, d.z), label: labels[i], ring, flag, light })
+    })
+    this.world.scene.add(this.capGroup)
+  }
+
+  /** 队友 AI：索敌 → 交战/机动；无目标时向据点（攻防）或玩家（死斗）靠拢 */
+  private alliesTick(dt: number) {
+    const mgr = this.allies
+    if (!mgr) return
+    const obstacles = this.world.obstacleMeshes
+    for (const a of mgr.enemies) {
+      if (a.dead) continue
+      const pos = a.group.position
+      let best: Enemy | null = null
+      let bestD = 70
+      for (const e of this.enemies.enemies) {
+        if (e.dead) continue
+        const d = pos.distanceTo(e.group.position)
+        if (d >= bestD) continue
+        const eye = e.group.position.clone(); eye.y = e.baseY + 1.5
+        if (mgr.canSee(a, eye, obstacles)) { best = e; bestD = d }
+      }
+      let moveDir: THREE.Vector3 | null = null
+      if (best) {
+        const tp = best.group.position
+        const face = Math.atan2(tp.x - pos.x, tp.z - pos.z)
+        let dyaw = face - a.group.rotation.y
+        while (dyaw > Math.PI) dyaw -= Math.PI * 2
+        while (dyaw < -Math.PI) dyaw += Math.PI * 2
+        a.group.rotation.y += dyaw * Math.min(1, dt * 8)
+        const to = tp.clone().sub(pos); to.y = 0
+        if (bestD > 22) moveDir = to.clone().normalize()
+        else {
+          const strafe = new THREE.Vector3(-to.z, 0, to.x).normalize()
+            .multiplyScalar(Math.sin(performance.now() / 850 + a.id) > 0 ? 1 : -1)
+          if (bestD < 8) strafe.add(to.clone().normalize().multiplyScalar(-0.5))
+          moveDir = strafe.normalize()
+        }
+        a.fireTimer -= dt
+        if (a.fireTimer <= 0) {
+          a.fireTimer = (0.75 + Math.random() * 0.8) * a.fireGap
+          this.allyShoot(a, best, bestD)
+        }
+      } else {
+        let tgt: THREE.Vector3
+        if (this.warMode === 'ad' && this.capPoints[this.capIdx]) tgt = this.capPoints[this.capIdx].pos
+        else if (pos.distanceTo(this.pos) > 24) tgt = this.pos
+        else {
+          if (pos.distanceTo(a.patrolTarget) < 3) {
+            const ang = Math.random() * Math.PI * 2
+            a.patrolTarget = new THREE.Vector3(
+              THREE.MathUtils.clamp(pos.x + Math.cos(ang) * 25, -this.world.size / 2 + 5, this.world.size / 2 - 5), 0,
+              THREE.MathUtils.clamp(pos.z + Math.sin(ang) * 25, -this.world.size / 2 + 5, this.world.size / 2 - 5))
+          }
+          tgt = a.patrolTarget
+        }
+        const to = tgt.clone().sub(pos); to.y = 0
+        if (to.length() > 4) {
+          moveDir = to.normalize()
+          const face = Math.atan2(moveDir.x, moveDir.z)
+          let dyaw = face - a.group.rotation.y
+          while (dyaw > Math.PI) dyaw -= Math.PI * 2
+          while (dyaw < -Math.PI) dyaw += Math.PI * 2
+          a.group.rotation.y += dyaw * Math.min(1, dt * 6)
+        }
+      }
+      if (moveDir) {
+        const sp = a.speed * (best ? 0.8 : 1)
+        const nx = pos.x + moveDir.x * sp * dt
+        const nz = pos.z + moveDir.z * sp * dt
+        if (!mgr.collide(nx, pos.z, a.baseY)) pos.x = nx
+        if (!mgr.collide(pos.x, nz, a.baseY)) pos.z = nz
+        pos.y = a.baseY + Math.abs(Math.sin(performance.now() / 180 + a.id)) * 0.05
+      }
+      const ratio = Math.max(0, a.hp / a.maxHp)
+      a.bar.scale.x = 1.05 * ratio
+      a.bar.position.x = -(1.05 * (1 - ratio)) / 2
+    }
+  }
+
+  /** 队友开火：蓝色曳光，命中判定后伤及敌人 */
+  private allyShoot(a: Enemy, target: Enemy, dist: number) {
+    const from = a.group.position.clone(); from.y = a.baseY + 1.4
+    const aim = target.group.position.clone(); aim.y = target.baseY + 1.2
+    const hitChance = THREE.MathUtils.clamp(0.62 + a.acc - dist * 0.016, 0.18, 0.72)
+    const hit = Math.random() < hitChance
+    sfx.enemyShot()
+    const to = hit
+      ? aim.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3))
+      : aim.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4))
+    this.spawnTracer(from, to, 0x53b7ff)
+    if (hit && !target.dead) {
+      const killed = this.enemies.damage(target, a.dmg, a.group.position)
+      if (killed) this.onAllyKill(a, target)
+    }
+  }
+
+  /** 队友击杀敌人：记我方比分，掉落清理 */
+  private onAllyKill(a: Enemy, e: Enemy) {
+    this.scoreUs++
+    uiState.warScoreUs = this.scoreUs
+    uiState.killFeed = [`💙 ${a.name} 击毙 ${e.name}`, ...uiState.killFeed].slice(0, 4)
+    this.enemies.remove(e)
+    sfx.kill()
+    notify()
+  }
+
+  /** 队友阵亡：记敌方比分/扣兵力，6 秒后复活 */
+  private onAllyDeath(a: Enemy, killer?: Enemy) {
+    if (this.warMode === 'ad') {
+      this.tickets--
+      uiState.warTickets = Math.max(0, this.tickets)
+    } else {
+      this.scoreThem++
+      uiState.warScoreThem = this.scoreThem
+    }
+    uiState.killFeed = [`💔 ${a.name} 被${killer ? ` ${killer.name} ` : ''}击倒`, ...uiState.killFeed].slice(0, 4)
+    this.allies?.remove(a)
+    this.allyRespawnQ.push({ t: 6, kind: a.kind })
+    notify()
+  }
+
+  /** 攻防战：占领逻辑 + 据点视觉 */
+  private adTick(dt: number) {
+    const pt = this.capPoints[this.capIdx]
+    if (!pt) return
+    const inZone = (p: THREE.Vector3) => Math.hypot(p.x - pt.pos.x, p.z - pt.pos.z) < 6.5
+    let atk = 0, def = 0
+    if (this.hp > 0 && inZone(this.pos)) atk++
+    if (this.allies) for (const a of this.allies.enemies) if (!a.dead && inZone(a.group.position)) atk++
+    for (const e of this.enemies.enemies) if (!e.dead && inZone(e.group.position)) def++
+    const contested = atk > 0 && def > 0
+    if (atk > 0 && def === 0) this.capProg = Math.min(100, this.capProg + dt * (9 + 5 * (atk - 1)))
+    else if (atk === 0) this.capProg = Math.max(0, this.capProg - dt * 5)
+    uiState.warCapProg = Math.round(this.capProg)
+    uiState.warCapIdx = this.capIdx
+    uiState.warCapHot = contested
+    const flash = performance.now() % 600 < 300
+    const color = contested ? (flash ? 0xfacc15 : 0xef4444) : this.capProg > 0 ? 0xf59e0b : 0xef4444
+    ;(pt.flag.material as THREE.MeshBasicMaterial).color.setHex(color)
+    ;(pt.ring.material as THREE.MeshBasicMaterial).color.setHex(color)
+    pt.light.color.setHex(color)
+    if (this.capProg >= 100) {
+      ;(pt.flag.material as THREE.MeshBasicMaterial).color.setHex(0x3b82f6)
+      ;(pt.ring.material as THREE.MeshBasicMaterial).color.setHex(0x3b82f6)
+      pt.light.color.setHex(0x3b82f6)
+      uiState.killFeed = [`🚩 ${pt.label} 点已占领！`, ...uiState.killFeed].slice(0, 4)
+      this.toast(`🚩 攻占 ${pt.label} 点！${this.capIdx < 2 ? '向下一个据点推进！' : ''}`, 'cyan')
+      sfx.kill()
+      this.capIdx++
+      this.capProg = 0
+      uiState.warCapIdx = this.capIdx
+      notify()
+    }
+  }
+
+  /** 当前局势下的战果（提前撤离结算用） */
+  private warResultNow(): 'win' | 'lose' | 'draw' {
+    if (this.warMode === 'ad') return this.capIdx >= 3 ? 'win' : 'lose'
+    return this.scoreUs > this.scoreThem ? 'win' : this.scoreUs < this.scoreThem ? 'lose' : 'draw'
+  }
+
   private onPlayerDeath(): boolean {
     if (!this.war) return false
     this.hp = 0; uiState.hp = 0
@@ -2380,19 +2640,20 @@ export class Game {
     uiState.warDeaths++
     this.warStreak = 0; uiState.warStreak = 0
     this.firing = false
+    if (this.warMode === 'ad') { this.tickets--; uiState.warTickets = Math.max(0, this.tickets) }
+    else { this.scoreThem++; uiState.warScoreThem = this.scoreThem }
     uiState.killFeed = ['☠️ 你被击倒了，3 秒后重返战场', ...uiState.killFeed].slice(0, 4)
     sfx.dead()
     notify()
     return true
   }
 
-  /** 大战场每秒逻辑：倒计时 / 复活 / 补员 / 脱战回血 / 弹药补给 */
+  /** 大战场每秒逻辑：倒计时 / 复活 / 双方补员 / 队友 AI / 模式胜负 / 脱战回血 / 弹药补给 */
   private warTick(rawDt: number) {
     this.warLeft -= rawDt
     uiState.warTime = Math.max(0, this.warLeft)
-    if (this.warLeft <= 0) { this.endWar(); return }
+    // 阵亡复活倒数
     if (this.respawnT > 0) {
-      // 阵亡中：倒数复活
       this.respawnT -= rawDt
       this.firing = false
       uiState.warRespawn = Math.max(0, this.respawnT)
@@ -2404,18 +2665,40 @@ export class Game {
         this.toast('💪 重返战场！2 秒无敌', 'cyan')
         notify()
       }
-      return
     }
     if (this.protectT > 0) this.protectT -= rawDt
-    // 持续补员：场上始终保持 12 名敌人
+    // 敌方补员：保持整队编制（死斗 6 / 攻防 8）
+    const want = this.warMode === 'ad' ? 8 : 6
     const alive = this.enemies.aliveCount()
-    if (alive < 12) {
-      const kinds: ('normal' | 'heavy' | 'grenadier' | 'scout')[] = ['normal', 'heavy', 'grenadier', 'scout']
-      for (let i = 0; i < 12 - alive; i++) {
-        const p = this.randomSpawnPos(35)
-        this.enemies.spawn(p, Math.floor(Math.random() * 3), { kind: kinds[Math.floor(Math.random() * 4)] })
+    if (alive < want) {
+      for (let i = 0; i < want - alive; i++) {
+        this.enemies.spawn(this.warEnemySpawnPos(), Math.floor(Math.random() * 3), { kind: this.warKindPool() })
       }
       uiState.killFeed = ['⚠️ 敌方增援抵达战场', ...uiState.killFeed].slice(0, 4)
+    }
+    // 队友复活队列：6 秒后重返战场
+    for (let i = this.allyRespawnQ.length - 1; i >= 0; i--) {
+      const r = this.allyRespawnQ[i]
+      r.t -= rawDt
+      if (r.t <= 0) {
+        this.allyRespawnQ.splice(i, 1)
+        this.spawnAlly(r.kind)
+        uiState.killFeed = ['💙 战友增援抵达战场', ...uiState.killFeed].slice(0, 4)
+      }
+    }
+    // 队友 AI
+    this.alliesTick(rawDt)
+    // 攻防：占领逻辑
+    if (this.warMode === 'ad') this.adTick(rawDt)
+    // 胜负判定
+    if (this.warMode === 'tdm') {
+      if (this.scoreUs >= 40 || this.scoreThem >= 40 || this.warLeft <= 0) {
+        this.endWar(this.scoreUs > this.scoreThem ? 'win' : this.scoreUs < this.scoreThem ? 'lose' : 'draw')
+        return
+      }
+    } else {
+      if (this.capIdx >= 3) { this.endWar('win'); return }
+      if (this.tickets <= 0 || this.warLeft <= 0) { this.endWar('lose'); return }
     }
     // 脱战 4 秒后回血（15/s）
     if (this.hp > 0 && this.hp < uiState.maxHp && performance.now() - this.lastHurtT > 4000) {
@@ -2438,14 +2721,14 @@ export class Game {
     }
   }
 
-  /** 大战场结算：按击杀发金币，不结算物资 */
-  private endWar() {
+  private endWar(result: 'win' | 'lose' | 'draw' = 'win') {
     this.running = false
     this.firing = false
     uiState.phase = 'menu'
     try { document.exitPointerLock() } catch { /* 忽略 */ }
     const kills = uiState.kills
-    const gold = kills * 100 + this.warBestStreak * 50
+    const winBonus = result === 'win' ? 300 : 0
+    const gold = kills * 100 + this.warBestStreak * 50 + winBonus
     uiState.money += gold
     saveMoney(uiState.money)
     // 战绩存档
@@ -2453,17 +2736,25 @@ export class Game {
       const rec = JSON.parse(localStorage.getItem('mojin_war_record') ?? '{}')
       rec.bestKills = Math.max(rec.bestKills ?? 0, kills)
       rec.bestStreak = Math.max(rec.bestStreak ?? 0, this.warBestStreak)
+      rec.wins = (rec.wins ?? 0) + (result === 'win' ? 1 : 0)
+      rec.games = (rec.games ?? 0) + 1
       localStorage.setItem('mojin_war_record', JSON.stringify(rec))
     } catch { /* 忽略 */ }
-    uiState.resultOpen = false
-    uiState.campResult = {
-      win: true,
-      title: '⚔️ 大战场 · 战斗结束',
-      lines: [
-        `💀 击杀 ${kills} 人 ｜ 阵亡 ${uiState.warDeaths} 次 ｜ 最高连杀 ${this.warBestStreak}`,
-        `💰 战功奖励 +${gold.toLocaleString()} 金币（击杀 ×100 + 最高连杀 ×50）`,
-      ],
+    const modeName = this.warMode === 'ad' ? '攻防战' : '团队死斗'
+    const title = result === 'win' ? `🏆 ${modeName} · 我方胜利` : result === 'lose' ? `💀 ${modeName} · 战败` : `⚔️ ${modeName} · 平局`
+    const lines: string[] = []
+    if (this.warMode === 'tdm') {
+      lines.push(`🔵 我方 ${this.scoreUs} 杀 : ${this.scoreThem} 杀 🔴 敌方（先夺 40 杀获胜）`)
+    } else {
+      lines.push(result === 'win'
+        ? '🚩 三处据点全部攻占，防线告破！'
+        : this.tickets <= 0 ? '💔 进攻兵力耗尽，据点仍在敌手' : '⏱ 时间耗尽，未能攻占全部据点')
+      lines.push(`🚩 攻占据点 ${Math.min(this.capIdx, 3)}/3 ｜ 剩余兵力 ${Math.max(0, this.tickets)}`)
     }
+    lines.push(`💀 个人击杀 ${kills} 人 ｜ 阵亡 ${uiState.warDeaths} 次 ｜ 最高连杀 ${this.warBestStreak}`)
+    lines.push(`💰 战功奖励 +${gold.toLocaleString()} 金币（击杀 ×100 + 最高连杀 ×50${winBonus ? ' + 胜利 300' : ''}）`)
+    uiState.resultOpen = false
+    uiState.campResult = { win: result === 'win', title, lines }
     notify()
   }
 
@@ -2968,6 +3259,16 @@ export class Game {
           this.grenades.splice(i, 1)
           this.spawnSpark(g.target, 0xff7a3c)
           sfx.boom()
+          if (this.war && this.allies) {
+            for (const a of [...this.allies.enemies]) {
+              if (a.dead) continue
+              const da = a.group.position.distanceTo(g.target)
+              if (da < 5) {
+                const killed = this.allies.damage(a, 40 * (1 - da / 5), g.from)
+                if (killed) this.onAllyDeath(a)
+              }
+            }
+          }
           const d = this.pos.distanceTo(g.target)
           if (d < 5 && this.hp > 0 && !uiState.creator) {
             this.hp -= 35 * (1 - d / 5)
@@ -3011,7 +3312,7 @@ export class Game {
       if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
         this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
-        if (this.extractT >= 1) { uiState.extractProgress = -1; if (this.war) this.endWar(); else this.endRaid(true) } // 大战场：站上撤离点可提前结算
+        if (this.extractT >= 1) { uiState.extractProgress = -1; if (this.war) this.endWar(this.warResultNow()); else this.endRaid(true) } // 大战场：站上撤离点可提前按当前战果结算
       } else {
         this.extractT = 0
         if (uiState.extractProgress >= 0) uiState.extractProgress = -1
@@ -3197,9 +3498,12 @@ export class Game {
         notify()
       }
 
-      // 敌人
-      this.enemies.update(dt, this.pos, this.hp > 0, this.world.obstacleMeshes, (dmg, from, e) => this.enemyShoot(dmg, from, e), this.world.doors,
-      { onGrenade: (from, to) => {
+      // 敌人（大战场：目标表 = 存活队友，敌人就近选择玩家或队友攻击）
+      this.warTargetList = (this.war && this.allies)
+        ? this.allies.enemies.filter(a => !a.dead).map(a => ({ pos: a.group.position.clone().setY(a.baseY + 1.62), alive: true, ally: a }))
+        : []
+      this.enemies.update(dt, this.pos, this.hp > 0, this.world.obstacleMeshes, (dmg, from, e, ti) => this.enemyShoot(dmg, from, e, ti ?? 0), this.world.doors,
+      { targets: this.warTargetList, onGrenade: (from, to) => {
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6),
           new THREE.MeshStandardMaterial({ color: 0x1a1a1a, emissive: 0xff3b30, emissiveIntensity: 1.5 }))
         mesh.position.copy(from)
@@ -3399,7 +3703,27 @@ export class Game {
     this.renderer.render(this.world.scene, this.camera)
   }
 
-  private enemyShoot(dmg: number, from: THREE.Vector3, _e: Enemy) {
+  private enemyShoot(dmg: number, from: THREE.Vector3, _e: Enemy, ti = 0) {
+    // 大战场：敌人可能以队友为目标（ti>0 → warTargetList[ti-1]）
+    if (ti > 0 && this.war && this.allies) {
+      const ally = this.warTargetList[ti - 1]?.ally
+      if (!ally || ally.dead) return
+      const ap = ally.group.position
+      const dist = from.distanceTo(ap)
+      const hitChance = THREE.MathUtils.clamp(0.55 + _e.acc - dist * 0.018, 0.12, 0.65)
+      const hit = Math.random() < hitChance
+      sfx.enemyShot()
+      const aim = ap.clone(); aim.y = ally.baseY + 1.3
+      const target = hit
+        ? aim.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3))
+        : aim.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4))
+      this.spawnTracer(from.clone().add(new THREE.Vector3(0, 0.2, 0)), target, 0xff6a4a)
+      if (hit) {
+        const killed = this.allies.damage(ally, dmg * 1.4, from)
+        if (killed) this.onAllyDeath(ally, _e)
+      }
+      return
+    }
     const toPlayer = this.pos.clone().sub(from)
     const dist = toPlayer.length()
     const hitChance = THREE.MathUtils.clamp(0.75 + _e.acc - dist * (_e.boss ? 0.012 : 0.02), _e.boss ? 0.35 : 0.15, 0.7 + _e.acc)

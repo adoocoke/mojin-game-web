@@ -61,6 +61,13 @@ export interface UIState {
   reportOpen: boolean     // 开发周报面板
   // ===== 大战场模式（纯枪法：无限复活 · 击杀计分 · 5 分钟） =====
   mode: 'raid' | 'war'  // raid=搜打撤；war=大战场
+  warMode: 'tdm' | 'ad' // 大战场子模式：tdm=团队死斗；ad=攻防战
+  warScoreUs: number    // 我方比分（团队死斗击杀数 / 攻防已占点数）
+  warScoreThem: number  // 敌方比分（团队死斗击杀数）
+  warTickets: number    // 攻防战：进攻方剩余兵力值
+  warCapIdx: number     // 攻防战：当前目标点 0/1/2（A/B/C）
+  warCapProg: number    // 攻防战：当前点占领进度 0-100
+  warCapHot: boolean    // 攻防战：当前点正在交火（双方在点内）
   warTime: number       // 大战场剩余秒数
   warRespawn: number    // 阵亡复活倒计时（>0 = 阵亡中）
   warStreak: number     // 当前连杀
@@ -122,7 +129,10 @@ export const uiState: UIState = {
   operator: localStorage.getItem('mojin_operator') || 'assault',
   skillCd: 0, skillActive: '', revealEnemies: [],
   questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, reportOpen: false,
-  mode: 'raid' as const, warTime: 0, warRespawn: 0, warStreak: 0, warDeaths: 0, resultQuests: [], lootReveal: {},
+  mode: 'raid' as const,
+  warMode: (localStorage.getItem('mojin_war_mode') as 'tdm' | 'ad') || 'tdm',
+  warScoreUs: 0, warScoreThem: 0, warTickets: 0, warCapIdx: 0, warCapProg: 0, warCapHot: false,
+  warTime: 0, warRespawn: 0, warStreak: 0, warDeaths: 0, resultQuests: [], lootReveal: {},
   opXp: JSON.parse(localStorage.getItem('mojin_op_xp') || '{}') as Record<string, number>,
   raidLive: { searches: 0, doors: 0, bossKills: 0, scouts: [] },
   questHudHide: localStorage.getItem('mojin_questhud_hide') === '1',
@@ -198,6 +208,7 @@ export interface EngineAPI {
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
   selectWarMap: (id: MapId) => void
+  selectWarMode: (m: 'tdm' | 'ad') => void
   toggleNight: () => void
   toggleHighRisk: () => void
   selectGear: (kind: 'vest' | 'helmet', defId: string | null) => void
@@ -267,6 +278,12 @@ export const engine: EngineAPI = {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_war_map', id)
     uiState.warMapId = id
+    notify()
+  },
+  selectWarMode: (m) => {
+    if (uiState.phase !== 'menu') return
+    localStorage.setItem('mojin_war_mode', m)
+    uiState.warMode = m
     notify()
   },
   toggleMap: () => { uiState.mapOpen = !uiState.mapOpen; notify() },

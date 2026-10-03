@@ -205,11 +205,32 @@ export function HUD() {
       <div className="absolute top-4 right-5 text-right">
         <div className="text-zinc-300 text-sm bg-black/45 rounded px-3 py-1 border border-white/10 font-mono">
           {ui.mode === 'war' ? (
-            <>⚔️ 大战场　击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　连杀 <span className="text-orange-400 font-bold">{ui.warStreak}</span>　阵亡 <span className="text-zinc-400 font-bold">{ui.warDeaths}</span></>
+            <>⚔️ {ui.warMode === 'ad' ? '攻防战' : '团队死斗'}　击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　连杀 <span className="text-orange-400 font-bold">{ui.warStreak}</span>　阵亡 <span className="text-zinc-400 font-bold">{ui.warDeaths}</span></>
           ) : (
             <>击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　收获 <span className="text-amber-300 font-bold">{bpValue.toLocaleString()}</span></>
           )}
         </div>
+        {ui.mode === 'war' && ui.warMode === 'tdm' && (
+          <div className="mt-1.5 text-sm bg-black/45 rounded px-3 py-1 border border-white/10 font-mono font-black">
+            <span className="text-sky-400">🔵 我方 {ui.warScoreUs}</span>
+            <span className="text-zinc-500 mx-1">:</span>
+            <span className="text-red-400">{ui.warScoreThem} 敌方 🔴</span>
+            <span className="text-zinc-500 text-xs ml-1">先夺 40</span>
+          </div>
+        )}
+        {ui.mode === 'war' && ui.warMode === 'ad' && (
+          <div className="mt-1.5 text-sm bg-black/45 rounded px-3 py-1.5 border border-white/10 font-mono">
+            <div className="flex items-center justify-end gap-2">
+              <span className={ui.warCapHot ? 'text-yellow-300 font-black animate-pulse' : 'text-sky-300 font-black'}>
+                🚩 {['A', 'B', 'C'][ui.warCapIdx] ?? '✓'} 点{ui.warCapHot ? ' 交火中' : ''}
+              </span>
+              <span className="text-zinc-400 text-xs">兵力 <span className="text-amber-300 font-bold">{ui.warTickets}</span></span>
+            </div>
+            <div className="w-40 ml-auto mt-1 h-1.5 rounded bg-zinc-700 overflow-hidden">
+              <div className="h-full bg-sky-400 transition-all" style={{ width: `${ui.warCapProg}%` }} />
+            </div>
+          </div>
+        )}
         <div className="mt-2 space-y-1">
           {ui.killFeed.map((k, i) => (
             <div key={i} className="text-xs text-zinc-400 bg-black/35 rounded px-2 py-0.5">💀 {k}</div>

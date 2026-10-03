@@ -165,8 +165,8 @@ export class EnemyManager {
 
   private doors: Door[] = []
   update(dt: number, playerPos: THREE.Vector3, playerAlive: boolean, obstacleMeshes: THREE.Object3D[],
-    onShootPlayer: (dmg: number, from: THREE.Vector3, e: Enemy) => void, doors: Door[] = [],
-    mods: { seeMul?: number; invisible?: boolean; onGrenade?: (from: THREE.Vector3, to: THREE.Vector3) => void } = {}) {
+    onShootPlayer: (dmg: number, from: THREE.Vector3, e: Enemy, targetIdx?: number) => void, doors: Door[] = [],
+    mods: { seeMul?: number; invisible?: boolean; onGrenade?: (from: THREE.Vector3, to: THREE.Vector3) => void; targets?: { pos: THREE.Vector3; alive: boolean }[] } = {}) {
     this.doors = doors
     const seeRange = 55 * (mods.seeMul ?? 1)
     const atkRange = 26 * (mods.seeMul ?? 1)
@@ -184,14 +184,29 @@ export class EnemyManager {
         e.bar.material.color.setHex(0xff3b30)
       }
       const pos = e.group.position
-      const toPlayer = playerPos.clone().sub(pos); toPlayer.y = 0
+      // ===== 多目标（大战场：玩家 + 己方 AI 队友）：选最近的可活目标 =====
+      let tgtPos = playerPos
+      let tgtAlive = playerAlive
+      let tgtIdx = 0 // 0=玩家；1..n=mods.targets[i-1]
+      if (mods.targets && mods.targets.length) {
+        let bestD = playerAlive ? pos.distanceTo(playerPos) : Infinity
+        for (let ti = 0; ti < mods.targets.length; ti++) {
+          const tg = mods.targets[ti]
+          if (!tg.alive) continue
+          const d = pos.distanceTo(tg.pos)
+          if (d < bestD) { bestD = d; tgtPos = tg.pos; tgtAlive = true; tgtIdx = ti + 1 }
+        }
+        if (tgtIdx === 0) tgtAlive = playerAlive
+      }
+      const toPlayer = tgtPos.clone().sub(pos); toPlayer.y = 0
       const dist = toPlayer.length()
 
-      const dy = Math.abs((playerPos.y - 1.62) - e.baseY) // 脚底高度差
+      const dy = Math.abs((tgtPos.y - 1.62) - e.baseY) // 脚底高度差
       const scoutBonus = e.kind === 'scout' ? 1.4 : 1
-      const sees = playerAlive && !mods.invisible && dist < seeRange * scoutBonus && dy < 3.0 && this.canSee(e, playerPos, obstacleMeshes)
+      const invisNow = tgtIdx === 0 && mods.invisible // 光学迷彩只对玩家生效
+      const sees = tgtAlive && !invisNow && dist < seeRange * scoutBonus && dy < 3.0 && this.canSee(e, tgtPos, obstacleMeshes)
       // 光学迷彩：隐身时敌人立即丢失目标转入搜索
-      if (mods.invisible && (e.state === 'chase' || e.state === 'attack')) { e.state = 'search'; e.alertT = 5; e.lastSeen.copy(playerPos) }
+      if (invisNow && (e.state === 'chase' || e.state === 'attack')) { e.state = 'search'; e.alertT = 5; e.lastSeen.copy(tgtPos) }
 
       if (sees && dist < atkRange) e.state = 'attack'
       else if (sees) e.state = 'chase'
@@ -199,7 +214,7 @@ export class EnemyManager {
         // 丢失目标 → 搜索最后目击位置
         e.state = 'search'
         e.alertT = 6
-        e.lastSeen.copy(playerPos)
+        e.lastSeen.copy(tgtPos)
       } else if (e.state === 'alert' || e.state === 'search') {
         e.alertT -= dt
         if (e.alertT <= 0 && dist > 40) e.state = 'patrol'
@@ -210,7 +225,7 @@ export class EnemyManager {
         for (const o of this.enemies) {
           if (o.dead || o === e) continue
           if (o.group.position.distanceTo(pos) < 40 && Math.abs(o.baseY - e.baseY) < 3) {
-            if (o.state === 'patrol' || o.state === 'alert') { o.state = 'chase'; o.lastSeen.copy(playerPos) }
+            if (o.state === 'patrol' || o.state === 'alert') { o.state = 'chase'; o.lastSeen.copy(tgtPos) }
           }
         }
         setTimeout(() => { e.calledHelp = false }, 20000) // 20s 后可再次呼援
@@ -221,7 +236,7 @@ export class EnemyManager {
         if (e.grenadeT <= 0 && mods.onGrenade) {
           e.grenadeT = 6 + Math.random() * 2
           const from = pos.clone(); from.y = e.baseY + 1.5
-          mods.onGrenade(from, playerPos.clone())
+          mods.onGrenade(from, tgtPos.clone())
         }
       }
 
@@ -251,12 +266,12 @@ export class EnemyManager {
           e.fireTimer = (0.55 + Math.random() * 0.7) * e.fireGap
           const from = pos.clone()
           from.y = e.baseY + 1.4
-          onShootPlayer(e.dmg, from, e)
+          onShootPlayer(e.dmg, from, e, tgtIdx)
         }
       }
 
       // 面向
-      const faceTarget = (e.state === 'patrol') ? e.patrolTarget : (e.state === 'search' || e.state === 'alert') ? e.lastSeen : playerPos
+      const faceTarget = (e.state === 'patrol') ? e.patrolTarget : (e.state === 'search' || e.state === 'alert') ? e.lastSeen : tgtPos
       const face = Math.atan2(faceTarget.x - pos.x, faceTarget.z - pos.z)
       e.group.rotation.y += (face - e.group.rotation.y) * Math.min(1, dt * 8)
 
@@ -278,7 +293,7 @@ export class EnemyManager {
     }
   }
 
-  private collide(x: number, z: number, feet = 0): boolean {
+  collide(x: number, z: number, feet = 0): boolean {
     const r = 0.4
     for (const c of this.colliders) {
       if (feet >= c.top - 0.25 || feet + 1.7 <= (c.base ?? 0)) continue
@@ -325,7 +340,7 @@ export class EnemyManager {
     }
   }
 
-  damage(e: Enemy, dmg: number): boolean {
+  damage(e: Enemy, dmg: number, fromPos?: THREE.Vector3): boolean {
     e.hp -= dmg
     const ratio = Math.max(0, e.hp / e.maxHp)
     e.bar.scale.x = 1.05 * ratio
@@ -333,8 +348,9 @@ export class EnemyManager {
       e.dead = true
       return true
     }
-    // 受击后警觉
+    // 受击后警觉（知道射手位置时朝其反击）
     e.state = 'chase'
+    if (fromPos) e.lastSeen.copy(fromPos)
     return false
   }
 

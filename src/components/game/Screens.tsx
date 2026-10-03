@@ -145,7 +145,7 @@ export function MenuScreen() {
         <div className="flex justify-center gap-3 max-w-3xl mx-auto mb-5">
           {([
             { id: 'raid' as const, icon: '🎒', name: '搜打撤', desc: '摸金撤离，财富积累' },
-            { id: 'war' as const, icon: '⚔️', name: '大战场', desc: '纯拼枪法 · 无限复活 · 5 分钟击杀赛' },
+            { id: 'war' as const, icon: '⚔️', name: '大战场', desc: '带队参战 · 无限复活 · 团队死斗/攻防' },
           ]).map(md => {
             const active = (ui.mode ?? 'raid') === md.id
             return (
@@ -164,6 +164,30 @@ export function MenuScreen() {
             )
           })}
         </div>
+
+        {/* 大战场子模式：团队死斗 / 攻防战 */}
+        {ui.mode === 'war' && (
+          <div className="flex justify-center gap-3 max-w-3xl mx-auto mb-5 -mt-2">
+            {([
+              { id: 'tdm' as const, icon: '⚔️', name: '团队死斗', desc: '6v6 阵营对抗 · 先夺 40 杀' },
+              { id: 'ad' as const, icon: '🚩', name: '攻防战', desc: '连破 A/B/C 三据点 · 兵力 75' },
+            ]).map(sm => {
+              const active = ui.warMode === sm.id
+              return (
+                <button
+                  key={sm.id}
+                  onClick={() => engine.selectWarMode(sm.id)}
+                  className={`px-4 py-2 rounded-xl border-2 text-left transition-all hover:scale-[1.03] ${active
+                    ? 'border-sky-400 bg-sky-400/10 shadow-[0_0_20px_rgba(56,189,248,0.25)]'
+                    : 'border-zinc-700 bg-zinc-900/60 hover:border-zinc-500'}`}
+                >
+                  <span className={`text-sm font-black ${active ? 'text-sky-300' : 'text-zinc-200'}`}>{sm.icon} {sm.name}</span>
+                  <span className="block text-[11px] text-zinc-500 mt-0.5">{sm.desc}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
