@@ -42,12 +42,13 @@ function GameStage() {
 
   useEffect(() => {
     if (!canvasRef.current) return
-    const game = new Game(canvasRef.current, ui.mapId)
+    const effMap = ui.mode === 'war' ? ui.warMapId : ui.mapId // 大战场：使用专属竞技场
+    const game = new Game(canvasRef.current, effMap)
     game.run()
     setReady(true)
     return () => { setReady(false); game.dispose() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui.mapId, ui.night, ui.highRisk]) // 高危禁区切换也要重建世界（军用保险库）
+  }, [ui.mapId, ui.warMapId, ui.mode, ui.night, ui.highRisk]) // 高危禁区切换也要重建世界（军用保险库）
 
   return (
     <>

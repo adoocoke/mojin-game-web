@@ -15,7 +15,7 @@ export interface MapMission {
   reward: number                                 // 成功撤离后金币奖励
 }
 
-export const MAP_MISSIONS: Record<MapId, MapMission> = {
+export const MAP_MISSIONS: Partial<Record<MapId, MapMission>> = { // 大战场竞技场无专属任务
   wild: {
     mapId: 'wild', icon: '🧨', name: '破壁行动',
     desc: '在大坝下游碎石堆安放炸药，炸开掩体取出里面的物资',

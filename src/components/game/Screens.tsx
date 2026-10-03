@@ -167,18 +167,22 @@ export function MenuScreen() {
 
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
-          {([
+          {(ui.mode === 'war' ? [
+            { id: 'blocks' as const, icon: '🔥', name: '烬区', tags: '巷战街区 · 中央广场', desc: '十字街区近距离绞肉，转角全是人' },
+            { id: 'pipeline' as const, icon: '🛢️', name: '贯穿', tags: '狭长走廊 · 管道掩体', desc: '主管廊正面硬刚，侧道绕后偷袭' },
+            { id: 'trench' as const, icon: '🪖', name: '堑壕战', tags: '锯齿战壕 · 无人区', desc: '三道壕线拉锯，探头就是一枪' },
+          ] : [
             { id: 'wild' as const, icon: '🏗️', name: '零号大坝', tags: '物资一般 · 敌人分散', desc: '大坝与水泥厂区，稳扎稳打积累财富' },
             { id: 'tower' as const, icon: '🚀', name: '航天基地', tags: '四层高塔 · Boss 镇守', desc: '发射塔内物资极品，整体爆率更高' },
             { id: 'prison' as const, icon: '⛓️', name: '潮汐监狱', tags: '双 Boss · 航空箱', desc: '重兵把守的海边监狱，风险与宝藏并存' },
             { id: 'snow' as const, icon: '❄️', name: '长弓溪谷', tags: '低能见度 · 狙击 Boss', desc: '溪谷深处的雷达站，白狼在雾中等你' },
             { id: 'desert' as const, icon: '🏜️', name: '巴克什', tags: '双层墓道 · 沙暴机制', desc: '扎尔瓦特古城下的陵寝，点亮四座长明灯开启石门' },
           ]).map(m => {
-            const active = ui.mapId === m.id
+            const active = ui.mode === 'war' ? ui.warMapId === m.id : ui.mapId === m.id
             return (
               <button
                 key={m.id}
-                onClick={() => engine.selectMap(m.id)}
+                onClick={() => ui.mode === 'war' ? engine.selectWarMap(m.id) : engine.selectMap(m.id)}
                 className={`rounded-xl border-2 p-3 text-left transition-all hover:scale-[1.02] ${active
                   ? 'border-amber-400 bg-amber-400/10 shadow-[0_0_24px_rgba(251,191,36,0.25)]'
                   : 'border-zinc-700 bg-zinc-900/60 hover:border-zinc-500'}`}

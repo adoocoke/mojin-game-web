@@ -28,7 +28,7 @@ export interface Container {
   reveal?: Record<string, number>  // 逐格揭示：uid → 揭示时间戳（三角洲式放大镜扫描）
 }
 
-export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert'
+export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' // 后三个为大战场专属竞技场
 
 /** 可推开的门：铰链在门扇一侧，openT 0→1 旋开；lockedBy 为所需房卡 */
 export interface Door {
@@ -474,7 +474,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = mapId === 'snow' ? 300 : 140
+  const size = mapId === 'snow' ? 300 : mapId === 'blocks' || mapId === 'trench' ? 90 : mapId === 'pipeline' ? 95 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -496,14 +496,14 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
 
   // 地面
   const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 40, 40)
-  const groundMat = new THREE.MeshStandardMaterial({ color: mapId === 'snow' ? 0xdde6ef : mapId === 'desert' ? 0xd8b878 : 0x6f7d5a, roughness: 1 })
+  const groundMat = new THREE.MeshStandardMaterial({ color: mapId === 'snow' ? 0xdde6ef : mapId === 'desert' ? 0xd8b878 : mapId === 'trench' ? 0x8a7a5a : mapId === 'blocks' || mapId === 'pipeline' ? 0x75786f : 0x6f7d5a, roughness: 1 })
   const ground = new THREE.Mesh(groundGeo, groundMat)
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   scene.add(ground)
   // 网格道路（雪地图被积雪覆盖，不铺路）
   const roadMat = new THREE.MeshStandardMaterial({ color: 0x555a52, roughness: 0.95 })
-  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert'; i++) {
+  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline'; i++) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(size * 2, 6), roadMat)
     road.rotation.x = -Math.PI / 2
     road.position.set(0, 0.02, i * 40)
@@ -758,7 +758,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     doors.push({ id: `d${did++}`, pivot, x: cx, z: cz, rot, w, base, open: false, openT: 0, lockedBy, lockedName })
   }
 
-  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : 20260807)
+  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : 20260807)
   const spawnPoints: THREE.Vector3[] = []
   const bossSpawns: World['bossSpawns'] = []
   let missionWall: World['missionWall'] = undefined
@@ -2435,6 +2435,59 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
 
   if (mapId === 'tower') {
     scene.fog = new THREE.Fog(0x87a8c8, 80, 400) // 让 200 米高塔远景可见
+  }
+
+  // ================= 大战场专属竞技场（纯枪法小图，原创布局；命名取自官方全面战场） =================
+  const mkBox = (x: number, z: number, w: number, d: number, h: number, color: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.92 }))
+    m.position.set(x, h / 2, z)
+    m.castShadow = true; m.receiveShadow = true
+    scene.add(m); obstacleMeshes.push(m)
+    colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top: h })
+  }
+  if (mapId === 'blocks') {
+    // ===== 烬区：巷战街区（对称十字街区 + 中央广场绞肉区） =====
+    for (const [bx, bz] of [[-42, -42], [42, -42], [-42, 42], [42, 42]] as const) mkBox(bx, bz, 20, 20, 6, 0x8a8478) // 四角大楼
+    for (const [bx, bz] of [[0, -46], [0, 46], [-46, 0], [46, 0]] as const) mkBox(bx, bz, 14, 12, 4, 0x7d7468) // 四边小楼
+    mkBox(0, -10, 16, 1.2, 1.4, 0x9a948a); mkBox(0, 10, 16, 1.2, 1.4, 0x9a948a) // 中央广场矮墙
+    mkBox(-10, 0, 1.2, 16, 1.4, 0x9a948a); mkBox(10, 0, 1.2, 16, 1.4, 0x9a948a)
+    for (const [cx, cz] of [[-22, 8], [22, -8], [-8, -24], [8, 24], [-26, -20], [26, 20]] as const) mkBox(cx, cz, 2.4, 2.4, 1.3, 0xa08858) // 巷内掩体箱
+    mkContainer(-20, -20, '弹药箱', 0.5, 0, rng); mkContainer(20, 20, '弹药箱', 0.5, 0, rng); mkContainer(0, 0, '医疗物资', 0.8, 0, rng)
+    mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '中央广场' })
+    playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
+    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 70], [0, -30], [-24, 0], [24, 0]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+  }
+  if (mapId === 'pipeline') {
+    // ===== 贯穿：狭长管道走廊（东西向主管廊正面硬刚 + 南北侧道绕后） =====
+    for (const [wx, wlen] of [[-52, 60], [28, 76]] as const) mkBox(wx, -8, wlen, 1.6, 3.2, 0x6a6f76) // 管廊北墙两段
+    for (const [wx, wlen] of [[-28, 76], [52, 60]] as const) mkBox(wx, 8, wlen, 1.6, 3.2, 0x6a6f76)  // 管廊南墙两段
+    for (const px of [-40, 0, 40]) { // 三根横卧大管道
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 26, 16), new THREE.MeshStandardMaterial({ color: 0x8a4a2a, roughness: 0.6, metalness: 0.5 }))
+      pipe.rotation.z = Math.PI / 2; pipe.position.set(px, 1.6, -20)
+      pipe.castShadow = true; scene.add(pipe); obstacleMeshes.push(pipe)
+      colliders.push({ minX: px - 13, maxX: px + 13, minZ: -21.6, maxZ: -18.4, top: 3.2 })
+    }
+    for (const [cx, cz] of [[-30, 24], [30, -24], [0, 30], [-58, 0], [58, 0], [12, -30], [-12, 30]] as const) mkBox(cx, cz, 2.6, 2.6, 1.4, 0x7a6a4a) // 侧道掩体
+    mkContainer(0, -24, '弹药箱', 0.5, 0, rng); mkContainer(0, 24, '医疗物资', 0.8, 0, rng)
+    mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '主管廊' })
+    playerSpawn = new THREE.Vector3(-80, 0, 0); playerYaw = -Math.PI / 2
+    for (const [sx, sz] of [[70, 0], [60, 30], [60, -30], [-60, 30], [-60, -30], [0, 60], [0, -60], [30, 10], [-30, -10]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+  }
+  if (mapId === 'trench') {
+    // ===== 堑壕战：三道锯齿壕线 + 中央无人区 + 两端碉堡 =====
+    for (const zl of [-40, 0, 40]) {
+      for (let i = 0; i < 4; i++) {
+        const x = -60 + i * 40
+        const off = i % 2 === 0 ? -5 : 5
+        mkBox(x, zl + off, 26, 1.4, 1.5, 0x8a7a5a) // 锯齿壕墙（可探头射击）
+      }
+    }
+    for (const bx of [-30, 30]) { mkBox(bx, -68, 8, 6, 3, 0x6f6a60); mkBox(bx, 68, 8, 6, 3, 0x6f6a60) } // 碉堡
+    for (const [cx, cz] of [[-14, -18], [14, 18], [-40, 20], [40, -20]] as const) mkBox(cx, cz, 3, 1.2, 1.1, 0xa89468) // 沙袋
+    mkContainer(-30, -64, '弹药箱', 0.5, 0, rng); mkContainer(30, 64, '弹药箱', 0.5, 0, rng); mkContainer(0, 0, '医疗物资', 0.8, 0, rng)
+    mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '无人区' })
+    playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
+    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 60], [-50, 0], [50, 0], [0, -60]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
 
   if (mapId === 'prison') {

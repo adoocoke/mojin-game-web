@@ -17,7 +17,7 @@ export function MapOverlay() {
   const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
   const S = ui.mapSize || 140
-  const mapName = ui.mapId === 'tower' ? '航天基地' : ui.mapId === 'prison' ? '潮汐监狱' : ui.mapId === 'snow' ? '长弓溪谷' : ui.mapId === 'desert' ? '巴克什' : '零号大坝'
+  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
   const ang = Math.atan2(fx, -fz) * 180 / Math.PI
@@ -42,8 +42,8 @@ export function MapOverlay() {
           }}
         >
           {/* 边界与网格道路 */}
-          <rect x={-S} y={-S} width={S * 2} height={S * 2} fill={ui.mapId === 'snow' ? '#c8d4e0' : ui.mapId === 'desert' ? '#c9b078' : '#3a4432'} stroke="#7a7568" strokeWidth="3" />
-          {ui.mapId !== 'snow' && ui.mapId !== 'desert' && [-80, -40, 0, 40, 80].map(i => (
+          <rect x={-S} y={-S} width={S * 2} height={S * 2} fill={ui.worldMapId === 'snow' ? '#c8d4e0' : ui.worldMapId === 'desert' ? '#c9b078' : '#3a4432'} stroke="#7a7568" strokeWidth="3" />
+          {ui.worldMapId !== 'snow' && ui.worldMapId !== 'desert' && [-80, -40, 0, 40, 80].map(i => (
             <g key={i}>
               <rect x={-S} y={i - 3} width={S * 2} height="6" fill="#4a4f48" />
               <rect x={i - 3} y={-S} width="6" height={S * 2} fill="#4a4f48" />
@@ -96,7 +96,7 @@ export function MapOverlay() {
             if (m.kind === 'house') return (
               <g key={i}>
                 <rect x={m.x - 3.5} y={m.z - 3.5} width="7" height="7" fill="#a89a80" stroke="#6a5f4a" strokeWidth="0.8" />
-                {m.name && (ui.mapId === 'prison' || ui.mapId === 'snow') && (
+                {m.name && (ui.worldMapId === 'prison' || ui.worldMapId === 'snow') && (
                   <text x={m.x} y={m.z - 6} textAnchor="middle" fontSize="8" fill="#c9c2b4">{m.name}</text>
                 )}
               </g>

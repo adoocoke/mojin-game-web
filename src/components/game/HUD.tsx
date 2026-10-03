@@ -119,7 +119,7 @@ export function HUD() {
           raidValue, purplePlus: purple, cyanPlus: cyan, redPlus: red,
           scouts: ui.raidLive.scouts ?? [],
         })
-        const mission = MAP_MISSIONS[ui.mapId]
+        const mission = MAP_MISSIONS[ui.worldMapId]
         if (list.length === 0 && !mission) return null
         return (
           <>

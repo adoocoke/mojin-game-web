@@ -184,6 +184,7 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(this.baseFov, innerWidth / innerHeight, 0.08, 400)
     const themeNight = currentSeasonTheme().mods.night ?? false // 赛季主题：强制夜战
     this.world = buildWorld(mapId, uiState.night || themeNight, uiState.highRisk)
+    uiState.worldMapId = this.world.mapId
     // 赛季主题：迷雾（雾浓度倍率）
     const themeFog = currentSeasonTheme().mods.fogMul ?? 1
     if (themeFog !== 1 && this.world.scene.fog) {
@@ -1140,7 +1141,7 @@ export class Game {
     }
     // ============ 局内专属任务：接取 / 安放炸药 / 启动装置 ============
     const mm = MAP_MISSIONS[this.world.mapId]
-    if (!this.missionDone) {
+    if (mm && !this.missionDone) {
       if (!this.missionAccepted && this.missionNear(mm.acceptPos, 2.6)) {
         this.missionAccepted = true
         uiState.missionAccepted = true
@@ -2612,7 +2613,7 @@ export class Game {
       saveBossDrops(bossGot)
       // ============ 地图专属任务奖励 ============
       const mission = MAP_MISSIONS[this.world.mapId]
-      if (this.missionDone && extracted) {
+      if (mission && this.missionDone && extracted) {
         uiState.money += mission.reward
         saveMoney(uiState.money)
         lines.push(`🎯 地图专属任务「${mission.name}」完成 +${mission.reward} 金币`)
@@ -2991,7 +2992,7 @@ export class Game {
       if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
         this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
-        if (this.extractT >= 1 && !this.war) { uiState.extractProgress = -1; this.endRaid(true) }
+        if (this.extractT >= 1) { uiState.extractProgress = -1; if (this.war) this.endWar(); else this.endRaid(true) } // 大战场：站上撤离点可提前结算
       } else {
         this.extractT = 0
         if (uiState.extractProgress >= 0) uiState.extractProgress = -1
@@ -3220,7 +3221,7 @@ export class Game {
 
       // ============ 局内专属任务：倒计时与完成 ============
       const mm2 = MAP_MISSIONS[this.world.mapId]
-      if (this.missionStarted && !this.missionDone) {
+      if (mm2 && this.missionStarted && !this.missionDone) {
         // defend：启动瞬间刷一波拦截敌人
         if (mm2.type === 'defend' && !this.missionWaveSpawned) {
           this.missionWaveSpawned = true

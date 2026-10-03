@@ -65,6 +65,8 @@ export interface UIState {
   warRespawn: number    // 阵亡复活倒计时（>0 = 阵亡中）
   warStreak: number     // 当前连杀
   warDeaths: number     // 本局阵亡次数
+  warMapId: MapId       // 大战场竞技场选择
+  worldMapId: MapId     // 当前已构建世界的地图（大战场时为竞技场）
   vsOpen: boolean         // 联机面板（建房/加入）
   vsRoomUrl: string | null  // URL 带入的房间号（好友分享链接）
   vsSession: import('./net').VsSession | null
@@ -111,6 +113,8 @@ export const uiState: UIState = {
   stash: null, stashOpen: false,
   toast: '', toastRarity: 'white', toastTs: 0,
   mapId: (localStorage.getItem('mojin_map') as MapId) || 'wild',
+  warMapId: (localStorage.getItem('mojin_war_map') as MapId) || 'blocks',
+  worldMapId: 'wild' as MapId,
   mapOpen: false, playerX: 0, playerZ: 0, playerYaw: 0,
   mapMarkers: [], mapExtract: { x: 0, z: 0 }, mapSize: 140,
   marketOpen: false, loadoutOpen: false,
@@ -193,6 +197,7 @@ export interface EngineAPI {
   mobileInteract: () => void
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
+  selectWarMap: (id: MapId) => void
   toggleNight: () => void
   toggleHighRisk: () => void
   selectGear: (kind: 'vest' | 'helmet', defId: string | null) => void
@@ -256,6 +261,12 @@ export const engine: EngineAPI = {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_map', id)
     uiState.mapId = id
+    notify()
+  },
+  selectWarMap: (id) => {
+    if (uiState.phase !== 'menu') return
+    localStorage.setItem('mojin_war_map', id)
+    uiState.warMapId = id
     notify()
   },
   toggleMap: () => { uiState.mapOpen = !uiState.mapOpen; notify() },
