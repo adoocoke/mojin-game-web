@@ -2129,6 +2129,25 @@ export class Game {
     this.warLeft = 300; this.respawnT = 0; this.protectT = 0
     this.warStreak = 0; this.warBestStreak = 0; this.warResupplyT = 0; this.lastHurtT = 0
     uiState.warTime = 300; uiState.warRespawn = 0; uiState.warStreak = 0; uiState.warDeaths = 0
+    // 大战场：纯枪法模式，新手无枪则系统配发一把步枪
+    if (this.war && this.gunDef.melee && !this.ownedGun
+      && !this.backpack.placed.some(p => defOf(p.item).kind === 'weapon' && !!defOf(p.item).gunId)) {
+      autoPlace(this.backpack, makeItem('w_m4a1', 1))
+      autoPlace(this.backpack, makeItem('a_ammo', 3))
+      const g = GUNS['m4a1']
+      if (g) {
+        this.gunDef = g
+        this.gunRarity = 'purple'
+        this.ownedGun = { def: g, rarity: 'purple', atts: {} }
+        this.mag = this.effGun().mag
+        this.reloading = false
+        this.ads = false
+        try { this.buildViewmodel() } catch { /* 忽略 */ }
+        this.syncGunUI()
+      }
+      this.toast('🎁 大战场配发：M4A1 突击步枪 + 弹药', 'cyan')
+      try { this.syncGrids() } catch { /* 忽略 */ }
+    }
     this.spawnInitialEnemies()
     uiState.kills = 0
     uiState.killFeed = []
@@ -3270,7 +3289,7 @@ export class Game {
       // 交互提示
       const near = this.nearestContainer()
       let prompt = ''
-      if (!this.missionDone && !uiState.invOpen) {
+      if (mm2 && !this.missionDone && !uiState.invOpen) {
         if (!this.missionAccepted && this.missionNear(mm2.acceptPos, 2.6)) prompt = `按 F 接取任务「${mm2.name}」`
         else if (mm2.type === 'lamps' && this.missionAccepted && this.world.lampStands) {
           const st = this.world.lampStands
