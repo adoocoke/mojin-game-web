@@ -15,6 +15,7 @@ import { AchPanel } from '@/components/game/AchPanel'
 import { SkinPanel } from '@/components/game/SkinPanel'
 import { EventPanel } from '@/components/game/EventPanel'
 import { MixPanel } from '@/components/game/MixPanel'
+import { ReportPanel } from '@/components/game/ReportPanel'
 import { OnlinePanel } from '@/components/game/OnlinePanel'
 import { CampaignScreen, CampaignResultOverlay } from '@/components/game/CampaignScreen'
 import { InspectOverlay } from '@/components/game/InspectOverlay'
@@ -96,6 +97,7 @@ function GameUI() {
       <SkinPanel />
       <EventPanel />
       <MixPanel />
+      <ReportPanel />
       <OnlinePanel />
         <CampaignScreen />
         <CampaignResultOverlay />

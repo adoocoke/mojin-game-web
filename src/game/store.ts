@@ -58,6 +58,7 @@ export interface UIState {
   skinOpen: boolean       // 皮肤面板
   eventsOpen: boolean     // 活动中心面板
   mixOpen: boolean        // 调酒面板（饮品特调活动）
+  reportOpen: boolean     // 开发周报面板
   vsOpen: boolean         // 联机面板（建房/加入）
   vsRoomUrl: string | null  // URL 带入的房间号（好友分享链接）
   vsSession: import('./net').VsSession | null
@@ -110,7 +111,7 @@ export const uiState: UIState = {
   carryDefs: JSON.parse(localStorage.getItem('mojin_loadout') || '[]') as string[],
   operator: localStorage.getItem('mojin_operator') || 'assault',
   skillCd: 0, skillActive: '', revealEnemies: [],
-  questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, resultQuests: [], lootReveal: {},
+  questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, reportOpen: false, resultQuests: [], lootReveal: {},
   opXp: JSON.parse(localStorage.getItem('mojin_op_xp') || '{}') as Record<string, number>,
   raidLive: { searches: 0, doors: 0, bossKills: 0, scouts: [] },
   questHudHide: localStorage.getItem('mojin_questhud_hide') === '1',
@@ -220,6 +221,8 @@ export interface EngineAPI {
   closeSkins: () => void
   openEvents: () => void
   closeEvents: () => void
+  openReports: () => void
+  closeReports: () => void
   openMix: () => void
   closeMix: () => void
   openStashItem: (uid: string) => string | null  // 仓库开启活动道具（福袋/曼德尔砖），返回结果文案
@@ -306,6 +309,8 @@ export const engine: EngineAPI = {
   closeAch: () => { uiState.achOpen = false; notify() },
   openSkins: () => { uiState.skinOpen = true; notify() },
   closeSkins: () => { uiState.skinOpen = false; notify() },
+  openReports: () => { uiState.reportOpen = true; notify() },
+  closeReports: () => { uiState.reportOpen = false; notify() },
   openEvents: () => { uiState.eventsOpen = true; notify() },
   closeEvents: () => { uiState.eventsOpen = false; notify() },
   openMix: () => { uiState.mixOpen = true; notify() },

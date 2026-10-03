@@ -346,6 +346,12 @@ export function MenuScreen() {
             🎉 活动
           </button>
           <button
+            onClick={() => engine.openReports()}
+            className="px-6 py-2.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-sky-300 font-bold border border-sky-600/40 transition-all hover:scale-105"
+          >
+            📰 周报
+          </button>
+          <button
             onClick={() => engine.openSkins()}
             className="px-6 py-2.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-pink-300 font-bold border border-pink-600/40 transition-all hover:scale-105"
           >
