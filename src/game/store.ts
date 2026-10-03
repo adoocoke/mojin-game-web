@@ -59,6 +59,12 @@ export interface UIState {
   eventsOpen: boolean     // 活动中心面板
   mixOpen: boolean        // 调酒面板（饮品特调活动）
   reportOpen: boolean     // 开发周报面板
+  // ===== 大战场模式（纯枪法：无限复活 · 击杀计分 · 5 分钟） =====
+  mode: 'raid' | 'war'  // raid=搜打撤；war=大战场
+  warTime: number       // 大战场剩余秒数
+  warRespawn: number    // 阵亡复活倒计时（>0 = 阵亡中）
+  warStreak: number     // 当前连杀
+  warDeaths: number     // 本局阵亡次数
   vsOpen: boolean         // 联机面板（建房/加入）
   vsRoomUrl: string | null  // URL 带入的房间号（好友分享链接）
   vsSession: import('./net').VsSession | null
@@ -111,7 +117,8 @@ export const uiState: UIState = {
   carryDefs: JSON.parse(localStorage.getItem('mojin_loadout') || '[]') as string[],
   operator: localStorage.getItem('mojin_operator') || 'assault',
   skillCd: 0, skillActive: '', revealEnemies: [],
-  questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, reportOpen: false, resultQuests: [], lootReveal: {},
+  questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, reportOpen: false,
+  mode: 'raid' as const, warTime: 0, warRespawn: 0, warStreak: 0, warDeaths: 0, resultQuests: [], lootReveal: {},
   opXp: JSON.parse(localStorage.getItem('mojin_op_xp') || '{}') as Record<string, number>,
   raidLive: { searches: 0, doors: 0, bossKills: 0, scouts: [] },
   questHudHide: localStorage.getItem('mojin_questhud_hide') === '1',

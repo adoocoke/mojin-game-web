@@ -20,9 +20,10 @@ export function HUD() {
   if (ui.phase !== 'playing') return null
   const now = performance.now()
 
-  const mm = Math.floor(ui.raidTime / 60)
-  const ss = Math.floor(ui.raidTime % 60)
-  const timeColor = ui.raidTime < 60 ? 'text-red-400 animate-pulse' : 'text-zinc-200'
+  const tSec = ui.mode === 'war' ? ui.warTime : ui.raidTime
+  const mm = Math.floor(tSec / 60)
+  const ss = Math.floor(tSec % 60)
+  const timeColor = tSec < 60 ? 'text-red-400 animate-pulse' : 'text-zinc-200'
   const bpValue = gridTotalValue(ui.backpack) + gridTotalValue(ui.safebox)
   const hpRatio = ui.hp / ui.maxHp
   const hpColor = hpRatio > 0.5 ? 'bg-emerald-500' : hpRatio > 0.25 ? 'bg-amber-500' : 'bg-red-500'
@@ -203,7 +204,11 @@ export function HUD() {
       {/* 右上：击杀信息 */}
       <div className="absolute top-4 right-5 text-right">
         <div className="text-zinc-300 text-sm bg-black/45 rounded px-3 py-1 border border-white/10 font-mono">
-          击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　收获 <span className="text-amber-300 font-bold">{bpValue.toLocaleString()}</span>
+          {ui.mode === 'war' ? (
+            <>⚔️ 大战场　击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　连杀 <span className="text-orange-400 font-bold">{ui.warStreak}</span>　阵亡 <span className="text-zinc-400 font-bold">{ui.warDeaths}</span></>
+          ) : (
+            <>击杀 <span className="text-red-400 font-bold">{ui.kills}</span>　收获 <span className="text-amber-300 font-bold">{bpValue.toLocaleString()}</span></>
+          )}
         </div>
         <div className="mt-2 space-y-1">
           {ui.killFeed.map((k, i) => (
@@ -211,6 +216,17 @@ export function HUD() {
           ))}
         </div>
       </div>
+
+      {/* 大战场：阵亡复活遮罩 */}
+      {ui.mode === 'war' && ui.warRespawn > 0 && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60">
+          <div className="text-center">
+            <div className="text-5xl mb-2">☠️</div>
+            <div className="text-red-400 font-black text-2xl tracking-widest">你被击倒了</div>
+            <div className="text-zinc-300 mt-2 text-lg font-mono">{Math.ceil(ui.warRespawn)} 秒后重返战场</div>
+          </div>
+        </div>
+      )}
 
       {/* 左下：生命 */}
       <div className="absolute bottom-6 left-6 w-64">

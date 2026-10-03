@@ -114,6 +114,15 @@ export class Game {
   private vsOver = false
   private kills = 0
   private raidLeft = RAID_SECONDS
+  // ===== 大战场模式（纯枪法） =====
+  private war = false
+  private warLeft = 300       // 剩余时间
+  private respawnT = 0        // >0：阵亡等待复活
+  private protectT = 0        // 复活无敌
+  private warStreak = 0
+  private warBestStreak = 0
+  private lastHurtT = 0       // 上次受击时间（脱战回血用）
+  private warResupplyT = 0    // 弹药补给计时
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
 
@@ -838,6 +847,12 @@ export class Game {
     if (e.boss) { this.raidBossKills++; uiState.raidLive = { ...uiState.raidLive, bossKills: this.raidBossKills } }
     uiState.kills = this.kills
     uiState.killFeed = [`击杀 ${e.name}`, ...uiState.killFeed].slice(0, 4)
+    if (this.war) {
+      this.warStreak++
+      if (this.warStreak > this.warBestStreak) this.warBestStreak = this.warStreak
+      uiState.warStreak = this.warStreak
+      if (this.warStreak % 5 === 0) this.toast(`🔥 ${this.warStreak} 连杀！无人能挡！`, 'cyan')
+    }
     sfx.kill()
     // 掉落战利品箱（卡其色 GTI 防护箱）
     const dropPos = e.group.position.clone()
@@ -1274,7 +1289,7 @@ export class Game {
         uiState.damageFlash = 1
         sfx.hurt()
         this.toast('☣️ 这个容器被感染了！开箱 -12 HP（消毒喷雾可免疫）', 'red')
-        if (this.hp <= 0) { this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false); return }
+        if (this.hp <= 0) { if (this.onPlayerDeath()) return; this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false); return }
       }
     }
     for (const gz of this.gasZones) { if (Math.hypot(c.pos.x - gz.x, c.pos.z - gz.z) < gz.r) { luck += 2; break } } // 毒气区：出货率 ×2
@@ -2108,6 +2123,11 @@ export class Game {
         c.mesh.add(spore)
       }
     }
+    // ===== 大战场模式初始化（教学/战役/联机不启用） =====
+    this.war = uiState.mode === 'war' && !uiState.tutorial && !uiState.campLevelId && !this.vs
+    this.warLeft = 300; this.respawnT = 0; this.protectT = 0
+    this.warStreak = 0; this.warBestStreak = 0; this.warResupplyT = 0; this.lastHurtT = 0
+    uiState.warTime = 300; uiState.warRespawn = 0; uiState.warStreak = 0; uiState.warDeaths = 0
     this.spawnInitialEnemies()
     uiState.kills = 0
     uiState.killFeed = []
@@ -2260,6 +2280,21 @@ export class Game {
       autoPlace(this.backpack, makeItem('a_ammo', 2))
       return
     }
+    if (this.war) {
+      // ===== 大战场：高密度纯枪战——12 名常驻 + 每图 Boss，阵亡持续补员 =====
+      const kindPool = (): 'normal' | 'heavy' | 'grenadier' | 'scout' => {
+        const r = Math.random()
+        return r < 0.18 ? 'heavy' : r < 0.34 ? 'grenadier' : r < 0.5 ? 'scout' : 'normal'
+      }
+      for (let i = 0; i < 12; i++) {
+        const p = this.randomSpawnPos(35)
+        this.enemies.spawn(p, Math.floor(Math.random() * 3), { kind: kindPool() })
+      }
+      for (const b of this.world.bossSpawns) {
+        this.enemies.spawn(b.pos.clone(), 3, { boss: true, name: `👑 ${b.name}`, hp: 420, dmg: 12, speed: 3.6, acc: 0.24, fireGap: 0.5, patrolRadius: 16 })
+      }
+      return
+    }
     const nBoss = this.world.bossSpawns.length
     const isSnow = this.world.mapId === 'snow'
     const isDesert = this.world.mapId === 'desert'
@@ -2314,6 +2349,102 @@ export class Game {
       }
     }
     return new THREE.Vector3(100, 0, 100)
+  }
+
+  /** 玩家生命归零：大战场 → 3 秒后复活（返回 true 拦截结算）；其余模式返回 false 走 endRaid */
+  private onPlayerDeath(): boolean {
+    if (!this.war) return false
+    this.hp = 0; uiState.hp = 0
+    this.respawnT = 3
+    uiState.warRespawn = 3
+    uiState.warDeaths++
+    this.warStreak = 0; uiState.warStreak = 0
+    this.firing = false
+    uiState.killFeed = ['☠️ 你被击倒了，3 秒后重返战场', ...uiState.killFeed].slice(0, 4)
+    sfx.dead()
+    notify()
+    return true
+  }
+
+  /** 大战场每秒逻辑：倒计时 / 复活 / 补员 / 脱战回血 / 弹药补给 */
+  private warTick(rawDt: number) {
+    this.warLeft -= rawDt
+    uiState.warTime = Math.max(0, this.warLeft)
+    if (this.warLeft <= 0) { this.endWar(); return }
+    if (this.respawnT > 0) {
+      // 阵亡中：倒数复活
+      this.respawnT -= rawDt
+      this.firing = false
+      uiState.warRespawn = Math.max(0, this.respawnT)
+      if (this.respawnT <= 0) {
+        const sp = this.world.playerSpawn
+        this.pos.set(sp.x, sp.y + EYE, sp.z)
+        this.hp = uiState.maxHp; uiState.hp = this.hp
+        this.protectT = 2
+        this.toast('💪 重返战场！2 秒无敌', 'cyan')
+        notify()
+      }
+      return
+    }
+    if (this.protectT > 0) this.protectT -= rawDt
+    // 持续补员：场上始终保持 12 名敌人
+    const alive = this.enemies.aliveCount()
+    if (alive < 12) {
+      const kinds: ('normal' | 'heavy' | 'grenadier' | 'scout')[] = ['normal', 'heavy', 'grenadier', 'scout']
+      for (let i = 0; i < 12 - alive; i++) {
+        const p = this.randomSpawnPos(35)
+        this.enemies.spawn(p, Math.floor(Math.random() * 3), { kind: kinds[Math.floor(Math.random() * 4)] })
+      }
+      uiState.killFeed = ['⚠️ 敌方增援抵达战场', ...uiState.killFeed].slice(0, 4)
+    }
+    // 脱战 4 秒后回血（15/s）
+    if (this.hp > 0 && this.hp < uiState.maxHp && performance.now() - this.lastHurtT > 4000) {
+      this.hp = Math.min(uiState.maxHp, this.hp + 15 * rawDt)
+      uiState.hp = Math.round(this.hp)
+    }
+    // 每 20 秒弹药补给
+    this.warResupplyT -= rawDt
+    if (this.warResupplyT <= 0) {
+      this.warResupplyT = 20
+      let topped = false
+      for (const pl of this.backpack.placed) {
+        const d = defOf(pl.item)
+        if (d.kind !== 'ammo') continue
+        pl.item.count = Math.min(d.stack ?? 60, pl.item.count + 30); topped = true
+      }
+      if (!topped) autoPlace(this.backpack, makeItem('a_ammo', 1))
+      this.syncGrids()
+      this.toast('📦 弹药补给已送达', 'cyan')
+    }
+  }
+
+  /** 大战场结算：按击杀发金币，不结算物资 */
+  private endWar() {
+    this.running = false
+    this.firing = false
+    uiState.phase = 'menu'
+    try { document.exitPointerLock() } catch { /* 忽略 */ }
+    const kills = uiState.kills
+    const gold = kills * 100 + this.warBestStreak * 50
+    uiState.money += gold
+    saveMoney(uiState.money)
+    // 战绩存档
+    try {
+      const rec = JSON.parse(localStorage.getItem('mojin_war_record') ?? '{}')
+      rec.bestKills = Math.max(rec.bestKills ?? 0, kills)
+      rec.bestStreak = Math.max(rec.bestStreak ?? 0, this.warBestStreak)
+      localStorage.setItem('mojin_war_record', JSON.stringify(rec))
+    } catch { /* 忽略 */ }
+    uiState.resultOpen = false
+    uiState.campResult = {
+      win: true,
+      title: '⚔️ 大战场 · 战斗结束',
+      lines: [
+        `💀 击杀 ${kills} 人 ｜ 阵亡 ${uiState.warDeaths} 次 ｜ 最高连杀 ${this.warBestStreak}`,
+        `💰 战功奖励 +${gold.toLocaleString()} 金币（击杀 ×100 + 最高连杀 ×50）`,
+      ],
+    }
+    notify()
   }
 
   private endRaid(extracted: boolean) {
@@ -2731,7 +2862,7 @@ export class Game {
         }
         const canSprint = this.weightTier < 3
         const sprintNow = sprint && canSprint
-        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) * this.drinkMul('speed') * (this.drunkT > 0 ? 0.85 : 1) // 赛季主题 / 特调饮品 / 醉酒
+        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) * this.drinkMul('speed') * (this.drunkT > 0 ? 0.85 : 1) * (this.respawnT > 0 ? 0 : 1) // 赛季主题 / 特调饮品 / 醉酒 / 阵亡冻结
         const f = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw))
         const r = new THREE.Vector3(-f.z, 0, f.x)
         const move = new THREE.Vector3()
@@ -2824,7 +2955,7 @@ export class Game {
             uiState.damageFlash = performance.now()
             sfx.hurt()
             notify()
-            if (this.hp <= 0) { uiState.hp = 0; this.endRaid(false); return }
+            if (this.hp <= 0) { if (this.onPlayerDeath()) return; uiState.hp = 0; this.endRaid(false); return }
           }
         }
       }
@@ -2860,7 +2991,7 @@ export class Game {
       if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
         this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
-        if (this.extractT >= 1) { uiState.extractProgress = -1; this.endRaid(true) }
+        if (this.extractT >= 1 && !this.war) { uiState.extractProgress = -1; this.endRaid(true) }
       } else {
         this.extractT = 0
         if (uiState.extractProgress >= 0) uiState.extractProgress = -1
@@ -2904,7 +3035,8 @@ export class Game {
 
       // 时间
       this.raidLeft -= rawDt
-      if (this.raidLeft <= 0) { this.endRaid(false) }
+      if (this.raidLeft <= 0 && !this.war) { this.endRaid(false) }
+      if (this.war) this.warTick(rawDt)
       // 巴克什：开局 8 分钟后沙暴来袭——地表能见度骤降且持续掉血，墓道内安全
       if (this.world.mapId === 'desert' && !this.stormOn && this.raidDuration - this.raidLeft >= this.raidDuration - 120) { // 最后 2 分钟沙暴来袭
         this.stormOn = true
@@ -2921,7 +3053,7 @@ export class Game {
           this.hp -= dt * 2
           this.stormHurtT += dt
           if (this.stormHurtT >= 1.5) { this.stormHurtT = 0; sfx.hurt() }
-          if (this.hp <= 0) { this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false) }
+          if (this.hp <= 0) { if (this.onPlayerDeath()) return; this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false) }
         }
       }
 
@@ -2941,7 +3073,7 @@ export class Game {
             this.gasHurtT += dt
             if (this.gasHurtT >= 1.2) { this.gasHurtT = 0; sfx.hurt() }
             uiState.damageFlash = 1
-            if (this.hp <= 0) { this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false) }
+            if (this.hp <= 0) { if (this.onPlayerDeath()) return; this.hp = 0; uiState.hp = 0; notify(); this.endRaid(false) }
             break
           }
         }
@@ -3282,9 +3414,11 @@ export class Game {
       this.hp -= real
       uiState.hp = Math.max(0, this.hp)
       uiState.damageFlash = performance.now()
+      this.lastHurtT = performance.now()
       sfx.hurt()
       notify()
       if (this.hp <= 0) {
+        if (this.onPlayerDeath()) return
         uiState.hp = 0
         this.endRaid(false)
       }

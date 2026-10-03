@@ -1,4 +1,4 @@
-import { useUI, engine, uiState } from '@/game/store'
+import { useUI, engine, uiState, notify } from '@/game/store'
 import { RARITY_INFO, RARITY_ORDER, type Rarity } from '@/game/types'
 import { loadStash, stashValue } from '@/game/stash'
 import { currentSeasonTheme } from '@/game/events'
@@ -139,6 +139,30 @@ export function MenuScreen() {
               <span>开局匕首，武器箱找枪</span><span>青色光柱撤离 · 限时 10 分钟</span>
             </>
           )}
+        </div>
+
+        {/* 模式选择：搜打撤 / 大战场 */}
+        <div className="flex justify-center gap-3 max-w-3xl mx-auto mb-5">
+          {([
+            { id: 'raid' as const, icon: '🎒', name: '搜打撤', desc: '摸金撤离，财富积累' },
+            { id: 'war' as const, icon: '⚔️', name: '大战场', desc: '纯拼枪法 · 无限复活 · 5 分钟击杀赛' },
+          ]).map(md => {
+            const active = (ui.mode ?? 'raid') === md.id
+            return (
+              <button
+                key={md.id}
+                onClick={() => { uiState.mode = md.id; notify() }}
+                className={`px-5 py-2.5 rounded-xl border-2 text-left transition-all hover:scale-[1.03] ${active
+                  ? md.id === 'war'
+                    ? 'border-red-400 bg-red-400/10 shadow-[0_0_24px_rgba(248,113,113,0.25)]'
+                    : 'border-amber-400 bg-amber-400/10 shadow-[0_0_24px_rgba(251,191,36,0.25)]'
+                  : 'border-zinc-700 bg-zinc-900/60 hover:border-zinc-500'}`}
+              >
+                <span className={`text-base font-black ${active ? (md.id === 'war' ? 'text-red-300' : 'text-amber-300') : 'text-zinc-200'}`}>{md.icon} {md.name}</span>
+                <span className="block text-[11px] text-zinc-500 mt-0.5">{md.desc}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* 地图选择 */}
