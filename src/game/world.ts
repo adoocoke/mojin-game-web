@@ -4,6 +4,7 @@ import { makeGrid, autoPlace } from './inventory'
 import { makeItem } from './data'
 import { currentEvent } from './events'
 import { MAP_MISSIONS } from './missions'
+import { buildSky, buildDust, groundTexture, concreteTexture, asphaltTexture, scatterDecor } from './gfx'
 
 export interface AABB { minX: number; maxX: number; minZ: number; maxZ: number; top: number; base?: number }
 
@@ -69,6 +70,7 @@ export interface World {
   lampStands?: { x: number; z: number; floorY: number; flame: THREE.Object3D; light: THREE.PointLight; lit: boolean }[]  // 长明灯灯座
   sun: THREE.DirectionalLight
   hemi: THREE.HemisphereLight
+  dust?: THREE.Points           // 漂浮尘土（氛围粒子，引擎每帧缓慢扰动）
   train?: { group: THREE.Group; cars: THREE.Object3D[]; speed: number; x: number; zMin: number; zMax: number }
   lift?: { mesh: THREE.Object3D; walkable: Walkable; baseY: number; topY: number; active: boolean; dir: 1 | -1; waitT: number }  // 高塔货运电梯（电闸启动后地面↔天台往返）
 }
@@ -483,9 +485,9 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   const mapMarkers: MapMarker[] = []
 
   // 光照
-  const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5a6a4a, 0.9)
+  const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5a6a4a, 1.05)
   scene.add(hemi)
-  const sun = new THREE.DirectionalLight(0xfff2dd, 1.6)
+  const sun = new THREE.DirectionalLight(0xfff2dd, 1.75)
   sun.position.set(60, 90, 30)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)
@@ -496,13 +498,19 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
 
   // 地面
   const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 40, 40)
-  const groundMat = new THREE.MeshStandardMaterial({ color: mapId === 'snow' ? 0xdde6ef : mapId === 'desert' ? 0xd8b878 : mapId === 'trench' ? 0x8a7a5a : mapId === 'blocks' || mapId === 'pipeline' ? 0x75786f : 0x6f7d5a, roughness: 1 })
+  const groundKind = mapId === 'snow' ? 'snow' : mapId === 'desert' ? 'sand' : mapId === 'trench' ? 'mud'
+    : mapId === 'blocks' || mapId === 'pipeline' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: groundTexture(groundKind, Math.max(6, Math.round(size / 9))),
+    roughness: 1,
+  })
   const ground = new THREE.Mesh(groundGeo, groundMat)
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   scene.add(ground)
   // 网格道路（雪地图被积雪覆盖，不铺路）
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x555a52, roughness: 0.95 })
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: asphaltTexture(Math.round(size / 6)), roughness: 0.95 })
   for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline'; i++) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(size * 2, 6), roadMat)
     road.rotation.x = -Math.PI / 2
@@ -517,7 +525,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   }
 
   // 边界墙
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x7a7568, roughness: 0.9 })
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xb8b2a4, map: concreteTexture('#8a8478', 2), roughness: 0.9 })
   const mkWall = (x: number, z: number, w: number, d: number, h = 6) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat)
     m.position.set(x, h / 2, z)
@@ -2438,8 +2446,14 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   }
 
   // ================= 大战场专属竞技场（纯枪法小图，原创布局；命名取自官方全面战场） =================
+  const arenaTexCache = new Map<number, THREE.Texture>()
   const mkBox = (x: number, z: number, w: number, d: number, h: number, color: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.92 }))
+    let bt = arenaTexCache.get(color)
+    if (!bt) {
+      bt = concreteTexture('#' + color.toString(16).padStart(6, '0'), Math.max(1, Math.round(Math.max(w, h) / 7)))
+      arenaTexCache.set(color, bt)
+    }
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0xffffff, map: bt, roughness: 0.92 }))
     m.position.set(x, h / 2, z)
     m.castShadow = true; m.receiveShadow = true
     scene.add(m); obstacleMeshes.push(m)
@@ -2813,6 +2827,43 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   smoke.position.copy(extractPos).setY(64)
   scene.add(smoke)
 
+  // ===== 画质增强后处理：为未贴图的大型建筑/墙体自动补混凝土细节贴图 =====
+  {
+    const cacheT = new Map<number, THREE.Texture>()
+    const neutral = concreteTexture('#b5b4ae', 1)
+    for (const o of obstacleMeshes) {
+      const m = o as THREE.Mesh
+      if (!(m as unknown as { isMesh?: boolean }).isMesh) continue
+      const mat = m.material as THREE.MeshStandardMaterial
+      if (!mat || !(mat as unknown as { isMeshStandardMaterial?: boolean }).isMeshStandardMaterial || mat.map) continue
+      const g = m.geometry as THREE.BoxGeometry
+      if (g.type !== 'BoxGeometry') continue
+      const p = g.parameters
+      const maxDim = Math.max(p.width ?? 0, p.height ?? 0, p.depth ?? 0)
+      if (maxDim < 2.5) continue
+      const cls = maxDim < 8 ? 1 : maxDim < 20 ? 2 : 4
+      let tt = cacheT.get(cls)
+      if (!tt) { tt = neutral.clone(); tt.repeat.set(cls, cls); tt.needsUpdate = true; cacheT.set(cls, tt) }
+      mat.map = tt
+      mat.color.lerp(new THREE.Color(0xffffff), 0.45) // 贴图会压暗，补亮保留原色调
+      mat.needsUpdate = true
+    }
+  }
+
+  // ===== 画质增强：天空穹顶 / 太阳 / 云层（白天）+ 场景散布装饰 + 浮尘 =====
+  if (!night) {
+    const skySpec: Record<string, [number, number]> = {
+      wild: [0x3d6cb2, 0xc2d6e8], tower: [0x3d6cb2, 0xc2d6e8],
+      prison: [0x5d7186, 0x9aa8b5], snow: [0x7d95b5, 0xd8e2ec],
+      desert: [0x4a7fc9, 0xe8cf9a], blocks: [0x46689f, 0xc3ccd4],
+      pipeline: [0x46689f, 0xc3ccd4], trench: [0x54687f, 0xb6ab93],
+    }
+    const [topC, horC] = skySpec[mapId] ?? [0x3d6cb2, 0xc2d6e8]
+    buildSky(scene, topC, horC, sun.position)
+  }
+  scatterDecor(scene, mapId, size, colliders)
+  const dustPts = buildDust(scene, size)
+
   // ===== 夜战模式：天色压暗、雾气逼近、月光清冷（手电由引擎挂相机） =====
   if (night) {
     scene.background = new THREE.Color(mapId === 'snow' ? 0x0c1220 : 0x0a0e1a)
@@ -2831,7 +2882,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(b.x + 3.5, b.z + 1.5, '军用保险库', 2.2, b.y)
   }
 
-  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift }
+  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift, dust: dustPts }
 }
 
 function mulberry32(a: number) {

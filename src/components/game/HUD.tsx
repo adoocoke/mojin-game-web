@@ -33,6 +33,8 @@ export function HUD() {
 
   return (
     <div className="absolute inset-0 z-30 pointer-events-none select-none">
+      {/* 电影感暗角滤镜 */}
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.34) 100%)' }} />
       {/* 联机对手血条 */}
       {ui.vsOpp && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 w-56 pointer-events-none">

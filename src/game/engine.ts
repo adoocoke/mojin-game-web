@@ -193,6 +193,9 @@ export class Game {
     this.renderer.setSize(innerWidth, innerHeight)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    // 画质：ACES 电影级色调映射，色彩层次更真实
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1.28
 
     this.camera = new THREE.PerspectiveCamera(this.baseFov, innerWidth / innerHeight, 0.08, 400)
     const themeNight = currentSeasonTheme().mods.night ?? false // 赛季主题：强制夜战
@@ -3246,6 +3249,12 @@ export class Game {
         d.sprite.position.y += dt * 1.2
         d.sprite.material.opacity = Math.max(0, d.life / 0.7)
         if (d.life <= 0) { this.world.scene.remove(d.sprite); this.dmgNums.splice(i, 1) }
+      }
+      // 浮尘缓慢扰动（氛围）
+      if (this.world.dust) {
+        this.world.dust.rotation.y += dt * 0.008
+        const dm = this.world.dust.material as THREE.PointsMaterial
+        dm.opacity = 0.35 + Math.sin(performance.now() / 2600) * 0.1
       }
       // 掷弹兵手雷：飞行 → 爆炸
       for (let i = this.grenades.length - 1; i >= 0; i--) {
