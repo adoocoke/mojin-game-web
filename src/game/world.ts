@@ -47,6 +47,17 @@ export interface Door {
 
 export interface MapMarker { x: number; z: number; kind: 'tower' | 'house' | 'locked' | 'block' | 'mission' | 'airdrop' | 'gas' | 'patrol'; name?: string }
 
+/** 大战场环境机制：烬区火焰 / 贯穿蒸汽 / 堑壕战迫击炮 */
+export interface Hazard {
+  type: 'fire' | 'steam' | 'artillery'
+  x: number; z: number; r: number       // 伤害半径（artillery 为系统级，r=0）
+  flames?: THREE.Object3D[]             // fire：火焰锥（引擎闪烁动画）
+  light?: THREE.PointLight              // fire：火光
+  jet?: THREE.Object3D                  // steam：喷汽柱
+  t: number                             // 相位计时
+  phase?: number                        // steam：0 间歇 1 预警 2 喷发
+}
+
 export interface World {
   scene: THREE.Scene
   colliders: AABB[]
@@ -64,7 +75,8 @@ export interface World {
   doors: Door[]
   mapId: MapId
   mapMarkers: MapMarker[]
-  slowZones: { x: number; z: number; r: number }[]  // 减速区（冰湖）
+  slowZones: { x: number; z: number; r: number }[]  // 减速区（冰湖/铁丝网）
+  hazards?: Hazard[]                     // 大战场环境机制（火焰/蒸汽/炮击）
   missionWall?: { meshes: THREE.Object3D[]; aabb: AABB }  // 破壁任务的可爆破掩体
   missionGuides: THREE.Object3D[]  // 任务目标引导光柱（任务完成后移除）
   lampStands?: { x: number; z: number; floorY: number; flame: THREE.Object3D; light: THREE.PointLight; lit: boolean }[]  // 长明灯灯座
@@ -775,6 +787,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   let playerYaw = Math.PI
   const extractPos = mapId === 'wild' ? new THREE.Vector3(0, 0, size - 14) : mapId === 'snow' ? new THREE.Vector3(0, 0, -size + 14) : new THREE.Vector3(size - 14, 0, 0)
   const slowZones: World['slowZones'] = []
+  const hazards: Hazard[] = []
   let extractPos2: THREE.Vector3 | undefined = undefined
   let lampStands: World['lampStands'] = undefined
   let train: World['train'] = undefined
@@ -2467,6 +2480,30 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkBox(-10, 0, 1.2, 16, 1.4, 0x9a948a); mkBox(10, 0, 1.2, 16, 1.4, 0x9a948a)
     for (const [cx, cz] of [[-22, 8], [22, -8], [-8, -24], [8, 24], [-26, -20], [26, 20]] as const) mkBox(cx, cz, 2.4, 2.4, 1.3, 0xa08858) // 巷内掩体箱
     mkContainer(-20, -20, '弹药箱', 0.5, 0, rng); mkContainer(20, 20, '弹药箱', 0.5, 0, rng); mkContainer(0, 0, '医疗物资', 0.8, 0, rng)
+    // 烬区特色：燃烧残骸区——靠近持续灼烧，火光照亮巷战
+    const mkFire = (fx: number, fz: number) => {
+      const g = new THREE.Group()
+      g.position.set(fx, 0, fz)
+      const debris = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 1.3),
+        new THREE.MeshStandardMaterial({ color: 0x2a2422, roughness: 1 }))
+      debris.position.y = 0.35; debris.rotation.y = rng() * 3; debris.castShadow = true
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(3.2, 20),
+        new THREE.MeshBasicMaterial({ color: 0x14100d, transparent: true, opacity: 0.6 }))
+      scorch.rotation.x = -Math.PI / 2; scorch.position.y = 0.05
+      g.add(debris, scorch)
+      const flames: THREE.Object3D[] = []
+      for (let i = 0; i < 3; i++) {
+        const f = new THREE.Mesh(new THREE.ConeGeometry(0.36 - i * 0.09, 1.6 - i * 0.32, 7),
+          new THREE.MeshBasicMaterial({ color: [0xff5a1a, 0xff9a3a, 0xffd23a][i], transparent: true, opacity: 0.85, depthWrite: false }))
+        f.position.set((rng() - 0.5) * 0.7, 0.95 + i * 0.16, (rng() - 0.5) * 0.7)
+        flames.push(f); g.add(f)
+      }
+      const light = new THREE.PointLight(0xff7a2a, 8, 16)
+      light.position.set(fx, 1.7, fz)
+      scene.add(g, light)
+      hazards.push({ type: 'fire', x: fx, z: fz, r: 3.2, flames, light, t: rng() * 6 })
+    }
+    for (const [fx, fz] of [[-30, 2], [30, -2], [2, -32], [-2, 32], [-24, 28], [24, -28]] as const) mkFire(fx, fz)
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '中央广场' })
     playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
     for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 70], [0, -30], [-24, 0], [24, 0]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
@@ -2483,6 +2520,22 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     }
     for (const [cx, cz] of [[-30, 24], [30, -24], [0, 30], [-58, 0], [58, 0], [12, -30], [-12, 30]] as const) mkBox(cx, cz, 2.6, 2.6, 1.4, 0x7a6a4a) // 侧道掩体
     mkContainer(0, -24, '弹药箱', 0.5, 0, rng); mkContainer(0, 24, '医疗物资', 0.8, 0, rng)
+    // 贯穿特色：工业蒸汽喷口——周期喷发（嘶鸣预警→白汽爆喷），烫伤+遮挡视线
+    const mkSteam = (sx: number, sz: number) => {
+      const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 1.1, 8),
+        new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.65, roughness: 0.35 }))
+      valve.position.set(sx, 0.55, sz); valve.castShadow = true
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 6, 12),
+        new THREE.MeshStandardMaterial({ color: 0xa8342a, metalness: 0.4, roughness: 0.5 }))
+      wheel.position.set(sx, 1.15, sz); wheel.rotation.x = Math.PI / 2
+      const jet = new THREE.Mesh(new THREE.ConeGeometry(1.6, 5.2, 10, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xe8f0f4, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false }))
+      jet.position.set(sx, 3.4, sz)
+      jet.scale.y = 0.02; jet.visible = false
+      scene.add(valve, wheel, jet)
+      hazards.push({ type: 'steam', x: sx, z: sz, r: 2.6, jet, t: rng() * 5, phase: 0 })
+    }
+    for (const [sx, sz] of [[-20, -6], [10, 6], [40, -6], [-48, 6], [62, -6]] as const) mkSteam(sx, sz)
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '主管廊' })
     playerSpawn = new THREE.Vector3(-80, 0, 0); playerYaw = -Math.PI / 2
     for (const [sx, sz] of [[70, 0], [60, 30], [60, -30], [-60, 30], [-60, -30], [0, 60], [0, -60], [30, 10], [-30, -10]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
@@ -2499,6 +2552,30 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     for (const bx of [-30, 30]) { mkBox(bx, -68, 8, 6, 3, 0x6f6a60); mkBox(bx, 68, 8, 6, 3, 0x6f6a60) } // 碉堡
     for (const [cx, cz] of [[-14, -18], [14, 18], [-40, 20], [40, -20]] as const) mkBox(cx, cz, 3, 1.2, 1.1, 0xa89468) // 沙袋
     mkContainer(-30, -64, '弹药箱', 0.5, 0, rng); mkContainer(30, 64, '弹药箱', 0.5, 0, rng); mkContainer(0, 0, '医疗物资', 0.8, 0, rng)
+    // 堑壕战特色①：无人区铁丝网减速带（木桩+铁丝卷）
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 1 })
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, metalness: 0.7, roughness: 0.45 })
+    for (const wz of [-20, 20]) {
+      for (let wx = -56; wx <= 56; wx += 7) {
+        const px = wx + (rng() - 0.5) * 2.5, pz = wz + (rng() - 0.5) * 3.5
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.2, 5), postMat)
+        post.position.set(px, 0.6, pz); post.rotation.z = (rng() - 0.5) * 0.5; post.castShadow = true
+        const wire = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 4, 9), wireMat)
+        wire.position.set(px, 0.72, pz); wire.rotation.set(rng() * 3, rng() * 3, rng() * 0.5)
+        scene.add(post, wire)
+      }
+      for (const cx of [-42, 0, 42]) slowZones.push({ x: cx, z: wz, r: 14 }) // 铁丝网绊脚：减速
+    }
+    // 堑壕战特色②：弹坑密布（无人区焦土）
+    for (let i = 0; i < 10; i++) {
+      const crater = new THREE.Mesh(new THREE.CircleGeometry(1.6 + rng() * 2, 14),
+        new THREE.MeshBasicMaterial({ color: 0x453a2c, transparent: true, opacity: 0.65 }))
+      crater.rotation.x = -Math.PI / 2
+      crater.position.set(-52 + rng() * 104, 0.04, -26 + rng() * 52)
+      scene.add(crater)
+    }
+    // 堑壕战特色③：迫击炮齐射（引擎定时驱动，红圈预警→落弹，敌我不分）
+    hazards.push({ type: 'artillery', x: 0, z: 0, r: 0, t: 16 })
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '无人区' })
     playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
     for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 60], [-50, 0], [50, 0], [0, -60]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
@@ -2882,7 +2959,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(b.x + 3.5, b.z + 1.5, '军用保险库', 2.2, b.y)
   }
 
-  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift, dust: dustPts }
+  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift, dust: dustPts, hazards }
 }
 
 function mulberry32(a: number) {

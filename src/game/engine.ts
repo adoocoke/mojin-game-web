@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { buildWorld, buildDeathCrateMesh, spawnAirDrop, type World, type Container, type MapId, type Door } from './world'
+import { buildWorld, buildDeathCrateMesh, spawnAirDrop, type World, type Container, type MapId, type Door, type Hazard } from './world'
 import { EnemyManager, type Enemy, type EnemyKind } from './enemies'
 import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, DRINK_MATS, type OpMods } from './data'
 import { RARITY_INFO, RARITY_ORDER, itemValue, itemWeight, type GunDef, type Rarity, type AttSlot, type ItemInstance, type ItemDef, type PlacedItem, type DrinkBuff } from './types'
@@ -136,6 +136,8 @@ export class Game {
   private capPoints: { pos: THREE.Vector3; label: string; ring: THREE.Mesh; flag: THREE.Mesh; light: THREE.PointLight }[] = []
   private capGroup: THREE.Group | null = null
   private adWaveT = 0          // 攻防战：防守方增援波次计时
+  private artyStrikes: { x: number; z: number; t: number; ring: THREE.Mesh }[] = []  // 堑壕战：进行中的炮击
+  private hazardToastT = 0     // 环境伤害提示节流
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
 
@@ -2104,6 +2106,8 @@ export class Game {
     this.helmet = null
     this.weightTier = 0
     this.grenades = []
+    this.artyStrikes = []
+    this.hazardToastT = 0
     this.dmgNums = []
     uiState.vest = null
     uiState.helmet = null
@@ -2539,6 +2543,21 @@ export class Game {
           a.group.rotation.y += dyaw * Math.min(1, dt * 6)
         }
       }
+      // 避险：火焰/蒸汽危险区 & 炮击红圈 → 优先撤离
+      for (const h of this.world.hazards ?? []) {
+        if (h.type === 'artillery') continue
+        const d = Math.hypot(pos.x - h.x, pos.z - h.z)
+        if (d < h.r + 1.5 && !(h.type === 'steam' && (h.phase ?? 0) === 0)) {
+          moveDir = new THREE.Vector3(pos.x - h.x, 0, pos.z - h.z).normalize()
+          break
+        }
+      }
+      for (const s of this.artyStrikes) {
+        if (Math.hypot(pos.x - s.x, pos.z - s.z) < 7) {
+          moveDir = new THREE.Vector3(pos.x - s.x, 0, pos.z - s.z).normalize()
+          break
+        }
+      }
       if (moveDir) {
         const sp = a.speed * (best ? 0.8 : 1)
         const nx = pos.x + moveDir.x * sp * dt
@@ -2649,6 +2668,122 @@ export class Game {
     sfx.dead()
     notify()
     return true
+  }
+
+
+  // ================= 大战场环境机制 =================
+  /** 烬区火焰 / 贯穿蒸汽 / 堑壕战迫击炮：每帧驱动 */
+  private hazardTick(dt: number) {
+    const hazards = this.world.hazards
+    if (!hazards || !hazards.length) return
+    const now = performance.now()
+    this.hazardToastT -= dt
+    for (const h of hazards) {
+      if (h.type === 'fire') {
+        // 火焰闪烁 + 火光脉动
+        for (const f of h.flames ?? []) f.scale.y = 0.75 + Math.sin(now / 95 + f.position.x * 9 + h.x) * 0.3
+        if (h.light) h.light.intensity = 7 + Math.sin(now / 120 + h.z) * 2.4
+        this.hazardZoneDamage(h, 7, dt, '🔥 烈焰灼伤！快离开火场！')
+      } else if (h.type === 'steam') {
+        h.t += dt
+        const phase = h.phase ?? 0
+        const idleLen = 5.5 + (Math.abs(h.x * 7) % 3) // 各喷口错开节奏
+        if (phase === 0 && h.t > idleLen) {
+          h.phase = 1; h.t = 0
+          if (Math.hypot(this.pos.x - h.x, this.pos.z - h.z) < 22) this.toast('💨 蒸汽阀嘶嘶作响……', 'white')
+        } else if (phase === 1 && h.t > 1.1) { h.phase = 2; h.t = 0 }
+        else if (phase === 2 && h.t > 2.6) { h.phase = 0; h.t = 0 }
+        if (h.jet) {
+          const target = h.phase === 2 ? 1 : (h.phase === 1 ? 0.22 : 0.02)
+          h.jet.scale.y += (target - h.jet.scale.y) * Math.min(1, dt * 5)
+          h.jet.visible = h.jet.scale.y > 0.06
+          if (h.phase === 2) h.jet.rotation.y += dt * 1.5
+        }
+        if (h.phase === 2) this.hazardZoneDamage(h, 14, dt, '💨 蒸汽烫伤！')
+      } else if (h.type === 'artillery') {
+        h.t -= dt
+        if (h.t <= 0) {
+          h.t = 24 + Math.random() * 12
+          this.toast('💥 迫击炮齐射预警！远离红圈！', 'red')
+          sfx.ui()
+          for (let i = 0; i < 3; i++) {
+            const x = (Math.random() - 0.5) * 110
+            const z = (Math.random() - 0.5) * 56
+            const ring = new THREE.Mesh(new THREE.RingGeometry(4.7, 5.4, 26),
+              new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }))
+            ring.rotation.x = -Math.PI / 2
+            ring.position.set(x, 0.07, z)
+            this.world.scene.add(ring)
+            this.artyStrikes.push({ x, z, t: 2.4, ring })
+          }
+          notify()
+        }
+      }
+    }
+    // 炮击落地结算
+    for (let i = this.artyStrikes.length - 1; i >= 0; i--) {
+      const s = this.artyStrikes[i]
+      s.t -= dt
+      ;(s.ring.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.abs(Math.sin(now / 130)) * 0.5
+      if (s.t > 0) continue
+      this.world.scene.remove(s.ring)
+      this.artyStrikes.splice(i, 1)
+      this.spawnSpark(new THREE.Vector3(s.x, 0.5, s.z), 0xff7a3c)
+      sfx.boom()
+      const dp = Math.hypot(this.pos.x - s.x, this.pos.z - s.z)
+      if (dp < 5.5 && this.hp > 0 && this.protectT <= 0) {
+        this.hp -= 55 * (1 - dp / 5.5)
+        uiState.hp = Math.max(0, this.hp)
+        uiState.damageFlash = now
+        sfx.hurt()
+        if (this.hp <= 0 && !this.onPlayerDeath()) { this.hp = 0; uiState.hp = 0; this.endRaid(false); return }
+        notify()
+      }
+      if (this.allies) for (const a of [...this.allies.enemies]) {
+        if (a.dead) continue
+        const da = Math.hypot(a.group.position.x - s.x, a.group.position.z - s.z)
+        if (da < 5.5 && this.allies.damage(a, 90 * (1 - da / 5.5))) this.onAllyDeath(a)
+      }
+      for (const e of [...this.enemies.enemies]) {
+        if (e.dead) continue
+        const de = Math.hypot(e.group.position.x - s.x, e.group.position.z - s.z)
+        if (de < 5.5 && this.enemies.damage(e, 120 * (1 - de / 5.5))) {
+          this.scoreUs++
+          uiState.warScoreUs = this.scoreUs
+          uiState.killFeed = [`💥 炮击击毙 ${e.name}`, ...uiState.killFeed].slice(0, 4)
+          this.enemies.remove(e)
+        }
+      }
+    }
+  }
+
+  /** 区域持续伤害（火焰/蒸汽）：玩家 + 队友 + 敌人 */
+  private hazardZoneDamage(h: Hazard, dps: number, dt: number, toast: string) {
+    const dp = Math.hypot(this.pos.x - h.x, this.pos.z - h.z)
+    if (dp < h.r && this.hp > 0 && this.protectT <= 0) {
+      this.hp -= dps * dt
+      uiState.hp = Math.max(0, this.hp)
+      uiState.damageFlash = performance.now()
+      if (this.hazardToastT <= 0) { this.toast(toast, 'red'); this.hazardToastT = 2 }
+      if (this.hp <= 0) { if (!this.onPlayerDeath()) { this.hp = 0; uiState.hp = 0; this.endRaid(false) } return }
+    }
+    if (this.allies) for (const a of [...this.allies.enemies]) {
+      if (a.dead) continue
+      if (Math.hypot(a.group.position.x - h.x, a.group.position.z - h.z) < h.r) {
+        if (this.allies.damage(a, dps * dt)) this.onAllyDeath(a)
+      }
+    }
+    for (const e of [...this.enemies.enemies]) {
+      if (e.dead) continue
+      if (Math.hypot(e.group.position.x - h.x, e.group.position.z - h.z) < h.r) {
+        if (this.enemies.damage(e, dps * dt)) {
+          this.scoreUs++
+          uiState.warScoreUs = this.scoreUs
+          uiState.killFeed = [`🔥 ${e.name} 倒毙于环境伤害`, ...uiState.killFeed].slice(0, 4)
+          this.enemies.remove(e)
+        }
+      }
+    }
   }
 
   /** 大战场每秒逻辑：倒计时 / 复活 / 双方补员 / 队友 AI / 模式胜负 / 脱战回血 / 弹药补给 */
@@ -3250,6 +3385,8 @@ export class Game {
         d.sprite.material.opacity = Math.max(0, d.life / 0.7)
         if (d.life <= 0) { this.world.scene.remove(d.sprite); this.dmgNums.splice(i, 1) }
       }
+      // 大战场环境机制（烬区火焰 / 贯穿蒸汽 / 堑壕战炮击）
+      this.hazardTick(dt)
       // 浮尘缓慢扰动（氛围）
       if (this.world.dust) {
         this.world.dust.rotation.y += dt * 0.008
