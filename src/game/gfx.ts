@@ -143,7 +143,7 @@ function grassBladeTexture(): THREE.CanvasTexture {
 }
 
 /** 云朵贴图：柔和团块 */
-function cloudTexture(): THREE.CanvasTexture {
+export function cloudTexture(): THREE.CanvasTexture {
   const S = 128
   const [c, ctx] = makeCanvas(S)
   ctx.clearRect(0, 0, S, S)
@@ -270,7 +270,7 @@ export function scatterDecor(scene: THREE.Scene, mapId: MapId, size: number, col
   // 岩石
   const rockSpec: Record<string, [number, number]> = { // [数量, 基础尺寸]
     wild: [70, 0.9], tower: [55, 0.8], prison: [45, 0.8], snow: [40, 0.9], desert: [90, 1.0],
-    blocks: [36, 0.55], pipeline: [30, 0.5], trench: [40, 0.6],
+    blocks: [70, 0.6], pipeline: [55, 0.55], trench: [80, 0.65],
   }
   const [rockN, rockS] = rockSpec[mapId] ?? [50, 0.8]
   {
@@ -290,7 +290,7 @@ export function scatterDecor(scene: THREE.Scene, mapId: MapId, size: number, col
   }
 
   // 草丛（十字交叉面片 + alpha 草叶贴图）
-  const grassSpec: Record<string, number> = { wild: 520, tower: 240, prison: 180, desert: 0, snow: 0, blocks: 90, pipeline: 120, trench: 150 }
+  const grassSpec: Record<string, number> = { wild: 520, tower: 240, prison: 180, desert: 0, snow: 0, blocks: 240, pipeline: 260, trench: 380 }
   const grassN = grassSpec[mapId] ?? 0
   if (grassN) {
     const p1 = new THREE.PlaneGeometry(1, 0.65)
@@ -311,7 +311,7 @@ export function scatterDecor(scene: THREE.Scene, mapId: MapId, size: number, col
   }
 
   // 灌木（深绿压扁多面体）
-  const bushSpec: Record<string, number> = { wild: 42, tower: 22, prison: 14, desert: 26, snow: 0, blocks: 0, pipeline: 10, trench: 12 }
+  const bushSpec: Record<string, number> = { wild: 42, tower: 22, prison: 14, desert: 26, snow: 0, blocks: 0, pipeline: 16, trench: 30 }
   const bushN = bushSpec[mapId] ?? 0
   if (bushN) {
     const geo = new THREE.IcosahedronGeometry(1, 1)

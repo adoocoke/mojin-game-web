@@ -2405,9 +2405,9 @@ export class Game {
   private static ALLY_KINDS: EnemyKind[] = ['normal', 'normal', 'scout', 'normal', 'heavy']
   /** 攻防战据点位置（各竞技场原创布局） */
   private static CAPTURE_POINTS: Record<string, { x: number; z: number }[]> = {
-    blocks:   [{ x: 0, z: -34 }, { x: 0, z: 8 }, { x: 0, z: 48 }],
-    pipeline: [{ x: -36, z: 0 }, { x: 6, z: 0 }, { x: 48, z: 0 }],
-    trench:   [{ x: 0, z: -40 }, { x: 0, z: 0 }, { x: 0, z: 40 }],
+    blocks:   [{ x: 0, z: -60 }, { x: 0, z: 8 }, { x: 0, z: 78 }],
+    pipeline: [{ x: -80, z: 0 }, { x: 5, z: 0 }, { x: 95, z: 0 }],
+    trench:   [{ x: 0, z: -58 }, { x: 0, z: 0 }, { x: 0, z: 58 }],
   }
 
   private warKindPool(): EnemyKind {
@@ -2707,8 +2707,8 @@ export class Game {
           this.toast('💥 迫击炮齐射预警！远离红圈！', 'red')
           sfx.ui()
           for (let i = 0; i < 3; i++) {
-            const x = (Math.random() - 0.5) * 110
-            const z = (Math.random() - 0.5) * 56
+            const x = (Math.random() - 0.5) * this.world.size * 0.76
+            const z = (Math.random() - 0.5) * this.world.size * 0.5
             const ring = new THREE.Mesh(new THREE.RingGeometry(4.7, 5.4, 26),
               new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }))
             ring.rotation.x = -Math.PI / 2

@@ -192,9 +192,9 @@ export function MenuScreen() {
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
           {(ui.mode === 'war' ? [
-            { id: 'blocks' as const, icon: '🔥', name: '烬区', tags: '巷战街区 · 燃烧残骸', desc: '六处火场封锁街区，灼烧敌我不分' },
-            { id: 'pipeline' as const, icon: '🛢️', name: '贯穿', tags: '狭长走廊 · 蒸汽喷口', desc: '蒸汽阀周期喷发，嘶鸣一响赶紧躲开' },
-            { id: 'trench' as const, icon: '🪖', name: '堑壕战', tags: '锯齿战壕 · 迫击炮', desc: '铁丝网减速带 + 无人区随机炮击' },
+            { id: 'blocks' as const, icon: '🔥', name: '烬区', tags: '烧毁城区 · 大火场', desc: '破损楼群与汽车残骸间巷战，火焰封锁街道' },
+            { id: 'pipeline' as const, icon: '🛢️', name: '贯穿', tags: '炼油厂区 · 蒸汽喷口', desc: '储油罐群与高架管道桥，蒸汽阀周期喷发' },
+            { id: 'trench' as const, icon: '🪖', name: '堑壕战', tags: '一战战场 · 迫击炮', desc: '瞭望塔与坦克残骸，铁丝网+无人区炮击' },
           ] : [
             { id: 'wild' as const, icon: '🏗️', name: '零号大坝', tags: '物资一般 · 敌人分散', desc: '大坝与水泥厂区，稳扎稳打积累财富' },
             { id: 'tower' as const, icon: '🚀', name: '航天基地', tags: '四层高塔 · Boss 镇守', desc: '发射塔内物资极品，整体爆率更高' },

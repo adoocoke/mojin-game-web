@@ -4,7 +4,7 @@ import { makeGrid, autoPlace } from './inventory'
 import { makeItem } from './data'
 import { currentEvent } from './events'
 import { MAP_MISSIONS } from './missions'
-import { buildSky, buildDust, groundTexture, concreteTexture, asphaltTexture, scatterDecor } from './gfx'
+import { buildSky, buildDust, groundTexture, concreteTexture, asphaltTexture, scatterDecor, cloudTexture } from './gfx'
 
 export interface AABB { minX: number; maxX: number; minZ: number; maxZ: number; top: number; base?: number }
 
@@ -488,7 +488,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = mapId === 'snow' ? 300 : mapId === 'blocks' || mapId === 'trench' ? 90 : mapId === 'pipeline' ? 95 : 140
+  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'pipeline' ? 170 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -503,9 +503,10 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   sun.position.set(60, 90, 30)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)
-  sun.shadow.camera.left = -90; sun.shadow.camera.right = 90
-  sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90
-  sun.shadow.camera.far = 250
+  const shadowR = Math.max(90, Math.round(size * 0.72))
+  sun.shadow.camera.left = -shadowR; sun.shadow.camera.right = shadowR
+  sun.shadow.camera.top = shadowR; sun.shadow.camera.bottom = -shadowR
+  sun.shadow.camera.far = 320
   scene.add(sun)
 
   // 地面
@@ -2472,6 +2473,56 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     scene.add(m); obstacleMeshes.push(m)
     colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top: h })
   }
+  // ===== 竞技场建筑构件库（外观辨识度：全部程序化原创） =====
+  const charredMat = new THREE.MeshStandardMaterial({ color: 0x26221e, roughness: 1 })
+  const winBandMat = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.4, metalness: 0.3 })
+  const rustMat = new THREE.MeshStandardMaterial({ color: 0x7a4a2e, roughness: 0.75, metalness: 0.35 })
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x565c64, roughness: 0.55, metalness: 0.55 })
+  /** 破损多层楼：贴图基座 + 烧焦塌顶 + 每层暗色窗带 */
+  const mkRuin = (x: number, z: number, w: number, d: number, floors: number, color: number) => {
+    const hBase = floors * 3.1
+    mkBox(x, z, w, d, hBase, color)
+    for (let f = 1; f < floors; f++) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, 0.62, d + 0.08), winBandMat)
+      band.position.set(x, f * 3.1, z)
+      scene.add(band)
+    }
+    const topH = 1.6 + rng() * 1.6
+    const top = new THREE.Mesh(new THREE.BoxGeometry(w * (0.5 + rng() * 0.32), topH, d * (0.5 + rng() * 0.32)), charredMat)
+    top.position.set(x + (rng() - 0.5) * w * 0.22, hBase + topH / 2, z + (rng() - 0.5) * d * 0.22)
+    top.rotation.y = (rng() - 0.5) * 0.25
+    top.castShadow = true; top.receiveShadow = true
+    scene.add(top)
+  }
+  /** 烧毁的汽车残骸 */
+  const mkWreck = (x: number, z: number, rot: number) => {
+    const g = new THREE.Group()
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.0, 1.8), charredMat)
+    body.position.y = 0.75
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.75, 1.6), charredMat)
+    cabin.position.set(-0.2, 1.55, 0)
+    g.add(body, cabin)
+    for (const [wx, wz] of [[-1.3, 0.95], [1.3, 0.95], [-1.3, -0.95], [1.3, -0.95]] as const) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 10), new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 1 }))
+      wheel.rotation.x = Math.PI / 2; wheel.position.set(wx, 0.42, wz)
+      g.add(wheel)
+    }
+    g.position.set(x, 0, z); g.rotation.y = rot
+    g.traverse(o => { o.castShadow = true })
+    scene.add(g)
+    colliders.push({ minX: x - 2, maxX: x + 2, minZ: z - 2, maxZ: z + 2, top: 1.9 })
+  }
+  /** 浓烟柱（叠加半透明烟团） */
+  const mkSmoke = (x: number, z: number, h = 16) => {
+    const ct = cloudTexture()
+    for (let i = 0; i < 4; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: ct, color: 0x3a3a3e, transparent: true, opacity: 0.5 - i * 0.08, depthWrite: false }))
+      const s = 4 + i * 3.2
+      sp.scale.set(s, s * 0.9, 1)
+      sp.position.set(x + (rng() - 0.5) * 2, 3 + i * (h / 4), z + (rng() - 0.5) * 2)
+      scene.add(sp)
+    }
+  }
   if (mapId === 'blocks') {
     // ===== 烬区：巷战街区（对称十字街区 + 中央广场绞肉区） =====
     for (const [bx, bz] of [[-42, -42], [42, -42], [-42, 42], [42, 42]] as const) mkBox(bx, bz, 20, 20, 6, 0x8a8478) // 四角大楼
@@ -2504,9 +2555,18 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       hazards.push({ type: 'fire', x: fx, z: fz, r: 3.2, flames, light, t: rng() * 6 })
     }
     for (const [fx, fz] of [[-30, 2], [30, -2], [2, -32], [-2, 32], [-24, 28], [24, -28]] as const) mkFire(fx, fz)
+    // 烬区地标：外环破损楼群 + 汽车残骸 + 烟柱（烧毁城区轮廓）
+    for (const [rx, rz, rw, rd, rf] of [
+      [-85, -85, 22, 18, 3], [85, -85, 18, 22, 4], [-85, 85, 20, 16, 2], [85, 85, 24, 20, 3],
+      [0, -95, 26, 14, 3], [0, 95, 22, 16, 4], [-100, 0, 16, 24, 3], [100, 0, 14, 22, 2],
+      [-58, -100, 16, 14, 2], [58, 100, 18, 14, 3], [-100, -55, 14, 16, 2], [100, 55, 16, 14, 2],
+    ] as const) mkRuin(rx, rz, rw, rd, rf, rng() < 0.5 ? 0x847a6e : 0x7a7066)
+    for (const [wx, wz, wr] of [[-45, -60, 0.4], [48, 62, 2.2], [-62, 40, 1.2], [60, -38, 2.8], [10, -75, 1.7], [-12, 78, 0.2]] as const) mkWreck(wx, wz, wr)
+    for (const [sx2, sz2] of [[-30, 2], [85, -85], [-85, 85]] as const) mkSmoke(sx2, sz2)
+    mkFire(-62, -62); mkFire(64, 58) // 外环火场
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '中央广场' })
-    playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
-    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 70], [0, -30], [-24, 0], [24, 0]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+    playerSpawn = new THREE.Vector3(0, 0, -128); playerYaw = Math.PI
+    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 70], [0, -30], [-24, 0], [24, 0], [-115, -115], [115, -115], [-115, 115], [115, 115], [0, -115], [-115, 0], [115, 0]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
   if (mapId === 'pipeline') {
     // ===== 贯穿：狭长管道走廊（东西向主管廊正面硬刚 + 南北侧道绕后） =====
@@ -2535,10 +2595,51 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       scene.add(valve, wheel, jet)
       hazards.push({ type: 'steam', x: sx, z: sz, r: 2.6, jet, t: rng() * 5, phase: 0 })
     }
-    for (const [sx, sz] of [[-20, -6], [10, 6], [40, -6], [-48, 6], [62, -6]] as const) mkSteam(sx, sz)
+    for (const [sx, sz] of [[-20, -6], [10, 6], [40, -6], [-48, 6], [62, -6], [-105, 6], [115, -6]] as const) mkSteam(sx, sz)
+    // 贯穿地标：管廊延长段 + 巨型储油罐群 + 高架管道桥 + 集装箱堆场
+    for (const [wx, wlen] of [[-118, 52], [112, 56]] as const) mkBox(wx, -8, wlen, 1.6, 3.2, 0x6a6f76) // 北墙延长
+    for (const [wx, wlen] of [[-108, 60], [118, 52]] as const) mkBox(wx, 8, wlen, 1.6, 3.2, 0x6a6f76)  // 南墙延长
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0x8a8578, map: concreteTexture('#8a8276', 3), roughness: 0.7, metalness: 0.25 })
+    for (const [tx, tz, tr] of [[-95, 34, 5.5], [-60, 40, 6.5], [-120, 42, 5], [70, 38, 6], [110, 34, 5.5], [30, 44, 5], [-40, -40, 6], [-90, -38, 5.5], [80, -42, 6.5], [125, -36, 5]] as const) {
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, 8.5, 18), tankMat)
+      tank.position.set(tx, 4.25, tz)
+      tank.castShadow = true; tank.receiveShadow = true
+      scene.add(tank); obstacleMeshes.push(tank)
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(tr * 0.35, tr * 0.98, 1.2, 18), rustMat)
+      cap.position.set(tx, 9.1, tz); cap.castShadow = true
+      scene.add(cap)
+      colliders.push({ minX: tx - tr, maxX: tx + tr, minZ: tz - tr, maxZ: tz + tr, top: 8.5 })
+    }
+    // 高架管道桥：横跨主管廊（三根并管 + 支腿）
+    for (const bx of [-70, 15, 95]) {
+      for (const py of [5.6, 6.4, 7.2]) {
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 26, 10), rustMat)
+        pipe.rotation.x = Math.PI / 2
+        pipe.position.set(bx + (py - 6.4) * 1.6, py, 0)
+        pipe.castShadow = true
+        scene.add(pipe)
+      }
+      for (const lz of [-10.5, 10.5]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 7.2, 0.5), steelMat)
+        leg.position.set(bx, 3.6, lz); leg.castShadow = true
+        scene.add(leg)
+        colliders.push({ minX: bx - 0.4, maxX: bx + 0.4, minZ: lz - 0.4, maxZ: lz + 0.4, top: 7.2 })
+      }
+    }
+    // 集装箱堆场
+    for (const [bx, bz, bc, st] of [[-75, -26, 0x3a5a8a, 2], [-72, -21, 0x8a3a2e, 1], [88, 24, 0x6a7a3a, 2], [92, 29, 0x3a5a8a, 1], [-15, -38, 0x8a6a2e, 2], [130, 10, 0x8a3a2e, 1], [-140, -12, 0x5a6a72, 1]] as const) {
+      for (let s = 0; s < st; s++) {
+        const box = new THREE.Mesh(new THREE.BoxGeometry(6, 2.6, 2.4), new THREE.MeshStandardMaterial({ color: bc, map: concreteTexture('#777772', 1), roughness: 0.6, metalness: 0.3 }))
+        box.position.set(bx + (rng() - 0.5), 1.3 + s * 2.62, bz)
+        box.rotation.y = s === 0 ? 0 : (rng() - 0.5) * 0.15
+        box.castShadow = true; box.receiveShadow = true
+        scene.add(box); obstacleMeshes.push(box)
+      }
+      colliders.push({ minX: bx - 3.2, maxX: bx + 3.2, minZ: bz - 1.4, maxZ: bz + 1.4, top: 2.6 * st })
+    }
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '主管廊' })
-    playerSpawn = new THREE.Vector3(-80, 0, 0); playerYaw = -Math.PI / 2
-    for (const [sx, sz] of [[70, 0], [60, 30], [60, -30], [-60, 30], [-60, -30], [0, 60], [0, -60], [30, 10], [-30, -10]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+    playerSpawn = new THREE.Vector3(-148, 0, 0); playerYaw = -Math.PI / 2
+    for (const [sx, sz] of [[70, 0], [60, 30], [60, -30], [-60, 30], [-60, -30], [0, 60], [0, -60], [30, 10], [-30, -10], [140, 0], [130, 40], [130, -40], [-130, 40], [-130, -40]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
   if (mapId === 'trench') {
     // ===== 堑壕战：三道锯齿壕线 + 中央无人区 + 两端碉堡 =====
@@ -2576,9 +2677,68 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     }
     // 堑壕战特色③：迫击炮齐射（引擎定时驱动，红圈预警→落弹，敌我不分）
     hazards.push({ type: 'artillery', x: 0, z: 0, r: 0, t: 16 })
+    // 堑壕战地标：木制瞭望塔 / 反坦克拒马 / 坦克残骸 / 木板路
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5a4630, roughness: 1 })
+    const mkTower = (tx: number, tz: number) => {
+      for (const [lx, lz] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]] as const) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 6.4, 6), woodMat)
+        leg.position.set(tx + lx, 3.2, tz + lz); leg.castShadow = true
+        scene.add(leg)
+      }
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, 4), woodMat)
+      deck.position.set(tx, 6.4, tz); deck.castShadow = true
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(4, 0.9, 4), new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 1 }))
+      rail.position.set(tx, 7.0, tz)
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.1, 1.6, 4), charredMat)
+      roof.position.set(tx, 8.2, tz); roof.rotation.y = Math.PI / 4; roof.castShadow = true
+      scene.add(deck, rail, roof)
+      colliders.push({ minX: tx - 1.6, maxX: tx + 1.6, minZ: tz - 1.6, maxZ: tz + 1.6, top: 6.4 })
+    }
+    for (const [tx, tz] of [[-52, -78], [52, -78], [-52, 78], [52, 78]] as const) mkTower(tx, tz)
+    // 反坦克拒马（三根交叉钢梁）
+    const mkHedgehog = (hx: number, hz: number) => {
+      for (let i = 0; i < 3; i++) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.3, 0.22), steelMat)
+        beam.position.set(hx, 0.85, hz)
+        beam.rotation.set(i === 0 ? 0.8 : 0, i * (Math.PI / 3), i === 2 ? 0.8 : -0.8)
+        beam.castShadow = true
+        scene.add(beam)
+      }
+    }
+    for (const [hx, hz] of [[-45, -26], [-15, -28], [15, -24], [45, -27], [-45, 26], [-15, 24], [15, 28], [45, 25], [-60, 0], [60, 0]] as const) mkHedgehog(hx, hz)
+    // 坦克残骸
+    const mkTankWreck = (tx: number, tz: number, rot: number) => {
+      const g = new THREE.Group()
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(5.4, 1.5, 2.9), rustMat)
+      hull.position.y = 1.05
+      const turret = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.85, 2.2), rustMat)
+      turret.position.set(-0.3, 2.2, 0); turret.rotation.y = 0.5
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 3.6, 8), charredMat)
+      barrel.rotation.z = Math.PI / 2 - 0.12; barrel.position.set(1.9, 2.2, 0.9)
+      barrel.rotation.y = 0.5
+      g.add(hull, turret, barrel)
+      for (const tz2 of [-1.6, 1.6]) {
+        const track = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.9, 0.5), charredMat)
+        track.position.set(0, 0.45, tz2)
+        g.add(track)
+      }
+      g.position.set(tx, 0, tz); g.rotation.y = rot
+      g.traverse(o => { o.castShadow = true })
+      scene.add(g); obstacleMeshes.push(hull)
+      colliders.push({ minX: tx - 3, maxX: tx + 3, minZ: tz - 3, maxZ: tz + 3, top: 2.6 })
+    }
+    mkTankWreck(-32, -12, 0.4); mkTankWreck(36, 14, 2.6); mkTankWreck(2, 60, 1.1)
+    // 木板路（壕间通道）
+    for (let i = 0; i < 12; i++) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.5), woodMat)
+      plank.position.set(-20 + i * 1.7, 0.05, -64 + Math.sin(i * 0.8) * 1.2)
+      plank.rotation.y = (rng() - 0.5) * 0.3
+      plank.receiveShadow = true
+      scene.add(plank)
+    }
     mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '无人区' })
-    playerSpawn = new THREE.Vector3(0, 0, -78); playerYaw = Math.PI
-    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 60], [-50, 0], [50, 0], [0, -60]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+    playerSpawn = new THREE.Vector3(0, 0, -128); playerYaw = Math.PI
+    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 60], [-50, 0], [50, 0], [0, -60], [-115, -115], [115, -115], [-115, 115], [115, 115], [0, 115], [-110, 40], [110, -40]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
 
   if (mapId === 'prison') {
