@@ -1,8 +1,9 @@
 import { useEffect, useReducer, useState } from 'react'
 import { engine, useUI } from '@/game/store'
-import { officialEventsList, type OfficialEventInfo } from '@/game/events'
+import { officialEventsList, jixingProgress, JIXING_EVENT_NAME, JIXING_GOAL, JIXING_SKIN, type OfficialEventInfo } from '@/game/events'
 import { loadSkins, skinDef } from '@/game/skins'
 import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
+import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
 
 /** 由活动名生成稳定色相，让每个活动有专属配色的横幅 */
 function hueOf(str: string): number {
@@ -78,9 +79,28 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
               🍹 前往调制 ›
             </button>
           )}
-          {ev.name === '限时三角券狂欢' && voucherEventActive() && (
+          {(ev.name === '限时三角券狂欢' || ev.name === '三角券惊喜礼盒') && voucherEventActive() && (
             <span className="text-[11px] rounded px-2 py-0.5 border border-cyan-500/40 bg-cyan-500/10 text-cyan-200 font-mono">
               🎟️ 余额 {loadVouchers().total.toLocaleString()} · 任务 {loadVouchers().taskEarned}/{VOUCHER_TASK_CAP}
+            </span>
+          )}
+          {ev.name === JIXING_EVENT_NAME && active && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-sky-500/40 bg-sky-500/10 text-sky-200 font-mono">
+              🌠 绩效 {Math.min(jixingProgress(), JIXING_GOAL)}/{JIXING_GOAL}
+              {loadSkins().owned.includes(JIXING_SKIN) ? ' · M700「静点」已解锁' : ' · 航天基地撤离累计'}
+            </span>
+          )}
+          {ev.name === '冰湖垂钓' && (() => {
+            const fs = loadFishing()
+            return (
+              <span className="text-[11px] rounded px-2 py-0.5 border border-sky-500/40 bg-sky-500/10 text-sky-200 font-mono">
+                {fs.rod ? '🎣 钓竿已解锁' : fs.acc ? `委托进度 ${fs.kills}/${FISH_TASK_KILLS}` : '未接委托'} · 累计渔获 {fs.total} · 图鉴 {Object.keys(fs.dex).length}/5
+              </span>
+            )
+          })()}
+          {ev.name === '守夜人的口风琴' && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-200 font-mono">
+              🎵 {harpStageText(loadHarp())}
             </span>
           )}
           {skin && (

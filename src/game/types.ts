@@ -30,6 +30,7 @@ export interface ItemDef {
   openable?: 'luckybag' | 'mandelbrick'  // 可在仓库开启的活动道具（红运福袋 / 猩红曼德尔砖）
   stack?: number     // 最大堆叠
   slot?: AttSlot     // kind === attachment 时的配件槽位
+  guns?: string[]    // kind === attachment 时的适用枪械 gunId 列表（缺省 = 全武器通用，如哈夫克军工 M700 专属配件）
   pen?: number       // kind === ammo：穿透等级 1-6
   dmgMul?: number    // kind === ammo：伤害倍率
   armorLv?: number   // kind === helmet/vest：护甲等级 1-3

@@ -53,7 +53,7 @@ export interface OfficialEvent {
   start: string       // 活动窗口（北京时间，ISO 格式）
   end: string
   skin?: string       // 「登录领皮肤」类活动：窗口期内首次开局发放该皮肤（skins.ts 中的皮肤 id）
-  lootTag?: 'drinkMat' | 'luckybag' | 'mandelbrick'  // 局内道具掉落注入（窗口期内所有此类活动同时生效）
+  lootTag?: 'drinkMat' | 'luckybag' | 'mandelbrick' | 'jixing' | 'hvk'  // 局内道具掉落注入（窗口期内所有此类活动同时生效）
 }
 
 const OFFICIAL_EVENTS: OfficialEvent[] = [
@@ -79,7 +79,49 @@ const OFFICIAL_EVENTS: OfficialEvent[] = [
     desc: '登录即领 AUG 传说皮肤「金粥年」（对应官方：登录领传说外观 AUG-金粥年）' },
   { id: 'official', icon: '🏎️', name: '洲年限定载具造型', start: '2026-09-24T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00', skin: 'sk_zhouyear',
     desc: '登录即领皮肤「洲年限定」（对应官方：洲年限定载具造型上架）' },
+  // —— S11 季中批次：2026-10 上旬（周年庆延续） ——
+  { id: 'official', icon: '🎁', name: '三角券惊喜礼盒', start: '2026-10-08T00:00:00+08:00', end: '2026-10-17T23:59:59+08:00',
+    desc: '登录领取周年庆限时三角券惊喜礼盒，保底 +1000 限时三角券（🎟️ 皮肤页可用，10月17日后清零）' },
+  { id: 'official', icon: '🖤', name: '高雅黑补给', start: '2026-10-10T00:00:00+08:00', end: '2026-10-22T23:59:59+08:00', skin: 'sk_elegant_black',
+    desc: '窗口期内首次开局发放「高雅黑」主题枪皮（对应官方：累计局内时长领取高雅黑系列武器外观）' },
+  { id: 'official', icon: '🍪', name: '贪吃鬼系列外观', start: '2026-10-09T00:00:00+08:00', end: '2026-11-05T23:59:59+08:00',
+    desc: '甜趣主题外观限时上架：皮肤商店金币购买通用枪皮「贪吃鬼」（对应官方：K437/杠杆式步枪/93R-贪吃鬼 系列上架）' },
+  // —— S11 季中重磅玩法：极星守望（2026-10-16 开启，跨赛季长窗口） ——
+  { id: 'official', icon: '🌠', name: '极星守望', start: '2026-10-16T00:00:00+08:00', end: '2027-01-21T01:59:59+08:00', lootTag: 'jixing',
+    desc: '前往航天基地参与极星守望行动：航天基地成功撤离累计绩效（5 次）解锁 M700 传说外观「静点」；局内容器概率产出德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」' },
+  { id: 'official', icon: '🔩', name: '哈夫克军工配件', start: '2026-10-16T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00', lootTag: 'hvk',
+    desc: 'M700 专属配件「HVK旋风枪身系统」「HVK旋风强化导气」限时上线：局内武器箱小概率产出，交易行限时上架（对应官方：哈夫克军工配件上新）' },
+  // —— S11 常驻玩法活动（无掉落标签，纯展示入口，玩法在长弓溪谷局内） ——
+  { id: 'official', icon: '🎣', name: '冰湖垂钓', start: '2026-09-01T00:00:00+08:00', end: '2027-12-31T23:59:59+08:00',
+    desc: '长弓溪谷冰湖两岸钓点：完成雷达站委托领钓竿后抛竿垂钓，5 种渔获可换金币（🎣 钓点见小地图）' },
+  { id: 'official', icon: '🎵', name: '守夜人的口风琴', start: '2026-09-01T00:00:00+08:00', end: '2027-12-31T23:59:59+08:00',
+    desc: '湖畔木屋守夜人佐拉的三段委托：夺回头盔→集齐 4 张乐谱残页→肃清雷达站，奖励红色藏品「守夜人口风琴」（局内 H 吹奏回血）' },
 ]
+
+// —— 官方「极星守望」绩效镜像：窗口期内在航天基地（对应官方行动地图）成功撤离累计绩效，达标解锁 M700 传说皮肤「静点」 ——
+const JIXING_KEY = 'mojin_jixing_v1'
+export const JIXING_EVENT_NAME = '极星守望'
+export const JIXING_MAP_ID = 'tower'       // 航天基地
+export const JIXING_GOAL = 5               // 绩效等级等价映射：累计 5 次航天基地成功撤离
+export const JIXING_SKIN = 'sk_m700_jingdian'
+
+export function jixingActive(now = Date.now()): boolean {
+  return officialEventActive(JIXING_EVENT_NAME, now)
+}
+
+export function jixingProgress(): number {
+  try { return Math.max(0, Number(localStorage.getItem(JIXING_KEY)) || 0) } catch { return 0 }
+}
+
+/** 撤离成功时调用：窗口期内且本局为航天基地则绩效 +1；达标自动发放 M700 传说皮肤「静点」。非窗口/非航天基地返回 null */
+export function trackJixingExtract(mapId: string, now = Date.now()): { count: number; unlocked: boolean } | null {
+  if (mapId !== JIXING_MAP_ID || !jixingActive(now)) return null
+  const count = jixingProgress() + 1
+  try { localStorage.setItem(JIXING_KEY, String(count)) } catch { /* 忽略 */ }
+  let unlocked = false
+  if (count >= JIXING_GOAL) unlocked = grantSkin(loadSkins(), JIXING_SKIN)
+  return { count, unlocked }
+}
 
 /** 官方「登录领皮肤」类活动：窗口期内首次开局发放对应皮肤（已拥有则跳过），返回新获得的皮肤 id 与来源活动名 */
 export function claimOfficialSkinRewards(now = Date.now()): { skinId: string; from: string }[] {

@@ -4,6 +4,7 @@ import { makeGrid, autoPlace } from './inventory'
 import { makeItem } from './data'
 import { currentEvent } from './events'
 import { MAP_MISSIONS } from './missions'
+import { FISHING_SPOTS, HUT, PAGE_SPOTS, loadHarp } from './fishing'
 import { buildSky, buildDust, groundTexture, concreteTexture, asphaltTexture, scatterDecor, cloudTexture } from './gfx'
 
 export interface AABB { minX: number; maxX: number; minZ: number; maxZ: number; top: number; base?: number }
@@ -85,6 +86,12 @@ export interface World {
   dust?: THREE.Points           // 漂浮尘土（氛围粒子，引擎每帧缓慢扰动）
   train?: { group: THREE.Group; cars: THREE.Object3D[]; speed: number; x: number; zMin: number; zMax: number }
   lift?: { mesh: THREE.Object3D; walkable: Walkable; baseY: number; topY: number; active: boolean; dir: 1 | -1; waitT: number }  // 高塔货运电梯（电闸启动后地面↔天台往返）
+  /** 常驻活动场景（当前仅长弓溪谷：冰钓点 + 守夜人木屋 + 乐谱残页） */
+  activity?: {
+    fishSpots: { x: number; z: number; group: THREE.Group }[]
+    hut: { x: number; z: number; group: THREE.Group }
+    pages: { x: number; z: number; mesh: THREE.Object3D }[]
+  }
 }
 
 const crateColors: Record<string, number> = {
@@ -793,6 +800,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   let lampStands: World['lampStands'] = undefined
   let train: World['train'] = undefined
   let lift: World['lift'] = undefined
+  let activity: World['activity'] = undefined
 
   if (mapId === 'wild') {
     // ================= 地图一：零号大坝（爆率下调） =================
@@ -1181,6 +1189,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       (Math.abs(x) < 20 && z > -85 && z < -55) ||          // 雷达楼
       (x > 38 && x < 82 && z > 20 && z < 50) ||            // 机库
       (x > -80 && x < -40 && z > 24 && z < 56) ||          // 营地
+      Math.hypot(x - HUT.x, z - HUT.z) < 10 ||             // 守夜人木屋
       Math.hypot(x, z - 110) < 14                          // 出生点
     let trees = 0
     while (trees < 46) {
@@ -1457,6 +1466,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       Math.hypot(x - FX, z - FZ) < 14 ||                                    // 燃料库
       (x > -20 && x < 36 && z > 68 && z < 98) ||                            // 车队残骸
       Math.hypot(x - WX, z - WZ) < 9 ||                                     // 气象站
+      Math.hypot(x - HUT.x, z - HUT.z) < 9 ||                               // 守夜人木屋
       Math.hypot(x + 40, z + 112) < 8 || Math.hypot(x - 70, z - 88) < 8 ||  // 碉堡 ×2
       Math.hypot(x, z - 110) < 16 || Math.hypot(x, z + 126) < 10
     let placedN = 0
@@ -1564,6 +1574,148 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mapMarkers.push({ x: railX, z: 0, kind: 'block', name: '溪谷铁轨' })
     mapMarkers.push({ x: railX, z: -220, kind: 'mission', name: '过路火车' })
     train = { group: trainGroup, cars, speed: 18, x: railX, zMin: -280, zMax: 280 }
+
+    // ================= 常驻活动场景：冰湖垂钓 + 守夜人的木屋（原创实现） =================
+    {
+      const woodMatA = new THREE.MeshStandardMaterial({ color: 0x6a4e32, roughness: 0.85 })
+      const woodDarkA = new THREE.MeshStandardMaterial({ color: 0x46331f, roughness: 0.9 })
+      const canvasMatA = new THREE.MeshStandardMaterial({ color: 0x7a6a4a, roughness: 0.95 })
+      const roofMatA = new THREE.MeshStandardMaterial({ color: 0x7a4432, roughness: 0.9 })
+      const actSpots: { x: number; z: number; group: THREE.Group }[] = []
+      const actPages: { x: number; z: number; mesh: THREE.Object3D }[] = []
+
+      // —— 冰钓点 ×2：冰洞 + 冰碴圈 + 小马扎 + 斜靠鱼竿 + 渔桶 + 暖灯 ——
+      const mkFishSpot = (fx: number, fz: number, toward: 1 | -1) => {
+        const g = new THREE.Group()
+        const holeX = fx + toward * 2.2
+        const hole = new THREE.Mesh(new THREE.CircleGeometry(0.62, 20),
+          new THREE.MeshStandardMaterial({ color: 0x0e2a3a, roughness: 0.12, metalness: 0.25 }))
+        hole.rotation.x = -Math.PI / 2
+        hole.position.set(holeX, 0.06, fz)
+        g.add(hole)
+        for (let i = 0; i < 9; i++) {
+          const a = (i / 9) * Math.PI * 2
+          const chip = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.15), iceMat)
+          chip.position.set(holeX + Math.cos(a) * 0.78, 0.07, fz + Math.sin(a) * 0.78)
+          chip.rotation.y = a
+          g.add(chip)
+        }
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.36), canvasMatA)
+        seat.position.set(fx, 0.42, fz)
+        g.add(seat)
+        for (const s of [-1, 1]) {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.46, 0.38), woodDarkA)
+          leg.position.set(fx + s * 0.17, 0.21, fz)
+          leg.rotation.z = s * 0.24
+          g.add(leg)
+        }
+        const rack = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.8, 6), woodDarkA)
+        rack.position.set(fx + toward * 0.55, 0.4, fz + 0.55)
+        g.add(rack)
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 2.6, 6), woodMatA)
+        rod.position.set(fx + toward * 1.2, 0.98, fz + 0.4)
+        rod.rotation.z = -toward * 0.92
+        g.add(rod)
+        const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.19, 0.4, 12), darkSteel)
+        bucket.position.set(fx - toward * 0.75, 0.2, fz + 0.6)
+        g.add(bucket)
+        const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.6, 6), woodDarkA)
+        lampPole.position.set(fx, 0.8, fz - 0.95)
+        g.add(lampPole)
+        const lampHead = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8),
+          new THREE.MeshStandardMaterial({ color: 0x442200, emissive: 0xffc27a, emissiveIntensity: 2.0 }))
+        lampHead.position.set(fx, 1.62, fz - 0.95)
+        g.add(lampHead)
+        const pl = new THREE.PointLight(0xffb46a, 18, 13, 1.6)
+        pl.position.set(fx, 1.7, fz - 0.95)
+        g.add(pl)
+        g.traverse(o => { o.castShadow = true })
+        scene.add(g); obstacleMeshes.push(g)
+        colliders.push({ minX: fx - 0.55, maxX: fx + 0.55, minZ: fz - 0.4, maxZ: fz + 0.65, top: 0.55 })
+        actSpots.push({ x: fx, z: fz, group: g })
+        mapMarkers.push({ x: fx, z: fz, kind: 'mission', name: '🎣 冰钓点' })
+      }
+      mkFishSpot(FISHING_SPOTS[0].x, FISHING_SPOTS[0].z, -1) // 东岸钓点：湖在西侧
+      mkFishSpot(FISHING_SPOTS[1].x, FISHING_SPOTS[1].z, 1)  // 西岸钓点：湖在东侧
+
+      // —— 守夜人的木屋（佐拉任务线接取点，北墙朝湖留门） ——
+      const hutG = new THREE.Group()
+      const HUW = 7, HUD = 5.6, HUH = 2.7
+      const hw = (mat: THREE.Material, w: number, h: number, d: number, dx: number, y: number, dz: number, solid = true) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
+        m.position.set(HUT.x + dx, y, HUT.z + dz)
+        m.castShadow = true; m.receiveShadow = true
+        hutG.add(m); obstacleMeshes.push(m)
+        if (solid) colliders.push({ minX: HUT.x + dx - w / 2, maxX: HUT.x + dx + w / 2, minZ: HUT.z + dz - d / 2, maxZ: HUT.z + dz + d / 2, top: y + h / 2, base: y - h / 2 })
+        return m
+      }
+      hw(woodMatA, (HUW - 1.6) / 2, HUH, 0.3, -(0.8 + (HUW - 1.6) / 4), HUH / 2, -HUD / 2 + 0.15) // 北墙左
+      hw(woodMatA, (HUW - 1.6) / 2, HUH, 0.3, 0.8 + (HUW - 1.6) / 4, HUH / 2, -HUD / 2 + 0.15)   // 北墙右
+      hw(woodMatA, 1.6, 0.6, 0.3, 0, 2.4, -HUD / 2 + 0.15, false)                                 // 门楣（纯视觉）
+      hw(woodMatA, HUW, HUH, 0.3, 0, HUH / 2, HUD / 2 - 0.15)                                      // 南墙
+      hw(woodMatA, 0.3, HUH, HUD - 0.6, -HUW / 2 + 0.15, HUH / 2, 0)                               // 西墙
+      hw(woodMatA, 0.3, HUH, HUD - 0.6, HUW / 2 - 0.15, HUH / 2, 0)                                // 东墙
+      for (const s of [-1, 1]) {                                                                   // 人字屋顶
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(HUW + 0.9, 0.14, HUD / 2 + 0.7), roofMatA)
+        slab.position.set(HUT.x, HUH + 0.62, HUT.z + s * (HUD / 4 + 0.1))
+        slab.rotation.x = s * 0.52
+        slab.castShadow = true
+        hutG.add(slab); obstacleMeshes.push(slab)
+      }
+      hw(woodDarkA, HUW + 0.9, 0.16, 0.24, 0, HUH + 1.18, 0, false)                                // 屋脊梁
+      hw(darkSteel, 0.5, 1.2, 0.5, 2.2, HUH + 1.1, 0.9, false)                                     // 烟囱
+      // 暖窗（北墙门旁，夜里透光的格窗）
+      const winMat = new THREE.MeshStandardMaterial({ color: 0x2a1a08, emissive: 0xffc27a, emissiveIntensity: 1.6, side: THREE.DoubleSide })
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.8), winMat)
+      win.position.set(HUT.x - 2.2, 1.5, HUT.z - HUD / 2 - 0.01)
+      hutG.add(win)
+      const winBar1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.03), woodDarkA)
+      winBar1.position.set(HUT.x - 2.2, 1.5, HUT.z - HUD / 2 - 0.02)
+      const winBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 0.03), woodDarkA)
+      winBar2.position.set(HUT.x - 2.2, 1.5, HUT.z - HUD / 2 - 0.02)
+      hutG.add(winBar1, winBar2)
+      // 门旁风灯 + 室内暖光
+      const hutLampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.7, 6), woodDarkA)
+      hutLampPole.position.set(HUT.x + 1.4, 0.85, HUT.z - HUD / 2 - 0.6)
+      const hutLampHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0x442200, emissive: 0xffc27a, emissiveIntensity: 2.2 }))
+      hutLampHead.position.set(HUT.x + 1.4, 1.75, HUT.z - HUD / 2 - 0.6)
+      hutG.add(hutLampPole, hutLampHead)
+      const hutLight = new THREE.PointLight(0xffc27a, 15, 11, 1.6)
+      hutLight.position.set(HUT.x, 2.0, HUT.z)
+      hutG.add(hutLight)
+      // 屋内小桌 + 桌上的发光乐谱（佐拉的研究台）
+      hw(woodDarkA, 1.2, 0.08, 0.7, -1.6, 0.78, 1.3)
+      hw(woodDarkA, 0.08, 0.74, 0.66, -2.14, 0.39, 1.3)
+      hw(woodDarkA, 0.08, 0.74, 0.66, -1.06, 0.39, 1.3)
+      const score = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xf5edd8, emissive: 0xd8b46a, emissiveIntensity: 0.7 }))
+      score.position.set(HUT.x - 1.6, 0.85, HUT.z + 1.3)
+      hutG.add(score)
+      scene.add(hutG)
+      mapMarkers.push({ x: HUT.x, z: HUT.z, kind: 'house', name: '🎵 守夜人木屋' })
+
+      // —— 乐谱残页 ×4（口风琴阶段二可拾取；发光漂浮，引擎驱动浮动动画与显隐） ——
+      const harpSave0 = loadHarp()
+      PAGE_SPOTS.forEach((p, i) => {
+        const g = new THREE.Group()
+        const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.56),
+          new THREE.MeshStandardMaterial({ color: 0xf5edd8, emissive: 0xd8b46a, emissiveIntensity: 0.9, side: THREE.DoubleSide }))
+        g.add(sheet)
+        for (let li = 0; li < 4; li++) {
+          const ln = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.018),
+            new THREE.MeshBasicMaterial({ color: 0x6a5228, side: THREE.DoubleSide }))
+          ln.position.set(0, 0.16 - li * 0.1, 0.005)
+          g.add(ln)
+        }
+        g.add(new THREE.PointLight(0xffd9a0, 5, 6, 1.8))
+        g.position.set(p.x, 1.15, p.z)
+        g.visible = harpSave0.stage === 2 && !harpSave0.pageIds.includes(i)
+        scene.add(g)
+        actPages.push({ x: p.x, z: p.z, mesh: g })
+      })
+      activity = { fishSpots: actSpots, hut: { x: HUT.x, z: HUT.z, group: hutG }, pages: actPages }
+    }
 
   } else if (mapId === 'desert') {
     // ================= 地图五：巴克什（双层：地表遗迹 + 大型地下陵墓群） =================
@@ -3119,7 +3271,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     mkContainer(b.x + 3.5, b.z + 1.5, '军用保险库', 2.2, b.y)
   }
 
-  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift, dust: dustPts, hazards }
+  return { scene, colliders, obstacleMeshes, containers, extractPos, extractPos2, extractMesh, size, walkables, playerSpawn, playerYaw, spawnPoints, bossSpawns, doors, mapId, mapMarkers, slowZones, missionWall, missionGuides, lampStands, sun, hemi, train, lift, activity, dust: dustPts, hazards }
 }
 
 function mulberry32(a: number) {

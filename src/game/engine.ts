@@ -1,13 +1,13 @@
 import * as THREE from 'three'
 import { buildWorld, buildDeathCrateMesh, spawnAirDrop, type World, type Container, type MapId, type Door, type Hazard } from './world'
 import { EnemyManager, type Enemy, type EnemyKind } from './enemies'
-import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, DRINK_MATS, type OpMods } from './data'
+import { GUNS, ITEMS, rollLootItem, ENEMY_LOOT_POOL, LOOT_POOL, WEAPON_LOOT_POOL, NEST_LOOT_POOL, AIR_LOOT_POOL, VAULT_LOOT_POOL, VENDOR_LOOT_POOL, AMMO_BOX_POOL, CARD_POOLS, MARKET_GOODS, makeItem, KNIFE, OPERATORS, BOSS_DROPS, BOSS_DROP_RATE, BOSS_COLLECT_REWARD, loadBossDrops, saveBossDrops, DRINK_MATS, JX_CRAFT, type OpMods } from './data'
 import { RARITY_INFO, RARITY_ORDER, itemValue, itemWeight, type GunDef, type Rarity, type AttSlot, type ItemInstance, type ItemDef, type PlacedItem, type DrinkBuff } from './types'
 import { makeGrid, autoPlace, removeItem, findPlaced, placeAt, hitTest, defOf } from './inventory'
 import { uiState, notify, engine } from './store'
 import { sfx } from './audio'
 import { loadStash, addToStash, saveStash, clearStash, sellFromStash, saveMoney, sortStash, sellAllValuables } from './stash'
-import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards, activeOfficialLoot } from './events'
+import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards, activeOfficialLoot, trackJixingExtract, JIXING_GOAL } from './events'
 import { claimVoucherRaid } from './vouchers'
 import { equippedSkin } from './skins'
 import { skinDef } from './skins'
@@ -20,6 +20,7 @@ import { vsClient, type VsSession, type RemoteState } from './net'
 import { loadBp, gainBpXp, claimBp as bpClaim, claimable, BP_MAX_LV } from './battlepass'
 import { loadStats, recordCareer, loadAchClaimed, saveAchClaimed, ACHIEVEMENTS } from './achievements'
 import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from './orders'
+import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 
 const EYE = 1.62
 const RAID_SECONDS = 600 // 一局 10 分钟
@@ -100,6 +101,13 @@ export class Game {
   }
   private convoyAlerted = false // 押运车队已被惊动
   private powerStation: { x: number; z: number; floorY: number; mesh: THREE.Group; on: boolean } | null = null
+  // ===== S11 常驻活动：冰湖垂钓 + 守夜人口风琴（长弓溪谷） =====
+  private fishSave = loadFishing()
+  private harpSave = loadHarp()
+  private fishing: { phase: 'wait' | 'bite'; t: number; need: number } | null = null  // 垂钓相位
+  private raidCatch = 0        // 本局渔获数（上限 RAID_CATCH_CAP）
+  private harpCdUntil = 0      // 口琴冷却截止（performance.now() 时间轴）
+  private harpHealT = 0        // 口琴回血剩余时长（秒）
   // ===== 局内随机事件（P3 #21）：开局不预告，局内广播 + 小地图图标 =====
   private raidEvents: { id: 'supplyRain' | 'elitePatrol' | 'gasLeak' | 'convoy'; at: number; fired: boolean }[] = []
   private gasZones: { x: number; z: number; r: number; mesh: THREE.Mesh }[] = []
@@ -335,6 +343,7 @@ export class Game {
       this.keys.add(k)
       if (k === 'r') this.startReload()
       if (k === 'f') this.tryInteract()
+      if (k === 'h') this.playHarmonica()
       if (k === 'q') this.useSkill()
       if (k === 't') this.useTactical()
       if (k === 'l') { engine.toggleQuestHud(); return }
@@ -678,7 +687,7 @@ export class Game {
   private gunDamageMult() { return 1 + RARITY_ORDER.indexOf(this.gunRarity) * 0.13 }
 
   private tryShoot() {
-    if (this.reloading || uiState.phase !== 'playing' || uiState.invOpen) return
+    if (this.reloading || uiState.phase !== 'playing' || uiState.invOpen || this.fishing) return
     const now = performance.now()
     if (now - this.lastShot < this.gunDef.fireInterval * (this.rallyT > 0 ? 0.85 : 1)) return
     if (this.gunDef.melee) { this.lastShot = now; this.meleeAttack(); return }
@@ -866,6 +875,30 @@ export class Game {
     if (e.boss) { this.raidBossKills++; uiState.raidLive = { ...uiState.raidLive, bossKills: this.raidBossKills } }
     uiState.kills = this.kills
     uiState.killFeed = [`击杀 ${e.name}`, ...uiState.killFeed].slice(0, 4)
+    // ===== S11 活动：长弓溪谷击杀联动 =====
+    if (this.world.mapId === 'snow') {
+      // 钓鱼委托：已接未领竿，累计清理湖边敌人
+      if (this.fishSave.acc && !this.fishSave.rod && this.fishSave.kills < FISH_TASK_KILLS) {
+        this.fishSave.kills++
+        saveFishing(this.fishSave)
+        if (this.fishSave.kills >= FISH_TASK_KILLS) this.toast('🎣 委托完成！回冰湖钓点领取钓竿', 'cyan')
+        else this.toast(`🎣 垂钓委托进度 ${this.fishSave.kills}/${FISH_TASK_KILLS}`, 'white')
+      }
+      // 口风琴阶段一：击杀 Boss「雪盲」·白狼，夺回头盔
+      if (this.harpSave.stage === 1 && !this.harpSave.helmet && e.name.includes('白狼')) {
+        this.harpSave.helmet = true
+        saveHarp(this.harpSave)
+        this.toast('🎵 夺回了佐拉的头盔！回湖畔木屋复命', 'cyan')
+      }
+      // 口风琴阶段三：雷达站区域肃清（跨局累积）
+      if (this.harpSave.stage === 3 && this.harpSave.purge < PURGE_NEED
+        && Math.hypot(e.group.position.x - RADAR_ZONE.x, e.group.position.z - RADAR_ZONE.z) < RADAR_ZONE.r) {
+        this.harpSave.purge++
+        saveHarp(this.harpSave)
+        if (this.harpSave.purge >= PURGE_NEED) this.toast('🎵 雷达站已肃清！回湖畔木屋找佐拉', 'cyan')
+        else this.toast(`🎵 雷达站肃清 ${this.harpSave.purge}/${PURGE_NEED}`, 'white')
+      }
+    }
     if (this.war) {
       this.warStreak++
       if (this.warStreak > this.warBestStreak) this.warBestStreak = this.warStreak
@@ -1123,6 +1156,29 @@ export class Game {
 
   private tryInteract() {
     if (this.activeLoot) return
+    // ============ S11 活动：冰湖垂钓 + 守夜人口风琴（长弓溪谷） ============
+    if (this.world.mapId === 'snow' && this.world.activity) {
+      const act = this.world.activity
+      if (act.fishSpots.some(s => Math.hypot(s.x - this.pos.x, s.z - this.pos.z) < 2.8)) { this.interactFishSpot(); return }
+      if (Math.hypot(act.hut.x - this.pos.x, act.hut.z - this.pos.z) < 3.2) { this.interactHut(); return }
+      if (this.harpSave.stage === 2) {
+        for (let i = 0; i < act.pages.length; i++) {
+          const pg = act.pages[i]
+          if (!pg.mesh.visible) continue
+          if (Math.hypot(pg.x - this.pos.x, pg.z - this.pos.z) < 2.4) {
+            pg.mesh.visible = false
+            if (!this.harpSave.pageIds.includes(i)) this.harpSave.pageIds.push(i)
+            this.harpSave.pages = this.harpSave.pageIds.length
+            saveHarp(this.harpSave)
+            sfx.search()
+            if (this.harpSave.pages >= PAGE_NEED) this.toast('🎵 乐谱残页集齐了！回湖畔木屋找佐拉', 'cyan')
+            else this.toast(`🎵 拾取乐谱残页（${this.harpSave.pages}/${PAGE_NEED}）`, 'white')
+            notify()
+            return
+          }
+        }
+      }
+    }
     // ============ 停电夜主题：配电室恢复照明 ============
     if (this.powerStation && !this.powerStation.on && this.missionNear({ x: this.powerStation.x, z: this.powerStation.z, floorY: this.powerStation.floorY }, 2.6)) {
       this.powerStation.on = true
@@ -1258,6 +1314,119 @@ export class Game {
     sfx.search()
   }
 
+  /** 冰湖钓点交互：无竿接委托/领竿；有竿抛竿/提竿 */
+  private interactFishSpot() {
+    if (!this.fishSave.rod) {
+      if (!this.fishSave.acc) {
+        this.fishSave.acc = true
+        this.fishSave.kills = 0
+        saveFishing(this.fishSave)
+        this.toast(`🎣 接下委托：清理湖边敌人 ${FISH_TASK_KILLS} 个，回来领钓竿`, 'cyan')
+      } else if (this.fishSave.kills >= FISH_TASK_KILLS) {
+        this.fishSave.rod = true
+        saveFishing(this.fishSave)
+        sfx.search()
+        this.toast('🎣 领到了冰钓竿！在钓点按 F 抛竿垂钓', 'cyan')
+      } else {
+        this.toast(`🎣 委托进行中：清理湖边敌人 ${this.fishSave.kills}/${FISH_TASK_KILLS}`, 'white')
+      }
+      notify()
+      return
+    }
+    if (!this.fishing) {
+      if (this.raidCatch >= RAID_CATCH_CAP) { this.toast(`🎣 本局渔获已达上限（${RAID_CATCH_CAP}），下局再来`, 'white'); return }
+      this.fishing = { phase: 'wait', t: 0, need: 1.8 + Math.random() * 2.8 }
+      uiState.fishUI = { phase: 'wait', since: performance.now(), dur: this.fishing.need }
+      sfx.castLine()
+      notify()
+      return
+    }
+    if (this.fishing.phase === 'bite') {
+      const defId = rollFish()
+      const item = makeItem(defId, 1)
+      if (autoPlace(this.backpack, item)) {
+        this.raidCatch++
+        this.fishSave.total++
+        this.fishSave.dex[defId] = (this.fishSave.dex[defId] || 0) + 1
+        saveFishing(this.fishSave)
+        this.fishing = null
+        uiState.fishUI = null
+        const rare = defId === 'v_fish4' || defId === 'v_fish5' ? 'red' : 'cyan'
+        this.toast(`🎣 钓到【${ITEMS[defId].name}】！已放入背包`, rare)
+        sfx.catchFish()
+        this.syncGrids()
+      } else {
+        this.fishing = null
+        uiState.fishUI = null
+        this.toast('🎣 背包满了，鱼儿挣脱溜走了……', 'red')
+      }
+      notify()
+    }
+  }
+
+  /** 守夜人木屋交互：佐拉的三段任务链 */
+  private interactHut() {
+    const s = this.harpSave
+    if (s.stage === 0) {
+      s.stage = 1
+      saveHarp(s)
+      this.toast('🎵 佐拉：白狼抢走了我的头盔……帮我夺回来（猎杀Boss「雪盲」·白狼）', 'cyan')
+    } else if (s.stage === 1) {
+      if (s.helmet) {
+        s.stage = 2
+        saveHarp(s)
+        this.syncPagesVisible()
+        this.toast(`🎵 佐拉：乐谱被风撕碎了……帮我找回 ${PAGE_NEED} 张残页（跟着雪原上的金光）`, 'cyan')
+      } else {
+        this.toast('🎵 佐拉：头盔还在白狼那儿……它常在雷达站南面的雪原游荡', 'white')
+      }
+    } else if (s.stage === 2) {
+      if (s.pages >= PAGE_NEED) {
+        s.stage = 3
+        saveHarp(s)
+        this.toast(`🎵 佐拉：最后一件事——肃清雷达站的武装分子（${PURGE_NEED} 个）`, 'cyan')
+      } else {
+        this.toast(`🎵 佐拉：残页还没找齐（${s.pages}/${PAGE_NEED}）……跟着金光找`, 'white')
+      }
+    } else if (s.stage === 3) {
+      if (s.purge >= PURGE_NEED) {
+        s.stage = 4
+        saveHarp(s)
+        const stash = loadStash()
+        addToStash(stash, [makeItem('v_harmonica', 1)])
+        uiState.stash = stash
+        uiState.harpOwned = true
+        sfx.harmonica()
+        this.toast('🎵 佐拉把口风琴交给了你——红色藏品已入仓库，局内按 H 吹奏回血', 'red')
+      } else {
+        this.toast(`🎵 佐拉：雷达站还没肃清（${s.purge}/${PURGE_NEED}）……小心行事`, 'white')
+      }
+    } else {
+      this.toast('🎵 佐拉：琴声能抚平伤口……累了就回来坐坐', 'white')
+    }
+    notify()
+  }
+
+  /** 同步乐谱残页可见性：阶段二且未拾取的才显示 */
+  private syncPagesVisible() {
+    const act = this.world.activity
+    if (!act) return
+    act.pages.forEach((pg, i) => { pg.mesh.visible = this.harpSave.stage === 2 && !this.harpSave.pageIds.includes(i) })
+  }
+
+  /** 吹奏口风琴：6 秒缓慢回血（每秒 3 点），冷却 90 秒 */
+  private playHarmonica() {
+    if (this.harpSave.stage < 4 || uiState.phase !== 'playing') return
+    const now = performance.now()
+    if (now < this.harpCdUntil) { this.toast(`🎵 口琴冷却中……${Math.ceil((this.harpCdUntil - now) / 1000)}s`, 'white'); return }
+    this.harpCdUntil = now + 90_000
+    this.harpHealT = 6
+    uiState.harpCdUntil = this.harpCdUntil
+    sfx.harmonica()
+    this.toast('🎵 吹起守夜人的小调……生命缓缓恢复', 'cyan')
+    notify()
+  }
+
   // 逐格揭示：各稀有度扫描时长（毫秒），越稀有转得越久
   private static REVEAL_SPIN: Record<string, number> = { white: 250, green: 400, blue: 650, purple: 950, cyan: 1300, red: 1700 }
   private revealAnnounced = new Set<string>()
@@ -1358,6 +1527,10 @@ export class Game {
       if (evLoot.has('drinkMat') && Math.random() < 0.15) autoPlace(c.grid, makeItem(DRINK_MATS[Math.floor(Math.random() * DRINK_MATS.length)], 1))
       if (evLoot.has('luckybag') && Math.random() < 0.1) autoPlace(c.grid, makeItem('ev_luckybag', 1))
       if (evLoot.has('mandelbrick') && Math.random() < 0.04) autoPlace(c.grid, makeItem('ev_mandelbrick', 1))
+      // 官方活动「极星守望」：容器概率产出可组装收集品碎片（德小兰 / 灰鲭鲨）
+      if (evLoot.has('jixing') && Math.random() < 0.05) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'ev_jx_doll' : 'ev_jx_shark', 1))
+      // 官方活动「哈夫克军工配件」：武器箱小概率产出 M700 专属 HVK 配件（对应官方：大武器箱小概率产出）
+      if (evLoot.has('hvk') && c.title === '武器箱' && Math.random() < 0.1) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'at_hvk_body' : 'at_hvk_gas', 1))
     }
     if (c.title !== '售货机') c.searched = true // 售货机可反复投币
     this.raidSearches++ // 赛季任务统计
@@ -1613,6 +1786,37 @@ export class Game {
       notify()
       return msg
     }
+    // 官方活动「极星守望」：碎片组装——德小兰碎片×3 + 灰鲭鲨碎片×3 → 大红藏品「灰鲭鲨·德小兰」（对应官方可组装收集品）
+    engine.craftJxModel = () => {
+      if (!uiState.stash) return null
+      const stash = uiState.stash
+      const countOf = (defId: string) => stash.placed.filter(p => p.item.defId === defId).reduce((s, p) => s + p.item.count, 0)
+      if (countOf(JX_CRAFT.doll) < JX_CRAFT.need || countOf(JX_CRAFT.shark) < JX_CRAFT.need) return null
+      const consume = (defId: string, n: number) => {
+        for (const p of [...stash.placed]) {
+          if (n <= 0) break
+          if (p.item.defId !== defId) continue
+          const take = Math.min(n, p.item.count)
+          p.item.count -= take
+          n -= take
+          if (p.item.count <= 0) removeItem(stash, p.item.uid)
+        }
+      }
+      consume(JX_CRAFT.doll, JX_CRAFT.need)
+      consume(JX_CRAFT.shark, JX_CRAFT.need)
+      let msg = ''
+      if (autoPlace(stash, makeItem(JX_CRAFT.out, 1))) {
+        msg = `🔧 组装完成：大红藏品「${ITEMS[JX_CRAFT.out].name}」！`
+      } else {
+        uiState.money += ITEMS[JX_CRAFT.out].baseValue
+        saveMoney(uiState.money)
+        msg = `🔧 组装完成「${ITEMS[JX_CRAFT.out].name}」，仓库已满折现 +${ITEMS[JX_CRAFT.out].baseValue.toLocaleString()} 金币`
+      }
+      saveStash(stash)
+      sfx.extract()
+      notify()
+      return msg
+    }
     engine.pickupFromLoot = (uid) => {
       if (!this.activeLoot) return
       if (!this.lootRevealed(uid)) return // 还在扫描，不能拿
@@ -1792,6 +1996,11 @@ export class Game {
       if (!placed) return
       const def = defOf(placed.item)
       if (def.kind !== 'attachment' || !def.slot) return
+      // 专属配件（如哈夫克军工 M700 限定）：当前枪械不符则拒绝安装
+      if (def.guns && !def.guns.includes(this.gunDef.id)) {
+        this.toast(`${def.name} 仅适配：${def.guns.map(id => GUNS[id]?.name ?? id).join(' / ')}`, 'red')
+        return
+      }
       removeItem(this.backpack, uid)
       this.ownedGun.atts = this.ownedGun.atts ?? {}
       const old = this.ownedGun.atts[def.slot]
@@ -1827,6 +2036,7 @@ export class Game {
       this.syncGrids()
     }
     engine.mobileInteract = () => this.tryInteract()
+    engine.playHarp = () => this.playHarmonica()
     engine.mobileSwapWeapon = () => { this.gunDef.melee ? this.equipOwnedGun() : this.equipKnife() }
 
     engine.enterCreator = () => {
@@ -1908,11 +2118,12 @@ export class Game {
     const has = (id: string) => Object.values(a).some(x => x?.defId === id)
     return {
       spread: g.spread * (has('at_rdot') ? 0.8 : 1) * (has('at_scope4') ? 0.7 : 1) * (has('at_comp') ? 0.85 : 1)
-        * (has('at_stock_s') ? 0.92 : 1) * (has('at_grip_l') ? 0.9 : 1) * (has('at_grip_v') ? 1.04 : 1),
+        * (has('at_stock_s') ? 0.92 : 1) * (has('at_grip_l') ? 0.9 : 1) * (has('at_grip_v') ? 1.04 : 1)
+        * (has('at_hvk_body') ? 0.88 : 1) * (has('at_hvk_gas') ? 0.92 : 1),
       zoom: has('at_scope4') ? 4 : g.zoom * (has('at_rdot') ? 1.35 : 1),
       recoil: g.recoil * (has('at_comp') ? 0.7 : 1) * (has('at_stock_s') ? 0.75 : 1) * (has('at_stock_l') ? 1.06 : 1)
-        * (has('at_grip_v') ? 0.82 : 1) * (has('at_grip_l') ? 1.06 : 1),
-      reloadTime: g.reloadTime * (has('at_qmag') ? 0.7 : 1) * (has('at_stock_l') ? 0.88 : 1),
+        * (has('at_grip_v') ? 0.82 : 1) * (has('at_grip_l') ? 1.06 : 1) * (has('at_hvk_gas') ? 0.82 : 1),
+      reloadTime: g.reloadTime * (has('at_qmag') ? 0.7 : 1) * (has('at_stock_l') ? 0.88 : 1) * (has('at_hvk_body') ? 0.85 : 1),
       mag: Math.round(g.mag * (has('at_emag') ? 1.5 : 1)),
       alert: (has('at_supp') ? 12 : 42) + (has('at_laser') ? 8 : 0) + (has('at_laser_r') ? 14 : 0), // 枪声惊动敌人的半径
       hipMul: has('at_laser_r') ? 0.55 : has('at_laser') ? 0.7 : 1, // 腰射散布修正（镭射加成，但会暴露）
@@ -2036,6 +2247,16 @@ export class Game {
     uiState.skillActive = ''
     uiState.revealEnemies = []
     this.kills = 0
+    // ===== S11 活动局重置：重读存档、清局内状态 =====
+    this.fishSave = loadFishing()
+    this.harpSave = loadHarp()
+    this.fishing = null
+    this.raidCatch = 0
+    this.harpCdUntil = 0
+    this.harpHealT = 0
+    uiState.fishUI = null
+    uiState.harpOwned = this.harpSave.stage >= 4
+    uiState.harpCdUntil = 0
     this.pos.set(this.world.playerSpawn.x, this.world.playerSpawn.y + EYE, this.world.playerSpawn.z)
     this.vy = 0
     this.yaw = this.world.playerYaw; this.pitch = 0
@@ -3033,6 +3254,12 @@ export class Game {
       if (extracted) {
         const vGot = claimVoucherRaid()
         if (vGot > 0) this.toast(`🎟️ 限时三角券 +${vGot}（每日首次撤离奖励）`, 'cyan')
+        // 官方活动「极星守望」：航天基地成功撤离累计绩效，达标解锁 M700 传说外观「静点」
+        const jx = trackJixingExtract(this.world.mapId)
+        if (jx) {
+          this.toast(`🌠 极星守望：绩效 ${Math.min(jx.count, JIXING_GOAL)}/${JIXING_GOAL}`, 'cyan')
+          if (jx.unlocked) this.toast('🌠 绩效等级达成！解锁 M700 传说外观「静点」（🎨 皮肤页装备）', 'red')
+        }
       }
       const qres = recordRaid(season, raidStats)
       const lines: string[] = []
@@ -3296,7 +3523,7 @@ export class Game {
         }
       }
       // 移动（键鼠或触屏）
-      const inputActive = (this.locked || this.isTouch) && !uiState.invOpen
+      const inputActive = (this.locked || this.isTouch) && !uiState.invOpen && !this.fishing
       if (inputActive) {
         const sprint = this.sprinting || this.mSprint
         // 冰湖减速区
@@ -3736,6 +3963,44 @@ export class Game {
         }
       }
 
+      // ===== 冰湖垂钓：咬钩相位推进 =====
+      if (this.fishing) {
+        this.fishing.t += dt
+        if (this.fishing.phase === 'wait' && this.fishing.t >= this.fishing.need) {
+          this.fishing = { phase: 'bite', t: 0, need: 0.9 }
+          uiState.fishUI = { phase: 'bite', since: performance.now(), dur: 0.9 }
+          sfx.nibble()
+          notify()
+        } else if (this.fishing.phase === 'bite' && this.fishing.t >= this.fishing.need) {
+          this.fishing = null
+          uiState.fishUI = null
+          this.toast('🎣 提竿慢了，鱼儿脱钩……', 'red')
+          notify()
+        }
+        if (this.fishing && this.world.activity
+          && !this.world.activity.fishSpots.some(s => Math.hypot(s.x - this.pos.x, s.z - this.pos.z) < 3.4)) {
+          this.fishing = null  // 离开钓点自动收竿
+          uiState.fishUI = null
+          notify()
+        }
+      }
+      // ===== 口琴回血（每秒 3 点，持续 6 秒） =====
+      if (this.harpHealT > 0) {
+        this.harpHealT -= dt
+        const hpBefore = Math.round(this.hp)
+        this.hp = Math.min(uiState.maxHp, this.hp + 3 * dt)
+        if (Math.round(this.hp) !== hpBefore) { uiState.hp = Math.round(this.hp); notify() }
+      }
+      // ===== 乐谱残页：漂浮旋转动画 =====
+      if (this.world.activity) {
+        const pt2 = performance.now() / 1000
+        for (const pg of this.world.activity.pages) {
+          if (!pg.mesh.visible) continue
+          pg.mesh.position.y = 1.15 + Math.sin(pt2 * 2 + pg.x) * 0.1
+          pg.mesh.rotation.y = pt2 * 1.2
+        }
+      }
+
       // 交互提示
       const near = this.nearestContainer()
       let prompt = ''
@@ -3755,6 +4020,18 @@ export class Game {
       if (near && !uiState.invOpen && !lockedDoorNear && !prompt) { // 锁门提示优先于容器搜索提示
         prompt = near.title === '售货机' && !near.searched ? `按 F 投币 300 金币购买补给`
           : near.searched ? `按 F 打开 ${near.title}` : `按 F 搜索 ${near.title}`
+      }
+      // S11 活动提示：垂钓状态 / 钓点 / 木屋 / 残页
+      if (this.world.mapId === 'snow' && this.world.activity && !uiState.invOpen) {
+        const act = this.world.activity
+        if (this.fishing) prompt = this.fishing.phase === 'bite' ? '❗有鱼咬钩——按 F 提竿！' : '🎣 垂钓中……受击或离开会收竿'
+        else if (act.fishSpots.some(s => Math.hypot(s.x - this.pos.x, s.z - this.pos.z) < 2.8)) {
+          prompt = !this.fishSave.rod
+            ? (!this.fishSave.acc ? '按 F 接下垂钓委托' : this.fishSave.kills >= FISH_TASK_KILLS ? '按 F 领取冰钓竿' : `🎣 委托进行中 ${this.fishSave.kills}/${FISH_TASK_KILLS}`)
+            : this.raidCatch >= RAID_CATCH_CAP ? '🎣 本局渔获已达上限' : '按 F 抛竿垂钓'
+        }
+        else if (Math.hypot(act.hut.x - this.pos.x, act.hut.z - this.pos.z) < 3.2) prompt = '按 F 与守夜人佐拉交谈'
+        else if (this.harpSave.stage === 2 && act.pages.some(pg => pg.mesh.visible && Math.hypot(pg.x - this.pos.x, pg.z - this.pos.z) < 2.4)) prompt = '按 F 拾取乐谱残页'
       }
       if ((distExtract < 6.2 && sameLevel) || (distExtract2 < 6.2 && sameLevel2)) prompt = '正在撤离，请勿离开光圈！'
       else if ((distExtract < 12 && sameLevel) || (distExtract2 < 12 && sameLevel2)) prompt = '再走进青色光圈中心一些即可撤离'
@@ -3902,6 +4179,7 @@ export class Game {
       absorb(this.vest, 1)      // 防弹衣挡躯干（总是生效判定）
       absorb(this.helmet, 0.25) // 头盔：25% 概率判定为头部受击
       this.hp -= real
+      if (this.fishing) { this.fishing = null; uiState.fishUI = null; this.toast('🎣 受击惊扰，收竿！', 'red') }
       uiState.hp = Math.max(0, this.hp)
       uiState.damageFlash = performance.now()
       this.lastHurtT = performance.now()

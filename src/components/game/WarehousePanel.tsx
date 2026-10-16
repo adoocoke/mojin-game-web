@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useUI, engine } from '@/game/store'
 import { GridView, DragGhost, type DragState, type GridId } from './GridView'
 import { ItemArt } from './ItemArt'
-import { ITEMS, BOSS_DROPS, BOSS_COLLECT_REWARD, loadBossDrops } from '@/game/data'
+import { ITEMS, BOSS_DROPS, BOSS_COLLECT_REWARD, loadBossDrops, JX_CRAFT } from '@/game/data'
 import { RARITY_INFO, itemValue, type ItemKind } from '@/game/types'
 import { stashValue } from '@/game/stash'
 
@@ -72,6 +72,10 @@ export function WarehousePanel() {
   const f = FILTERS.find(x => x.id === filter) ?? FILTERS[0]
   const view = filter === 'all' ? stash : { ...stash, placed: stash.placed.filter(p => f.kinds.includes(ITEMS[p.item.defId]?.kind)) }
   const valuableCount = stash.placed.filter(p => ITEMS[p.item.defId]?.kind === 'valuable').length
+  // 极星守望：可组装收集品碎片计数（官方活动镜像）
+  const jxDoll = stash.placed.filter(p => p.item.defId === JX_CRAFT.doll).reduce((s, p) => s + p.item.count, 0)
+  const jxShark = stash.placed.filter(p => p.item.defId === JX_CRAFT.shark).reduce((s, p) => s + p.item.count, 0)
+  const jxReady = jxDoll >= JX_CRAFT.need && jxShark >= JX_CRAFT.need
   const bossGot = loadBossDrops()
   const bossGotCount = BOSS_DROPS.filter(d => bossGot[d.defId]).length
   const bossClaimed = localStorage.getItem('mojin_boss_claim') === '1'
@@ -148,6 +152,26 @@ export function WarehousePanel() {
         />
         {filter !== 'all' && view.placed.length === 0 && (
           <div className="text-center text-zinc-600 text-xs py-3">这个分类下没有物品</div>
+        )}
+
+        {/* 极星守望：碎片组装（官方可组装收集品镜像） */}
+        {(jxDoll > 0 || jxShark > 0) && (
+          <div className="mt-3 rounded-lg border border-sky-800/60 bg-zinc-900/70 p-2.5 flex items-center gap-3 flex-wrap">
+            <span className="text-[11px] font-black text-sky-300">🌠 极星守望 · 碎片组装</span>
+            <span className="text-[10px] text-zinc-400">🧸 德小兰碎片 {Math.min(jxDoll, JX_CRAFT.need)}/{JX_CRAFT.need}</span>
+            <span className="text-[10px] text-zinc-400">🦈 灰鲭鲨碎片 {Math.min(jxShark, JX_CRAFT.need)}/{JX_CRAFT.need}</span>
+            <div className="flex-1" />
+            {jxReady ? (
+              <button
+                onClick={() => { const msg = engine.craftJxModel(); if (msg) setOpenMsg(msg) }}
+                className="px-3 py-1.5 rounded-md text-[11px] font-black bg-sky-500 text-black hover:bg-sky-400 animate-pulse"
+              >
+                🔧 组装「{ITEMS[JX_CRAFT.out].name}」
+              </button>
+            ) : (
+              <span className="text-[10px] text-zinc-600">集齐两种碎片各 {JX_CRAFT.need} 块可组装大红藏品</span>
+            )}
+          </div>
         )}
 
         {/* Boss 专属图鉴 */}

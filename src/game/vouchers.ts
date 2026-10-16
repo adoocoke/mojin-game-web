@@ -5,22 +5,26 @@
 const KEY = 'mojin_vouchers_v1'
 
 export const VOUCHER_START = '2026-09-26T00:00:00+08:00'
-export const VOUCHER_END = '2026-10-15T23:59:59+08:00'
+export const VOUCHER_END = '2026-10-17T23:59:59+08:00' // 券有效期随周年庆主窗口（9/21~10/17）结束清零
+export const VOUCHER_RAID_END = '2026-10-15T23:59:59+08:00' // 券获取任务（每日撤离）9/26~10/15
 export const VOUCHER_LOGIN1 = 500   // 9/26 起登录即领
 export const VOUCHER_LOGIN2 = 1000  // 10/1 起登录再领
 export const VOUCHER_LOGIN2_AT = '2026-10-01T00:00:00+08:00'
+export const VOUCHER_GIFT = 1000    // 10/8 起「三角券惊喜礼盒」登录领（保底 1000）
+export const VOUCHER_GIFT_AT = '2026-10-08T00:00:00+08:00'
 export const VOUCHER_RAID_DAILY = 150 // 每日首次成功撤离
-export const VOUCHER_TASK_CAP = 2400  // 任务类累计上限（保底 500+1000+2400 = 3900）
+export const VOUCHER_TASK_CAP = 2400  // 任务类累计上限（保底 500+1000+2400 = 3900，礼盒 1000 为额外登录礼）
 
 export interface VoucherSave {
   total: number       // 当前余额
   login1: boolean     // 9/26 登录奖励已领
   login2: boolean     // 10/1 登录奖励已领
+  login3: boolean     // 10/8 惊喜礼盒已领
   taskEarned: number  // 任务类累计已得（上限 2400）
   lastRaidDate: string // 最近一次撤离领券日期（YYYY-MM-DD，每日限 1 次）
 }
 
-const ZERO: VoucherSave = { total: 0, login1: false, login2: false, taskEarned: 0, lastRaidDate: '' }
+const ZERO: VoucherSave = { total: 0, login1: false, login2: false, login3: false, taskEarned: 0, lastRaidDate: '' }
 
 export function voucherEventActive(now = Date.now()): boolean {
   return now >= Date.parse(VOUCHER_START) && now <= Date.parse(VOUCHER_END)
@@ -42,20 +46,21 @@ export function saveVouchers(s: VoucherSave) {
   localStorage.setItem(KEY, JSON.stringify(s))
 }
 
-/** 登录奖励（幂等）：9/26 起 +500，10/1 起 +1000。返回本次新领到的总额 */
+/** 登录奖励（幂等）：9/26 起 +500，10/1 起 +1000，10/8 起惊喜礼盒 +1000。返回本次新领到的总额 */
 export function claimVoucherLogins(now = Date.now()): number {
   if (!voucherEventActive(now)) return 0
   const s = loadVouchers(now)
   let got = 0
   if (!s.login1) { s.login1 = true; s.total += VOUCHER_LOGIN1; got += VOUCHER_LOGIN1 }
   if (now >= Date.parse(VOUCHER_LOGIN2_AT) && !s.login2) { s.login2 = true; s.total += VOUCHER_LOGIN2; got += VOUCHER_LOGIN2 }
+  if (now >= Date.parse(VOUCHER_GIFT_AT) && !s.login3) { s.login3 = true; s.total += VOUCHER_GIFT; got += VOUCHER_GIFT }
   if (got > 0) saveVouchers(s)
   return got
 }
 
-/** 每日首次成功撤离 +150（任务类累计上限 2400）。返回本次获得（0 = 今日已领/已达上限） */
+/** 每日首次成功撤离 +150（任务类累计上限 2400，获取任务 10/15 截止）。返回本次获得（0 = 今日已领/已达上限） */
 export function claimVoucherRaid(now = Date.now()): number {
-  if (!voucherEventActive(now)) return 0
+  if (!voucherEventActive(now) || now > Date.parse(VOUCHER_RAID_END)) return 0
   const s = loadVouchers(now)
   const today = new Date(now).toISOString().slice(0, 10)
   if (s.lastRaidDate === today) return 0

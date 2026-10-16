@@ -372,6 +372,52 @@ export function HUD() {
         </div>
       </div>
 
+      {/* 守夜人口风琴（H 吹奏回血，冷却 90 秒） */}
+      {ui.harpOwned && (() => {
+        const cdLeft = Math.max(0, (ui.harpCdUntil - now) / 1000)
+        const ready = cdLeft <= 0
+        return (
+          <div className="absolute bottom-6 left-[33.5rem] hidden sm:block">
+            <button
+              onClick={() => engine.playHarp()}
+              className={`rounded-lg px-3 py-2 border text-center min-w-[5.5rem] cursor-pointer ${ready
+                ? 'bg-amber-400/15 border-amber-400/60 shadow-[0_0_14px_rgba(251,191,36,0.3)]'
+                : 'bg-black/45 border-white/10'}`}>
+              <div className="text-xl leading-none">🎵</div>
+              <div className={`text-[11px] font-bold mt-0.5 ${ready ? 'text-amber-300' : 'text-zinc-400'}`}>口风琴</div>
+              <div className="text-[10px] font-mono mt-0.5">
+                {ready ? <span className="text-amber-200 font-bold">H 就绪</span> : <span className="text-zinc-500">{Math.ceil(cdLeft)}s</span>}
+              </div>
+            </button>
+          </div>
+        )
+      })()}
+
+      {/* 垂钓状态条 */}
+      {ui.fishUI && !ui.invOpen && (() => {
+        const f = ui.fishUI
+        const prog = Math.min(1, Math.max(0, (now - f.since) / 1000 / f.dur))
+        return (
+          <div className="absolute bottom-[30%] left-1/2 -translate-x-1/2 w-64 text-center">
+            {f.phase === 'wait' ? (
+              <div className="rounded-lg bg-black/70 border border-cyan-500/50 px-4 py-2.5 shadow-lg">
+                <div className="text-cyan-200 font-bold text-sm mb-1.5">🎣 等待鱼儿上钩……</div>
+                <div className="h-1.5 rounded bg-cyan-950 overflow-hidden">
+                  <div className="h-full bg-cyan-400 transition-none" style={{ width: `${prog * 100}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-black/80 border border-red-500/70 px-4 py-2.5 shadow-lg animate-pulse">
+                <div className="text-red-300 font-black text-base mb-1.5">❗ 有鱼咬钩——快按 F 提竿！</div>
+                <div className="h-1.5 rounded bg-red-950 overflow-hidden">
+                  <div className="h-full bg-red-400 transition-none" style={{ width: `${(1 - prog) * 100}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* 交互提示 */}
       {ui.prompt && !ui.invOpen && (
         <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 px-5 py-2 rounded-lg bg-black/70 border border-amber-500/60 text-amber-200 font-bold text-lg shadow-lg">

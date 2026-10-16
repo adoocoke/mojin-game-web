@@ -91,6 +91,22 @@ const D = (
     <radialGradient id="iaRock" cx="0.4" cy="0.32" r="0.85">
       <stop offset="0" stopColor="#7d746a" /><stop offset="0.55" stopColor="#544c40" /><stop offset="1" stopColor="#2e2820" />
     </radialGradient>
+    {/* 渔获鱼鳞渐变 */}
+    <linearGradient id="iaFishW" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#ffffff" /><stop offset="0.5" stopColor="#c8d4dc" /><stop offset="1" stopColor="#8ba0ae" />
+    </linearGradient>
+    <linearGradient id="iaFishG" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#d8f0e0" /><stop offset="0.5" stopColor="#6aab7e" /><stop offset="1" stopColor="#3a6b4c" />
+    </linearGradient>
+    <linearGradient id="iaFishB" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#cfe4f8" /><stop offset="0.5" stopColor="#5a8fc0" /><stop offset="1" stopColor="#2e5a84" />
+    </linearGradient>
+    <linearGradient id="iaFishP" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#fff0b8" /><stop offset="0.5" stopColor="#e8b53a" /><stop offset="1" stopColor="#a3741a" />
+    </linearGradient>
+    <linearGradient id="iaFishR" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#ffb3a0" /><stop offset="0.5" stopColor="#d5402e" /><stop offset="1" stopColor="#7a1408" />
+    </linearGradient>
   </defs>
 )
 
@@ -98,6 +114,25 @@ const D = (
 const sh = (rx = 16, cy = 56, ry = 3.4, o = 0.3): ReactNode => (
   <ellipse cx="32" cy={cy} rx={rx} ry={ry} fill="#05070c" opacity={o} />
 )
+
+/** 鱼形图标：身体渐变 + 尾鳍 + 鱼鳞高光（渔获共用，换皮即可） */
+const fishArt = (body: string, fin: string): ReactNode => (<>
+  {sh(18, 49, 3, 0.22)}
+  {/* 尾鳍 */}
+  <path d="M49 31l10-8-2.5 8 2.5 8z" fill={fin}/>
+  {/* 背鳍 */}
+  <path d="M28 21c3-3.5 9-4 13-2.5-2 2.4-4.5 3.8-7 4.2z" fill={fin}/>
+  {/* 身体 */}
+  <path d="M10 31c6-8 16-11.5 24-9.6 7 1.7 12.5 5.2 14.6 9.6-2.1 4.4-7.6 7.9-14.6 9.6-8 1.9-18-1.6-24-9.6z" fill={body}/>
+  {/* 鳃线与腹部 */}
+  <path d="M22 23.5c-2.5 4.5-2.5 10.5 0 15" fill="none" stroke={fin} strokeWidth="1.3" opacity="0.8"/>
+  <path d="M14 34.5c5 4 13 5.6 20 4.4" fill="none" stroke="#ffffff" strokeWidth="1.4" opacity="0.5" strokeLinecap="round"/>
+  {/* 鳞片高光 */}
+  <path d="M27 26.5c4-1.6 9-1 12.5 1.2" fill="none" stroke="#ffffff" strokeWidth="1.6" opacity="0.65" strokeLinecap="round"/>
+  {/* 眼 */}
+  <circle cx="17" cy="29" r="1.9" fill="#10131a"/>
+  <circle cx="16.3" cy="28.3" r="0.6" fill="#eaf8ff"/>
+</>)
 
 // 每个条目是一段 64×64 视窗内的 SVG 内容；命名即物品 id
 const ART: Record<string, ReactNode> = {
@@ -1151,6 +1186,29 @@ const ART: Record<string, ReactNode> = {
     {/* 头顶宝石 */}
     <circle cx="32" cy="11.5" r="3" fill="url(#iaGemR)" stroke="#5e0f18" strokeWidth="0.8"/>
     <circle cx="31" cy="10.4" r="0.9" fill="#ffb3b8"/>
+  </>),
+  // ===== 冰湖垂钓渔获 =====
+  v_fish1: fishArt('url(#iaFishW)', '#9db4c0'),
+  v_fish2: fishArt('url(#iaFishG)', '#4c7d5c'),
+  v_fish3: fishArt('url(#iaFishB)', '#3a6a98'),
+  v_fish4: fishArt('url(#iaFishP)', '#c99422'),
+  v_fish5: fishArt('url(#iaFishR)', '#a02818'),
+  // ===== 守夜人的口风琴 =====
+  v_harmonica: (<>
+    {sh(17, 48, 3, 0.26)}
+    {/* 黑檀琴身 */}
+    <rect x="8" y="24" width="48" height="16" rx="4" fill="url(#iaObsidian)" stroke="#05070a" strokeWidth="1.4"/>
+    {/* 鎏金上下盖板 */}
+    <path d="M8 28a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v2H8z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+    <path d="M8 36h48v0a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+    {/* 吹孔格 */}
+    {[13, 19, 25, 31, 37, 43].map((x) => (
+      <rect key={x} x={x} y="30" width="3.6" height="6" rx="1" fill="#c8cdd4" opacity="0.9"/>
+    ))}
+    {/* 刻印 */}
+    <circle cx="51" cy="27" r="1.4" fill="#5e0f18" stroke="#f8e29a" strokeWidth="0.5"/>
+    {/* 高光 */}
+    <path d="M12 25.5h24" stroke="#fff3c2" strokeWidth="1.4" strokeLinecap="round" opacity="0.85"/>
   </>),
 }
 

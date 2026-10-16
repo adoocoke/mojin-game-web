@@ -106,6 +106,9 @@ export interface UIState {
   inspectDef: string | null // 正在检视的红色物品 defId
   creator: boolean          // 创作者模式（主菜单作弊码 1117）
   creatorMoneyBackup: number | null  // 进入模式前金币快照，退出还原，不写档
+  fishUI: { phase: 'wait' | 'bite'; since: number; dur: number } | null // 垂钓状态（等待/咬钩窗口）
+  harpOwned: boolean        // 守夜人口风琴已获得（局内 H 吹奏回血）
+  harpCdUntil: number       // 口琴冷却截止（performance.now() 时间轴）
 }
 
 export const uiState: UIState = {
@@ -149,6 +152,9 @@ export const uiState: UIState = {
   inspectDef: null,
   creator: false,
   creatorMoneyBackup: null,
+  fishUI: null,
+  harpOwned: false,
+  harpCdUntil: 0,
 }
 
 type Listener = () => void
@@ -205,6 +211,7 @@ export interface EngineAPI {
   mobileAdsToggle: () => void
   mobileReload: () => void
   mobileInteract: () => void
+  playHarp: () => void
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
   selectWarMap: (id: MapId) => void
@@ -249,6 +256,7 @@ export interface EngineAPI {
   openMix: () => void
   closeMix: () => void
   openStashItem: (uid: string) => string | null  // 仓库开启活动道具（福袋/曼德尔砖），返回结果文案
+  craftJxModel: () => string | null              // 极星守望：碎片组装大红藏品（碎片不足返回 null）
   claimAch: (id: string) => void
   placeOrder: (defId: string) => void
   cancelOrder: (id: string) => void
@@ -267,7 +275,7 @@ export const engine: EngineAPI = {
   toggleInventory: () => {}, restart: () => {},
   toMenu: () => {}, closeResult: () => {}, openStash: () => {}, closeStash: () => {}, stashMove: () => {}, stashClear: () => {}, sellStashItem: () => {}, sortStash: () => {}, sellAllValuables: () => {}, claimBossReward: () => {}, toggleQuestHud: () => {},
   mobileMove: () => {}, mobileLook: () => {}, mobileFire: () => {},
-  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {},
+  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {},
   selectMap: (id) => {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_map', id)
@@ -351,6 +359,7 @@ export const engine: EngineAPI = {
   openMix: () => { uiState.mixOpen = true; notify() },
   closeMix: () => { uiState.mixOpen = false; notify() },
   openStashItem: () => null,
+  craftJxModel: () => null,
   claimAch: () => {},
   placeOrder: () => {}, cancelOrder: () => {}, claimOrder: () => {},
   attachMod: () => {}, detachMod: () => {},

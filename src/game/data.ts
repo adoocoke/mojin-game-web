@@ -19,6 +19,8 @@ export const GUNS: Record<string, GunDef> = {
   m24:    { id: 'm24',    name: 'M24 狙击枪',     type: '狙击枪',   damage: 82, headMult: 2.6, fireInterval: 1400,mag: 5,  reloadTime: 2600, auto: false, spread: 0.002, range: 300, pellets: 1, zoom: 4.0,  recoil: 0.055, color: 0x2e3330, barrelLen: 0.85, bulky: 0.06 },
   awm:    { id: 'awm',    name: 'AWM 狙击枪',     type: '狙击枪',   damage: 118,headMult: 2.8, fireInterval: 1700,mag: 5,  reloadTime: 3000, auto: false, spread: 0.001, range: 400, pellets: 1, zoom: 6.0,  recoil: 0.075, color: 0x3d4a3a, barrelLen: 0.92, bulky: 0.062 },
   m249:   { id: 'm249',   name: 'M249 轻机枪',    type: '轻机枪',   damage: 24, headMult: 1.9, fireInterval: 80,  mag: 100,reloadTime: 3600, auto: true,  spread: 0.034, range: 130, pellets: 1, zoom: 1.3,  recoil: 0.015, color: 0x3f4436, barrelLen: 0.70, bulky: 0.085 },
+  // 官方「极星守望」同步枪型：M700 栓动狙击（定位介于 M24 与 AWM 之间，数值为本游戏平衡原创）
+  m700:   { id: 'm700',   name: 'M700 狙击枪',    type: '狙击枪',   damage: 96, headMult: 2.7, fireInterval: 1500,mag: 5,  reloadTime: 2700, auto: false, spread: 0.0015,range: 350, pellets: 1, zoom: 5.0,  recoil: 0.068, color: 0x37414d, barrelLen: 0.88, bulky: 0.062 },
 }
 
 /** 初始近战武器：战术匕首（永久装备，不掉落、不用弹药；捡到枪后按 1 随时切回） */
@@ -102,6 +104,7 @@ export const ITEMS: Record<string, ItemDef> = {
   v_vase:   { id: 'v_vase',   name: '古董花瓶',     kind: 'valuable', rarity: 'cyan', w: 2, h: 2, baseValue: 3200, icon: '🏺' },
   // ---- 红 ----
   w_awm:    { id: 'w_awm',    name: 'AWM 狙击枪',   kind: 'weapon', rarity: 'red', w: 5, h: 2, baseValue: 8000,  icon: '🔫', gunId: 'awm' },
+  w_m700:   { id: 'w_m700',   name: 'M700 狙击枪',  kind: 'weapon', rarity: 'red', w: 5, h: 2, baseValue: 6500,  icon: '🔫', gunId: 'm700' },
   v_crown:  { id: 'v_crown',  name: '黄金王冠',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 6000, icon: '👑' },
   v_super:  { id: 'v_super',  name: '曼德尔超算单元', kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 9000, icon: '🖥️' },
   // ===== 房卡：对局内任何容器都可能出，用于开对应地图的专属锁房 =====
@@ -162,6 +165,14 @@ export const ITEMS: Record<string, ItemDef> = {
   v_scepter:   { id: 'v_scepter',   name: '典狱长的权杖',   kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 16000, icon: '👑' },
   v_sharktooth:{ id: 'v_sharktooth',name: '狂鲨的牙齿项链', kind: 'valuable', rarity: 'red', w: 1, h: 2, baseValue: 13000, icon: '🦈' },
   v_wolfcamo:  { id: 'v_wolfcamo',  name: '白狼的雪地迷彩', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 17000, icon: '🐺' },
+  // ===== 冰湖垂钓渔获（长弓溪谷钓点产出） =====
+  v_fish1:     { id: 'v_fish1',     name: '雪鲫鱼',         kind: 'valuable', rarity: 'white',  w: 1, h: 1, baseValue: 130,  icon: '🐟', stack: 3 },
+  v_fish2:     { id: 'v_fish2',     name: '溪谷鳟鱼',       kind: 'valuable', rarity: 'green',  w: 2, h: 1, baseValue: 420,  icon: '🐟', stack: 2 },
+  v_fish3:     { id: 'v_fish3',     name: '冰湖鲑鱼',       kind: 'valuable', rarity: 'blue',   w: 2, h: 1, baseValue: 980,  icon: '🐟' },
+  v_fish4:     { id: 'v_fish4',     name: '黄金锦鲤',       kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600, icon: '🐠' },
+  v_fish5:     { id: 'v_fish5',     name: '血红龙鱼',       kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 9200, icon: '🐉' },
+  // ===== 守夜人的口风琴（佐拉任务线奖励藏品） =====
+  v_harmonica: { id: 'v_harmonica', name: '守夜人口风琴',   kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 15800, icon: '🎵' },
   // ===== 武器配件（装到枪上改变手感） =====
   at_rdot:   { id: 'at_rdot',   name: '红点瞄具',   kind: 'attachment', rarity: 'green', w: 1, h: 1, baseValue: 800,  icon: '🔴', slot: 'scope' },
   at_scope4: { id: 'at_scope4', name: '四倍瞄准镜', kind: 'attachment', rarity: 'blue',  w: 1, h: 1, baseValue: 2200, icon: '🔭', slot: 'scope' },
@@ -175,6 +186,9 @@ export const ITEMS: Record<string, ItemDef> = {
   at_grip_l: { id: 'at_grip_l', name: '轻型握把',   kind: 'attachment', rarity: 'green', w: 1, h: 1, baseValue: 900,  icon: '🤏', slot: 'grip' },
   at_laser:  { id: 'at_laser',  name: '战术镭射',   kind: 'attachment', rarity: 'purple', w: 1, h: 1, baseValue: 3200, icon: '🔦', slot: 'laser' },
   at_laser_r:{ id: 'at_laser_r',name: '毁灭镭射',   kind: 'attachment', rarity: 'red',   w: 1, h: 1, baseValue: 8800, icon: '⚡', slot: 'laser' },
+  // ===== 官方活动「哈夫克军工配件」：M700 专属限时配件（名称与官方一致，属性为本游戏等价映射） =====
+  at_hvk_body:{ id: 'at_hvk_body',name: 'HVK旋风枪身系统', kind: 'attachment', rarity: 'red', w: 2, h: 1, baseValue: 9600, icon: '🌀', slot: 'stock',  guns: ['m700'] },
+  at_hvk_gas: { id: 'at_hvk_gas', name: 'HVK旋风强化导气', kind: 'attachment', rarity: 'red', w: 1, h: 1, baseValue: 9200, icon: '💨', slot: 'muzzle', guns: ['m700'] },
   // ===== 潮汐监狱房卡 =====
   k_p_cell:   { id: 'k_p_cell',   name: '禁闭室房卡',     kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
   k_p_med:    { id: 'k_p_med',    name: '医务室房卡',     kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },
@@ -215,7 +229,14 @@ export const ITEMS: Record<string, ItemDef> = {
   // ===== 官方活动道具：红运福袋 / 猩红曼德尔砖（带出到仓库开启） =====
   ev_luckybag:    { id: 'ev_luckybag',    name: '红运福袋',     kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '🧧', stack: 3, openable: 'luckybag' },
   ev_mandelbrick: { id: 'ev_mandelbrick', name: '猩红曼德尔砖', kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 20000, icon: '🧱', openable: 'mandelbrick' },
+  // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
+  ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
+  ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },
+  c_jx_model:  { id: 'c_jx_model',  name: '灰鲭鲨·德小兰', kind: 'valuable', rarity: 'red',    w: 2, h: 2, baseValue: 26000, icon: '🐋' },
 }
+
+/** 极星守望合成配方：德小兰碎片 ×3 + 灰鲭鲨碎片 ×3 → 灰鲭鲨·德小兰 ×1（对应官方碎片组装玩法） */
+export const JX_CRAFT = { doll: 'ev_jx_doll', shark: 'ev_jx_shark', need: 3, out: 'c_jx_model' } as const
 
 // ===================== 饮品特调：官方配方表（材料组合 + 摇晃秒数窗 → 成品） =====================
 export const DRINK_MATS = ['mat_honey', 'mat_cola', 'mat_mint', 'mat_lemon', 'mat_juniper', 'mat_tonic', 'mat_soda', 'mat_breeze', 'mat_cran', 'mat_amber', 'mat_syrup', 'mat_lemonj'] as const
@@ -282,7 +303,7 @@ export const WEAPON_LOOT_POOL: { defId: string; weight: number }[] = [
   { defId: 'w_deagle', weight: 7 }, { defId: 'w_mp5', weight: 6 }, { defId: 'w_mini14', weight: 4.5 },
   { defId: 'w_vector', weight: 3.6 }, { defId: 'w_akm', weight: 4 }, { defId: 'w_m4a1', weight: 3.6 }, { defId: 'w_scar', weight: 3.4 },
   { defId: 'w_aug', weight: 2 }, { defId: 'w_m24', weight: 1.4 }, { defId: 'w_m249', weight: 1.2 },
-  { defId: 'w_awm', weight: 0.2 },
+  { defId: 'w_awm', weight: 0.2 }, { defId: 'w_m700', weight: 0.7 },
   // 配件（武器箱也出）
   { defId: 'at_rdot', weight: 4 }, { defId: 'at_comp', weight: 3.5 }, { defId: 'at_qmag', weight: 3.5 },
   { defId: 'at_scope4', weight: 1.8 }, { defId: 'at_supp', weight: 1.5 }, { defId: 'at_emag', weight: 1.8 },
@@ -509,7 +530,7 @@ export const MARKET_GOODS: { category: string; icon: string; goods: MarketGood[]
   },
   {
     category: '狙击 / 机枪', icon: '🎯',
-    goods: [gunPrice('w_m24', 3.5), gunPrice('w_awm', 3.5), gunPrice('w_m249', 3.5)],
+    goods: [gunPrice('w_m24', 3.5), gunPrice('w_awm', 3.5), gunPrice('w_m700', 3.5), gunPrice('w_m249', 3.5)],
   },
   {
     category: '辅助物资', icon: '🩹',

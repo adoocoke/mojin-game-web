@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useUI, engine } from '@/game/store'
 import { ITEMS, MARKET_GOODS } from '@/game/data'
 import { RARITY_INFO } from '@/game/types'
-import { currentEvent } from '@/game/events'
+import { currentEvent, officialEventActive } from '@/game/events'
 import { loadOrders, orderableGoods, ARRIVE_RATE, MAX_ORDERS } from '@/game/orders'
 import { ItemArt } from './ItemArt'
 
@@ -14,6 +14,10 @@ export function MarketPanel() {
   if (!ui.marketOpen || ui.phase !== 'menu') return null
   const halfOff = currentEvent().event?.id === 'gunsale'
   const arrivedCount = orders.filter(o => o.state === 'arrived').length
+  // 官方活动「哈夫克军工配件」：M700 专属 HVK 配件限时上架交易行（对应官方：交易行购买）
+  const cats = officialEventActive('哈夫克军工配件')
+    ? [...MARKET_GOODS, { category: '哈夫克军工（限时）', icon: '🔩', goods: [{ defId: 'at_hvk_body', price: 28800 }, { defId: 'at_hvk_gas', price: 27600 }] }]
+    : MARKET_GOODS
   return (
     <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="w-full max-w-3xl rounded-xl border border-cyan-600/40 bg-zinc-950/95 p-5 shadow-2xl max-h-[92vh] overflow-auto mx-4">
@@ -41,7 +45,7 @@ export function MarketPanel() {
 
         {tab === 'order' ? <OrderTab orders={orders} /> : (
         <>
-        {MARKET_GOODS.map(cat => (
+        {cats.map(cat => (
           <div key={cat.category} className="mb-4">
             <div className="text-sm font-bold text-zinc-300 mb-2">{cat.icon} {cat.category}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -59,7 +63,7 @@ export function MarketPanel() {
                       <ItemArt defId={def.id} width={32} height={32} emojiSize={24} />
                       <div className="min-w-0">
                         <div className="font-bold text-sm truncate" style={{ color: RARITY_INFO[def.rarity].color }}>{def.name}</div>
-                        <div className="text-[10px] text-zinc-500">{RARITY_INFO[def.rarity].name}{def.kind === 'weapon' ? ' · 武器' : def.heal ? ` · 回复 ${def.heal}` : ' · 弹药'}</div>
+                        <div className="text-[10px] text-zinc-500">{RARITY_INFO[def.rarity].name}{def.kind === 'weapon' ? ' · 武器' : def.kind === 'attachment' ? ' · 配件' : def.heal ? ` · 回复 ${def.heal}` : ' · 弹药'}</div>
                       </div>
                     </div>
                     <button

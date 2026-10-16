@@ -44,6 +44,12 @@ export const SKINS: SkinDef[] = [
     desc: '「彦祖回归联动」活动发放的黑金涂装' },
   { id: 'sk_zhouyear', name: '洲年限定',  icon: '🏎️', rarity: 'purple', gun: 'any',  main: 0x7a1622, accent: 0xd8c88a, emissive: 0xff5a3c, emissiveIntensity: 0.22,
     desc: '「洲年限定」活动发放的红金纪念涂装' },
+  { id: 'sk_m700_jingdian', name: '静点', icon: '🌠', rarity: 'red',    gun: 'm700', main: 0x14263a, accent: 0x9fb4c8, emissive: 0x7fd4ff, emissiveIntensity: 0.35,
+    desc: '「极星守望」绩效嘉奖：星夜深蓝枪身缀银白星点（对应官方：M700狙击步枪-静点，配色原创）' },
+  { id: 'sk_elegant_black', name: '高雅黑', icon: '🖤', rarity: 'purple', gun: 'any', main: 0x17171a, accent: 0x8a7a52, emissive: 0x3a3423, emissiveIntensity: 0.18,
+    desc: '「高雅黑补给」活动发放：曜石黑枪身配哑金描边（对应官方：高雅黑系列武器外观，配色原创）' },
+  { id: 'sk_cookie', name: '贪吃鬼',     icon: '🍪', rarity: 'blue',   gun: 'any',  main: 0x6a4a36, accent: 0xf2e3c8, emissive: 0xff9fb0, emissiveIntensity: 0.15, price: 6000,
+    desc: '「贪吃鬼系列外观」活动期间上架：可可甜趣涂鸦涂装（对应官方：贪吃鬼系列，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

@@ -52,6 +52,21 @@ export const sfx = {
   kill() { tone(520, 0.12, 0.2, 'triangle', 300); setTimeout(() => tone(780, 0.14, 0.18, 'triangle'), 90) },
   pickup(rarityIdx = 0) { tone(440 + rarityIdx * 110, 0.1, 0.18, 'sine', 200); if (rarityIdx >= 3) setTimeout(() => tone(660 + rarityIdx * 110, 0.16, 0.18, 'sine'), 100) },
   search() { tone(220, 0.3, 0.08, 'sine', 60) },
+  /** 抛竿：甩线嗖声 + 入水轻响 */
+  castLine() { tone(900, 0.28, 0.06, 'sine', -500); setTimeout(() => { tone(300, 0.12, 0.1, 'sine', -120); noiseBurst(0.08, 1800, 0.05) }, 240) },
+  /** 鱼儿咬钩：两声急促高音 */
+  nibble() { tone(1180, 0.07, 0.14, 'sine'); setTimeout(() => tone(1180, 0.07, 0.14, 'sine'), 110) },
+  /** 提竿中鱼：上行琶音 */
+  catchFish() { [660, 880, 990, 1320].forEach((f, i) => setTimeout(() => tone(f, 0.16, 0.16, 'sine'), i * 90)) },
+  /** 守夜人口风琴：原创 D 小调小调，基频 + 微失谐 + 倍频三层模拟口琴颤音 */
+  harmonica() {
+    const notes: [number, number][] = [[587, .42], [698, .42], [880, .55], [784, .42], [698, .42], [587, .7], [523, .42], [587, .9]]
+    let t = 0
+    for (const [f, d] of notes) {
+      setTimeout(() => { tone(f, d, 0.1, 'sine'); tone(f * 1.006, d, 0.06, 'sine'); tone(f * 2, d, 0.03, 'sine') }, t * 1000)
+      t += d * 0.92
+    }
+  },
   extract() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.25, 0.2, 'sine'), i * 130)) },
   boom() { noiseBurst(0.55, 260, 0.55); tone(75, 0.5, 0.5, 'sine', -40); setTimeout(() => noiseBurst(0.3, 900, 0.2), 120) },
   dead() { [400, 300, 200, 120].forEach((f, i) => setTimeout(() => tone(f, 0.3, 0.2, 'sawtooth'), i * 160)) },
