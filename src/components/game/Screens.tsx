@@ -189,6 +189,20 @@ export function MenuScreen() {
           </div>
         )}
 
+        {/* 逐命十字：狙击对抗规则（大战场） */}
+        {ui.mode === 'war' && (
+          <div className="flex justify-center max-w-3xl mx-auto mb-5 -mt-2">
+            <button
+              onClick={() => engine.toggleWarSniper()}
+              className={`px-4 py-1.5 rounded-xl border text-xs font-bold transition-all ${ui.warSniper
+                ? 'border-fuchsia-400 bg-fuchsia-400/10 text-fuchsia-200'
+                : 'border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-zinc-500'}`}
+            >
+              🔭 逐命十字·狙击对抗：{ui.warSniper ? '已开启（开局配发 M700）' : '未开启'}
+            </button>
+          </div>
+        )}
+
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
           {(ui.mode === 'war' ? [

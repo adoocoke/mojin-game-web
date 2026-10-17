@@ -109,6 +109,9 @@ export interface UIState {
   fishUI: { phase: 'wait' | 'bite'; since: number; dur: number } | null // 垂钓状态（等待/咬钩窗口）
   harpOwned: boolean        // 守夜人口风琴已获得（局内 H 吹奏回血）
   harpCdUntil: number       // 口琴冷却截止（performance.now() 时间轴）
+  bossPlay: { tags: number; need: number; extractReady: boolean; carCd: number; tankCd: number } | null // 极星守望·扮演德穆兰局内状态
+  hotpotOpen: boolean       // 火锅对决小游戏面板
+  warSniper: boolean        // 逐命十字：大战场狙击对抗规则勾选
 }
 
 export const uiState: UIState = {
@@ -155,6 +158,9 @@ export const uiState: UIState = {
   fishUI: null,
   harpOwned: false,
   harpCdUntil: 0,
+  bossPlay: null,
+  hotpotOpen: false,
+  warSniper: localStorage.getItem('mojin_war_sniper') === '1',
 }
 
 type Listener = () => void
@@ -212,6 +218,10 @@ export interface EngineAPI {
   mobileReload: () => void
   mobileInteract: () => void
   playHarp: () => void
+  startBossPlay: () => void
+  openHotpot: () => void
+  closeHotpot: () => void
+  toggleWarSniper: () => void
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
   selectWarMap: (id: MapId) => void
@@ -275,7 +285,7 @@ export const engine: EngineAPI = {
   toggleInventory: () => {}, restart: () => {},
   toMenu: () => {}, closeResult: () => {}, openStash: () => {}, closeStash: () => {}, stashMove: () => {}, stashClear: () => {}, sellStashItem: () => {}, sortStash: () => {}, sellAllValuables: () => {}, claimBossReward: () => {}, toggleQuestHud: () => {},
   mobileMove: () => {}, mobileLook: () => {}, mobileFire: () => {},
-  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {},
+  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {}, startBossPlay: () => {}, openHotpot: () => {}, closeHotpot: () => {}, toggleWarSniper: () => {},
   selectMap: (id) => {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_map', id)

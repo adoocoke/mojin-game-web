@@ -1,9 +1,38 @@
 import { useEffect, useReducer, useState } from 'react'
-import { engine, useUI } from '@/game/store'
+import { engine, notify, uiState, useUI } from '@/game/store'
 import { officialEventsList, jixingProgress, JIXING_EVENT_NAME, JIXING_GOAL, JIXING_SKIN, type OfficialEventInfo } from '@/game/events'
-import { loadSkins, skinDef } from '@/game/skins'
+import { loadSkins, skinDef, grantSkin } from '@/game/skins'
 import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
 import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
+import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QUOTA_MAX } from '@/game/bossplay'
+import { WAR_REWARDS, claimWarReward, loadWarEvents, type WarEventId } from '@/game/warevents'
+import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
+import { makeItem } from '@/game/data'
+import { addToStash, loadStash, saveMoney } from '@/game/stash'
+
+/** 大战场专项活动名 → 存档事件 id */
+const WAR_EVENT_NAMES: Record<string, WarEventId> = {
+  '群星行动·贯穿封锁': 'fengchuan',
+  '战场畅玩月': 'changwanyue',
+  '空地突袭': 'kongdi',
+  '逐命十字': 'zhumling',
+  '畅玩月保分': 'baofen',
+  '洲末军火库': 'junhuoku',
+}
+
+/** 领取大战场活动奖励并实际入账（金币/物资入仓/皮肤） */
+function claimWar(id: string) {
+  const r = claimWarReward(id)
+  if (!r) return
+  if (r.gold) { uiState.money += r.gold; saveMoney(uiState.money) }
+  if (r.items) {
+    const stash = loadStash()
+    addToStash(stash, r.items.map(d => makeItem(d, 1)))
+    uiState.stash = stash
+  }
+  if (r.skin) grantSkin(loadSkins(), r.skin)
+  notify()
+}
 
 /** 由活动名生成稳定色相，让每个活动有专属配色的横幅 */
 function hueOf(str: string): number {
@@ -59,6 +88,19 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
           )}
         </div>
         <div className={`text-xs mt-1.5 leading-relaxed ${active ? 'text-zinc-300' : 'text-zinc-500'}`}>{ev.desc}</div>
+        {ev.name === '极星守望' && active && (() => {
+          const bp = loadBossPlay()
+          return (
+            <div className="mt-1.5 space-y-0.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2 py-1.5">
+              <div className="text-[10px] font-bold text-violet-300">德穆兰档案（完成 3 条解锁扮演）</div>
+              {DOSSIER_TASKS.map((t, i) => (
+                <div key={t.name} className="text-[10px] text-zinc-400">
+                  {bp.dossierDone[i] ? '✅' : '⬜'} {t.icon} {t.name}（{Math.min(bp.dossierProg[i] ?? 0, t.goal)}/{t.goal}） {t.desc}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
         <div className="flex items-center justify-between mt-2.5 flex-wrap gap-2">
           <span
             className={`text-[11px] font-mono rounded px-2 py-0.5 border ${
@@ -103,6 +145,78 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
               🎵 {harpStageText(loadHarp())}
             </span>
           )}
+          {ev.name === '极星守望' && active && (() => {
+            const bp = regenQuota(loadBossPlay())
+            const can = bp.unlocked && bp.cards > 0
+            return (
+              <>
+                <span className="text-[11px] rounded px-2 py-0.5 border border-violet-500/40 bg-violet-500/10 text-violet-200 font-mono">
+                  🪪 工卡 {bp.cards}/{CARD_MAX} · 限购 {bp.quota}/{QUOTA_MAX} · 扮演 {bp.plays} 场 / 成功 {bp.wins}
+                </span>
+                <button
+                  onClick={e => { e.stopPropagation(); if (can) { engine.closeEvents(); engine.startBossPlay() } }}
+                  className={`text-[11px] rounded px-2 py-0.5 border font-bold transition-colors ${
+                    can
+                      ? 'border-violet-500/50 bg-violet-500/15 text-violet-200 hover:bg-violet-500/30'
+                      : 'border-zinc-700 bg-zinc-800/60 text-zinc-500 cursor-not-allowed'
+                  }`}
+                >
+                  🌠 {bp.unlocked ? (bp.cards > 0 ? '前往扮演德穆兰 ›' : '缺工卡·交易行有售') : `扮演未解锁（档案 ${dossierDoneCount(bp)}/3）`}
+                </button>
+              </>
+            )
+          })()}
+          {ev.name === '火锅对决' && active && (() => {
+            const hp = loadHotpot()
+            return (
+              <>
+                <span className="text-[11px] rounded px-2 py-0.5 border border-red-500/40 bg-red-500/10 text-red-200 font-mono">
+                  🍲 今日 {hp.dayPts}/{HOTPOT_DAILY_CAP} · 累计 {hp.totalPts}/{HOTPOT_BUNDLE_NEED}
+                </span>
+                <button
+                  onClick={e => { e.stopPropagation(); engine.closeEvents(); engine.openHotpot() }}
+                  className="text-[11px] rounded px-2 py-0.5 border border-red-500/50 bg-red-500/15 text-red-200 font-bold hover:bg-red-500/30 transition-colors"
+                >
+                  🥢 前往涮锅 ›
+                </button>
+              </>
+            )
+          })()}
+          {WAR_EVENT_NAMES[ev.name] && active && (() => {
+            const ws = loadWarEvents()
+            const rs = WAR_REWARDS.filter(r => r.event === WAR_EVENT_NAMES[ev.name])
+            if (!rs.length) {
+              const tip = ev.name === '空地突袭' ? '✈️ 大战场局内按 B 呼叫空袭（45s 冷却）'
+                : ev.name === '畅玩月保分' ? '🛡️ 窗口期大战场战功双倍'
+                : ''
+              return tip ? <span className="text-[11px] rounded px-2 py-0.5 border border-sky-500/40 bg-sky-500/10 text-sky-200 font-mono">{tip}</span> : null
+            }
+            return (
+              <span className="flex flex-wrap items-center gap-1.5">
+                {rs.map(r => {
+                  const done = ws.claimed.includes(r.id)
+                  const prog = Math.min(r.progress(ws), r.need)
+                  const can = !done && prog >= r.need
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={e => { e.stopPropagation(); if (can) claimWar(r.id) }}
+                      className={`text-[10px] rounded px-1.5 py-0.5 border font-mono ${
+                        done
+                          ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-300'
+                          : can
+                            ? 'border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse'
+                            : 'border-zinc-700 bg-zinc-800/60 text-zinc-400'
+                      }`}
+                      title={`${r.name} → ${r.rewardText}`}
+                    >
+                      {done ? '✅ ' : `${r.icon} ${prog}/${r.need} `}{r.name}{can ? ' · 领取' : ''}
+                    </button>
+                  )
+                })}
+              </span>
+            )
+          })()}
           {skin && (
             <span className="text-[11px] flex items-center gap-1.5 rounded px-2 py-0.5 border border-pink-500/40 bg-pink-500/10 text-pink-200">
               <span

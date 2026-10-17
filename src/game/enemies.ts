@@ -22,6 +22,7 @@ export interface Enemy {
   name: string
   baseY: number      // 所在楼层地面高度
   markedT: number    // 死亡标记剩余秒数（>0 时受伤加深）
+  friendly?: boolean // 极星守望·扮演德穆兰：哈夫克士兵对玩家友善（被玩家攻击会反目）
   boss: boolean
   acc: number        // 命中率加成（Boss 枪法更好）
   fireGap: number    // 开火间隔倍率（越小射速越快）
@@ -204,7 +205,7 @@ export class EnemyManager {
       const dy = Math.abs((tgtPos.y - 1.62) - e.baseY) // 脚底高度差
       const scoutBonus = e.kind === 'scout' ? 1.4 : 1
       const invisNow = tgtIdx === 0 && mods.invisible // 光学迷彩只对玩家生效
-      const sees = tgtAlive && !invisNow && dist < seeRange * scoutBonus && dy < 3.0 && this.canSee(e, tgtPos, obstacleMeshes)
+      const sees = tgtAlive && !e.friendly && !invisNow && dist < seeRange * scoutBonus && dy < 3.0 && this.canSee(e, tgtPos, obstacleMeshes)
       // 光学迷彩：隐身时敌人立即丢失目标转入搜索
       if (invisNow && (e.state === 'chase' || e.state === 'attack')) { e.state = 'search'; e.alertT = 5; e.lastSeen.copy(tgtPos) }
 
@@ -329,7 +330,7 @@ export class EnemyManager {
   /** 听到枪声：半径内敌人进入警觉/搜索（面朝声源） */
   alertAt(pos: THREE.Vector3, radius: number, floorY: number) {
     for (const e of this.enemies) {
-      if (e.dead || e.state === 'attack' || e.state === 'chase') continue
+      if (e.dead || e.friendly || e.state === 'attack' || e.state === 'chase') continue
       if (Math.abs(e.baseY - floorY) > 3) continue
       const d = e.group.position.distanceTo(pos)
       if (d < radius) {
@@ -348,6 +349,7 @@ export class EnemyManager {
       e.dead = true
       return true
     }
+    if (e.friendly) e.friendly = false // 扮演局：哈夫克士兵被打即反目
     // 受击后警觉（知道射手位置时朝其反击）
     e.state = 'chase'
     if (fromPos) e.lastSeen.copy(fromPos)

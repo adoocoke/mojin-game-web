@@ -10,7 +10,7 @@ import { loadStash, addToStash, saveStash, clearStash, sellFromStash, saveMoney,
 import { currentEvent, currentSeasonTheme, claimOfficialSkinRewards, activeOfficialLoot, trackJixingExtract, JIXING_GOAL } from './events'
 import { claimVoucherRaid } from './vouchers'
 import { equippedSkin } from './skins'
-import { skinDef } from './skins'
+import { skinDef, loadSkins, grantSkin } from './skins'
 import { loadSeason, recordRaid, safeLv, SAFE_DIMS, SAFE_CELLS, phaseUnlocked, QUESTS } from './quests'
 import { SCOUT_SPOTS } from './story'
 import { findLevel, chapterOf, loadCampaign, saveCampaign, clearReward, type CampaignLevel } from './campaign'
@@ -21,6 +21,11 @@ import { loadBp, gainBpXp, claimBp as bpClaim, claimable, BP_MAX_LV } from './ba
 import { loadStats, recordCareer, loadAchClaimed, saveAchClaimed, ACHIEVEMENTS } from './achievements'
 import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from './orders'
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
+import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
+import { reportWarGame, warEventActive, markWarLogin } from './warevents'
+
+// 极星守望：下一局以「扮演德穆兰」开局（模块级标记——切换地图会重建引擎实例，实例字段会丢）
+let bpPending = false
 
 const EYE = 1.62
 const RAID_SECONDS = 600 // 一局 10 分钟
@@ -144,10 +149,19 @@ export class Game {
   private capPoints: { pos: THREE.Vector3; label: string; ring: THREE.Mesh; flag: THREE.Mesh; light: THREE.PointLight }[] = []
   private capGroup: THREE.Group | null = null
   private adWaveT = 0          // 攻防战：防守方增援波次计时
-  private artyStrikes: { x: number; z: number; t: number; ring: THREE.Mesh }[] = []  // 堑壕战：进行中的炮击
+  private artyStrikes: { x: number; z: number; t: number; ring: THREE.Mesh; friendly?: boolean }[] = []  // 堑壕战：进行中的炮击（friendly=玩家呼叫的空袭，不伤己方）
   private hazardToastT = 0     // 环境伤害提示节流
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
+  // ===== 极星守望·扮演德穆兰 =====
+  private bossPlay = false
+  private bpCarCd = 0          // 寻敌爆破车冷却
+  private bpCarLeft = 0        // 寻敌爆破车剩余（每局 2 辆）
+  private bpTankCd = 0         // 脑机遥控战车冷却
+  private bpCars: { mesh: THREE.Group; tgt: Enemy | null; speed: number; dmg: number; boomR: number }[] = []
+  private bpTags = 0           // 本局已集齐的干员身份牌
+  private bpExtractRing: THREE.Mesh | null = null
+  private warStrikeCd = 0      // 大战场「空地突袭」空袭冷却
 
   // 本局任务统计（赛季任务）
   private raidSearches = 0
@@ -346,6 +360,8 @@ export class Game {
       if (k === 'h') this.playHarmonica()
       if (k === 'q') this.useSkill()
       if (k === 't') this.useTactical()
+      if (k === 'g') this.useBpTank()
+      if (k === 'b') this.useWarStrike()
       if (k === 'l') { engine.toggleQuestHud(); return }
       if (k === '1') this.equipKnife()
       if (k === '2') this.equipOwnedGun()
@@ -385,9 +401,157 @@ export class Game {
     uiState.maxHp = 100 + m.maxHp
   }
 
+  /** 极星守望：开始扮演安全总监德穆兰（档案解锁 + 消耗 1 张安全总监工卡） */
+  private startBossPlay() {
+    const sv = loadBossPlay()
+    if (!sv.unlocked) { this.toast('🔒 先在活动页「德穆兰档案」完成 3 条支线，解锁扮演资格', 'red'); return }
+    if (sv.cards <= 0) { this.toast(`🪪 没有安全总监工卡——交易行 ${CARD_PRICE.toLocaleString()} 金币/张（限购次数每 21 小时恢复 1 次）`, 'red'); return }
+    if (!consumeDirectorCard()) { this.toast('扮演资格校验失败', 'red'); return }
+    bpPending = true
+    if (uiState.mode !== 'raid' || uiState.mapId !== 'tower') {
+      // 切地图会触发 React 重建引擎实例，等重建完成后由新实例开局
+      uiState.mode = 'raid'
+      uiState.mapId = 'tower'
+      setTimeout(() => engine.start(), 150)
+    } else {
+      this.reset()
+    }
+    this.toast('🌠 极星守望：你现在就是安全总监德穆兰——哈夫克士兵听命于你（被你攻击的会反目）', 'cyan')
+  }
+
+  /** 扮演德穆兰：G = 脑机遥控战车——自动追猎最近敌人并自爆（CD 90s） */
+  private useBpTank() {
+    if (!this.bossPlay || uiState.phase !== 'playing') return
+    if (this.bpTankCd > 0) { this.toast(`战车充能中 ${Math.ceil(this.bpTankCd)}s`, 'white'); return }
+    const tank = new THREE.Group()
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x2d3436, metalness: 0.7, roughness: 0.35, emissive: 0x35d0ff, emissiveIntensity: 0.5 }))
+    hull.position.y = 0.4
+    tank.add(hull)
+    const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.3, 10),
+      new THREE.MeshStandardMaterial({ color: 0x22282c, metalness: 0.7, roughness: 0.4 }))
+    turret.position.y = 0.75
+    tank.add(turret)
+    const feet = this.pos.y - EYE
+    tank.position.set(this.pos.x, this.groundHeightAt(this.pos.x, this.pos.z, feet) + 0.05, this.pos.z)
+    this.world.scene.add(tank)
+    this.bpCars.push({ mesh: tank, tgt: null, speed: 9, dmg: 120, boomR: 6 })
+    this.bpTankCd = 90
+    this.toast('🎮 脑机遥控战车出击！碾碎他们', 'cyan')
+    notify()
+  }
+
+  /** 大战场「空地突袭」：B = 呼叫空袭（CD 45s，只伤敌军） */
+  private useWarStrike() {
+    if (!this.war || uiState.phase !== 'playing') return
+    if (!warEventActive('kongdi')) { this.toast('「空地突袭」活动不在开放期', 'white'); return }
+    if (this.warStrikeCd > 0) { this.toast(`空袭冷却中 ${Math.ceil(this.warStrikeCd)}s`, 'white'); return }
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw)
+    for (let i = 0; i < 3; i++) {
+      const x = this.pos.x + fx * 25 + (Math.random() - 0.5) * 8
+      const z = this.pos.z + fz * 25 + (Math.random() - 0.5) * 8
+      const ring = new THREE.Mesh(new THREE.RingGeometry(4.7, 5.4, 26),
+        new THREE.MeshBasicMaterial({ color: 0x35d0ff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }))
+      ring.rotation.x = -Math.PI / 2
+      ring.position.set(x, 0.07, z)
+      this.world.scene.add(ring)
+      this.artyStrikes.push({ x, z, t: 2.4, ring, friendly: true })
+    }
+    this.warStrikeCd = 45
+    this.toast('✈️ 空地突袭：空袭已呼叫，注意蓝圈落点！', 'cyan')
+    sfx.ui()
+    notify()
+  }
+
+  /** 扮演德穆兰：局内逐帧——爆破车/战车追猎引爆、身份牌清点、专属撤离点开启 */
+  private tickBossPlay(dt: number) {
+    // 爆破车 / 遥控战车：锁定最近活敌冲撞引爆
+    for (let i = this.bpCars.length - 1; i >= 0; i--) {
+      const c = this.bpCars[i]
+      if (!c.tgt || c.tgt.dead) {
+        let best: Enemy | null = null
+        let bd = Infinity
+        for (const e of this.enemies.enemies) {
+          if (e.dead) continue
+          const d = e.group.position.distanceTo(c.mesh.position)
+          if (d < bd) { bd = d; best = e }
+        }
+        c.tgt = best
+      }
+      if (!c.tgt) { this.world.scene.remove(c.mesh); this.bpCars.splice(i, 1); continue }
+      const tp = c.tgt.group.position
+      const dir = tp.clone().sub(c.mesh.position)
+      dir.y = 0
+      const dist = dir.length()
+      if (dist <= c.boomR) {
+        this.spawnSpark(c.mesh.position.clone().setY(0.6), 0xff7a3c)
+        sfx.boom()
+        for (const e of [...this.enemies.enemies]) {
+          if (e.dead) continue
+          const de = Math.hypot(e.group.position.x - c.mesh.position.x, e.group.position.z - c.mesh.position.z)
+          if (de < c.boomR + 2 && this.enemies.damage(e, c.dmg)) this.onEnemyKilled(e)
+        }
+        this.world.scene.remove(c.mesh)
+        this.bpCars.splice(i, 1)
+        continue
+      }
+      dir.normalize()
+      c.mesh.position.add(dir.multiplyScalar(c.speed * dt))
+      c.mesh.position.y = this.groundHeightAt(c.mesh.position.x, c.mesh.position.z, c.mesh.position.y) + 0.05
+      c.mesh.rotation.y = Math.atan2(dir.x, dir.z)
+    }
+    // 身份牌清点（背包 + 保险箱）
+    let tags = 0
+    for (const g of [this.backpack, this.safebox]) for (const p of g.placed) if (p.item.defId === 'v_idtag') tags += p.item.count
+    this.bpTags = tags
+    // 专属撤离点：开局 15 分钟后在发射区点亮
+    const ready = this.raidDuration - this.raidLeft >= EXTRACT_UNLOCK_SEC
+    if (ready && !this.bpExtractRing) {
+      const ex = -(this.world.size - 14)
+      const ring = new THREE.Mesh(new THREE.RingGeometry(5.2, 6.2, 28),
+        new THREE.MeshBasicMaterial({ color: 0x35d0ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }))
+      ring.rotation.x = -Math.PI / 2
+      ring.position.set(ex, 0.08, 0)
+      this.world.scene.add(ring)
+      this.bpExtractRing = ring
+      this.world.mapMarkers.push({ x: ex, z: 0, kind: 'mission', name: '🚀发射区撤离' })
+      uiState.mapMarkers = this.world.mapMarkers
+      this.toast('🚀 发射区专属撤离点已开启！集齐身份牌后前往撤离', 'cyan')
+      notify()
+    }
+    if (this.bpExtractRing) (this.bpExtractRing.material as THREE.MeshBasicMaterial).opacity = 0.5 + Math.abs(Math.sin(performance.now() / 300)) * 0.4
+    if (uiState.bossPlay) {
+      const b = uiState.bossPlay
+      const carCd = Math.ceil(this.bpCarCd), tankCd = Math.ceil(this.bpTankCd)
+      if (b.tags !== tags || b.extractReady !== ready || b.carCd !== carCd || b.tankCd !== tankCd) {
+        uiState.bossPlay = { tags, need: TAGS_NEED, extractReady: ready, carCd, tankCd }
+        notify()
+      }
+    }
+  }
+
   /** 使用战术装备（T）：无人机标记 / 绊雷布置 / 烟雾弹封视线，每局限 1 次 */
   private useTactical() {
     if (this.running === false || uiState.phase !== 'playing') return
+    if (this.bossPlay) {
+      // 扮演德穆兰：T = 寻敌爆破车（每局 2 辆，CD 60s）——自动追猎最近敌人，近身引爆
+      if (this.bpCarCd > 0) { this.toast(`爆破车整备中 ${Math.ceil(this.bpCarCd)}s`, 'white'); return }
+      if (this.bpCarLeft <= 0) { this.toast('寻敌爆破车已派完（每局 2 辆）', 'red'); return }
+      const car = new THREE.Group()
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.9),
+        new THREE.MeshStandardMaterial({ color: 0x3a3f46, metalness: 0.6, roughness: 0.4, emissive: 0xff3b30, emissiveIntensity: 0.6 }))
+      body.position.y = 0.24
+      car.add(body)
+      const feet = this.pos.y - EYE
+      car.position.set(this.pos.x, this.groundHeightAt(this.pos.x, this.pos.z, feet) + 0.05, this.pos.z)
+      this.world.scene.add(car)
+      this.bpCars.push({ mesh: car, tgt: null, speed: 12, dmg: 40, boomR: 2.2 })
+      this.bpCarLeft--
+      this.bpCarCd = 60
+      this.toast(`🚗 寻敌爆破车放出！自动追猎最近的敌人（剩 ${this.bpCarLeft} 辆）`, 'cyan')
+      notify()
+      return
+    }
     const def = uiState.tacticalDef
     if (!def) { this.toast('未携带战术装备——战前配装可选择 1 件（交易行有售）', 'white'); return }
     if (uiState.tacUsed) { this.toast('战术装备已用完（消耗品，每局限用 1 次）', 'white'); return }
@@ -419,6 +583,17 @@ export class Game {
 
   private useSkill() {
     if (uiState.phase !== 'playing' || this.hp <= 0) return
+    if (this.bossPlay) {
+      // 扮演德穆兰：Q = 威胁显像（20 秒全图标敌 + 行动加速，CD 40s）
+      if (this.skillCdT > 0) { this.toast(`威胁显像冷却中 ${Math.ceil(this.skillCdT)}s`, 'white'); return }
+      this.skillCdT = 40
+      uiState.skillCd = 40
+      this.revealT = 20
+      this.rallyT = 20
+      this.toast('📡 威胁显像启动：20 秒内敌人全部标记在地图上（M）', 'cyan')
+      notify()
+      return
+    }
     const op = this.currentOp()
     const a = effActive(op, this.opLv())
     if (this.skillCdT > 0) { this.toast(`技能冷却中 ${Math.ceil(this.skillCdT)}s`, 'white'); return }
@@ -738,6 +913,7 @@ export class Game {
     if (eHit && eHit.point.distanceTo(origin) < oDist) {
       const dmg = this.gunDef.damage * (eHit.isHead ? this.gunDef.headMult : 1) * (eHit.enemy.markedT > 0 ? 1 + this.markBonus : 1)
       if (eHit.enemy.name.includes('押运护卫')) this.alertAllEnemies() // 袭击押运护卫：惊动全图
+      if (this.bossPlay) eHit.enemy.markedT = 3 // 扮演德穆兰：弱点分析——命中目标受伤加深
       const killed = this.enemies.damage(eHit.enemy, dmg)
       if (!killed) this.checkBossFrenzy(eHit.enemy)
       uiState.hitMarker = performance.now()
@@ -761,6 +937,7 @@ export class Game {
     }
     if (best) {
       const dmg = this.gunDef.damage * (best.markedT > 0 ? 1 + this.markBonus : 1)
+      if (this.bossPlay) best.markedT = 3 // 扮演德穆兰：弱点分析
       const killed = this.enemies.damage(best, dmg)
       if (!killed) this.checkBossFrenzy(best)
       uiState.hitMarker = performance.now()
@@ -819,6 +996,7 @@ export class Game {
       const pierced = this.magTier >= eHit.enemy.armorLv
       if (!pierced) dmg *= 0.55
       if (eHit.enemy.name.includes('押运护卫')) this.alertAllEnemies() // 袭击押运护卫：惊动全图
+      if (this.bossPlay) eHit.enemy.markedT = 3 // 扮演德穆兰：弱点分析——命中目标受伤加深
       const killed = this.enemies.damage(eHit.enemy, dmg)
       if (!killed) this.checkBossFrenzy(eHit.enemy)
       uiState.hitMarker = performance.now()
@@ -873,6 +1051,17 @@ export class Game {
     if (this.theme.quest.tag === 'gas' && (this.theme.quest.stat ?? 'themeActions') === 'themeActions'
       && this.gasZones.some(gz => Math.hypot(e.group.position.x - gz.x, e.group.position.z - gz.z) < gz.r)) this.themeActions++
     if (e.boss) { this.raidBossKills++; uiState.raidLive = { ...uiState.raidLive, bossKills: this.raidBossKills } }
+    // 德穆兰档案：航天基地击杀/首领支线
+    if (this.world.mapId === 'tower') {
+      const r1 = reportDossier(1)
+      if (r1.done) this.toast('🎯 德穆兰档案「安全总监的铁腕」完成！', 'cyan')
+      if (e.boss) {
+        const r2 = reportDossier(2)
+        if (r2.done) this.toast('👑 德穆兰档案「哈德森的影子」完成！', 'cyan')
+        if (r2.unlockedNow) this.toast('🌠 德穆兰档案：扮演资格已解锁！活动页可前往扮演', 'red')
+      }
+      if (r1.unlockedNow) this.toast('🌠 德穆兰档案：扮演资格已解锁！活动页可前往扮演', 'red')
+    }
     uiState.kills = this.kills
     uiState.killFeed = [`击杀 ${e.name}`, ...uiState.killFeed].slice(0, 4)
     // ===== S11 活动：长弓溪谷击杀联动 =====
@@ -916,6 +1105,7 @@ export class Game {
     m.rotation.y = Math.random() * Math.PI * 2
     this.world.scene.add(m)
     const grid = makeGrid(6, 4)
+    if (this.bossPlay) autoPlace(grid, makeItem('v_idtag', 1)) // 扮演德穆兰：击杀干员必掉身份牌
     if (e.boss) {
       // 活动「首领悬赏」：击杀 Boss 额外赏金（自动档按强度浮动）
       const curEv = currentEvent().event
@@ -1205,6 +1395,11 @@ export class Game {
       const spot = SCOUT_SPOTS.find(x => x.questId === s.questId)
       const q = QUESTS.find(x => x.id === s.questId)
       this.raidScouts.push(s.questId)
+      if (this.world.mapId === 'tower') {
+        const r0 = reportDossier(0)
+        if (r0.done) this.toast('🔍 德穆兰档案「星轨偏移」完成！', 'cyan')
+        if (r0.unlockedNow) this.toast('🌠 德穆兰档案：扮演资格已解锁！活动页可前往扮演', 'red')
+      }
       this.world.scene.remove(s.mesh)
       this.world.mapMarkers = this.world.mapMarkers.filter(m => m.name !== `❗${spot?.spotName ?? ''}`)
       uiState.mapMarkers = this.world.mapMarkers
@@ -1769,6 +1964,29 @@ export class Game {
             msg = `🧧 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
           }
         }
+      } else if (def.openable === 'warpack') {
+        // 洲末畅玩自选包：金币或哈夫克军工配件
+        if (Math.random() < 0.5) {
+          const gold = 6000 + Math.floor(Math.random() * 6001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `📦 畅玩自选包开出 ${gold.toLocaleString()} 金币！`
+        } else {
+          const at = Math.random() < 0.5 ? 'at_hvk_body' : 'at_hvk_gas'
+          if (autoPlace(uiState.stash, makeItem(at, 1))) {
+            msg = `📦 畅玩自选包开出配件「${ITEMS[at].name}」！`
+          } else {
+            uiState.money += 8000
+            saveMoney(uiState.money)
+            msg = '📦 仓库已满，自选包折现 +8,000 金币'
+          }
+        }
+      } else if (def.openable === 'hotpotbundle') {
+        // 猛火强攻捆绑包：限定皮肤 + 30,000 金币
+        const fresh = grantSkin(loadSkins(), 'sk_hotpot')
+        uiState.money += 30000
+        saveMoney(uiState.money)
+        msg = fresh ? '🔥 猛火强攻捆绑包：获得限定皮肤「猛火强攻」+ 30,000 金币！' : '🔥 猛火强攻捆绑包：+30,000 金币（皮肤已拥有）'
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资
         const reds = Object.values(ITEMS).filter(d => d.rarity === 'red' && d.kind === 'valuable' && !d.openable)
@@ -1987,6 +2205,14 @@ export class Game {
     engine.mobileAdsToggle = () => { if (!this.gunDef.melee) this.ads = !this.ads }
     engine.mobileReload = () => this.startReload()
     engine.useSkill = () => this.useSkill()
+    engine.startBossPlay = () => this.startBossPlay()
+    engine.openHotpot = () => { uiState.hotpotOpen = true; notify() }
+    engine.closeHotpot = () => { uiState.hotpotOpen = false; notify() }
+    engine.toggleWarSniper = () => {
+      uiState.warSniper = !uiState.warSniper
+      try { localStorage.setItem('mojin_war_sniper', uiState.warSniper ? '1' : '0') } catch { /* 忽略 */ }
+      notify()
+    }
     // 武器配件：安装 / 卸下
     engine.attachMod = (uid) => {
       if (this.gunDef.melee || !this.ownedGun || this.ownedGun.def !== this.gunDef) {
@@ -2380,15 +2606,16 @@ export class Game {
     uiState.warScoreUs = 0; uiState.warScoreThem = 0
     uiState.warTickets = this.tickets; uiState.warCapIdx = 0; uiState.warCapProg = 0; uiState.warCapHot = false
     if (this.war) {
+      markWarLogin()
       this.buildCapturePoints()
       this.spawnAllies()
     }
     // 大战场：纯枪法模式，新手无枪则系统配发一把步枪
     if (this.war && this.gunDef.melee && !this.ownedGun
       && !this.backpack.placed.some(p => defOf(p.item).kind === 'weapon' && !!defOf(p.item).gunId)) {
-      autoPlace(this.backpack, makeItem('w_m4a1', 1))
+      autoPlace(this.backpack, makeItem(uiState.warSniper ? 'w_m700' : 'w_m4a1', 1))
       autoPlace(this.backpack, makeItem('a_ammo', 3))
-      const g = GUNS['m4a1']
+      const g = GUNS[uiState.warSniper ? 'm700' : 'm4a1'] // 逐命十字：狙击对抗规则
       if (g) {
         this.gunDef = g
         this.gunRarity = 'purple'
@@ -2399,10 +2626,44 @@ export class Game {
         try { this.buildViewmodel() } catch { /* 忽略 */ }
         this.syncGunUI()
       }
-      this.toast('🎁 大战场配发：M4A1 突击步枪 + 弹药', 'cyan')
+      this.toast(uiState.warSniper ? '🎁 逐命十字：配发 M700 狙击枪 + 弹药' : '🎁 大战场配发：M4A1 突击步枪 + 弹药', 'cyan')
       try { this.syncGrids() } catch { /* 忽略 */ }
     }
+    // ===== 极星守望·扮演德穆兰：安全总监配装 =====
+    this.bossPlay = bpPending
+    bpPending = false
+    this.bpCarCd = 0; this.bpCarLeft = 2; this.bpTankCd = 0; this.warStrikeCd = 0
+    this.bpCars = []
+    this.bpTags = 0
+    this.bpExtractRing = null
+    uiState.bossPlay = null
+    if (this.bossPlay) {
+      this.raidDuration = Math.max(this.raidDuration, EXTRACT_UNLOCK_SEC + 600) // 扮演局 25 分钟
+      this.raidLeft = this.raidDuration
+      const g = GUNS['m700']
+      if (g) {
+        this.gunDef = g
+        this.gunRarity = 'red'
+        this.ownedGun = { def: g, rarity: 'red', atts: { stock: makeItem('at_hvk_body', 1), muzzle: makeItem('at_hvk_gas', 1) } }
+        this.mag = this.effGun().mag
+        this.reloading = false
+        this.ads = false
+        try { this.buildViewmodel() } catch { /* 忽略 */ }
+        this.syncGunUI()
+      }
+      this.vest = makeItem('armor3', 1)
+      this.helmet = makeItem('helmet3', 1)
+      autoPlace(this.backpack, makeItem('a_ammo', 5))
+      this.hp = 150
+      uiState.maxHp = 150
+      uiState.hp = 150
+      uiState.bossPlay = { tags: 0, need: TAGS_NEED, extractReady: false, carCd: 0, tankCd: 0 }
+      this.syncGearUI()
+      try { this.syncGrids() } catch { /* 忽略 */ }
+      this.toast('🪪 安全总监工卡已核销：猎杀干员收集 5 份身份牌，15 分钟后发射区撤离', 'cyan')
+    }
     this.spawnInitialEnemies()
+    if (this.bossPlay) for (const e of this.enemies.enemies) e.friendly = true // 扮演德穆兰：哈夫克听命于你
     uiState.kills = 0
     uiState.killFeed = []
     // ===== 剧情战役：关卡初始化 =====
@@ -2952,7 +3213,7 @@ export class Game {
       this.spawnSpark(new THREE.Vector3(s.x, 0.5, s.z), 0xff7a3c)
       sfx.boom()
       const dp = Math.hypot(this.pos.x - s.x, this.pos.z - s.z)
-      if (dp < 5.5 && this.hp > 0 && this.protectT <= 0) {
+      if (!s.friendly && dp < 5.5 && this.hp > 0 && this.protectT <= 0) {
         this.hp -= 55 * (1 - dp / 5.5)
         uiState.hp = Math.max(0, this.hp)
         uiState.damageFlash = now
@@ -2963,7 +3224,7 @@ export class Game {
       if (this.allies) for (const a of [...this.allies.enemies]) {
         if (a.dead) continue
         const da = Math.hypot(a.group.position.x - s.x, a.group.position.z - s.z)
-        if (da < 5.5 && this.allies.damage(a, 90 * (1 - da / 5.5))) this.onAllyDeath(a)
+        if (!s.friendly && da < 5.5 && this.allies.damage(a, 90 * (1 - da / 5.5))) this.onAllyDeath(a)
       }
       for (const e of [...this.enemies.enemies]) {
         if (e.dead) continue
@@ -3087,7 +3348,8 @@ export class Game {
     try { document.exitPointerLock() } catch { /* 忽略 */ }
     const kills = uiState.kills
     const winBonus = result === 'win' ? 300 : 0
-    const gold = kills * 100 + this.warBestStreak * 50 + winBonus
+    // 「畅玩月保分」窗口：战功双倍
+    const gold = (kills * 100 + this.warBestStreak * 50 + winBonus) * (warEventActive('baofen') ? 2 : 1)
     uiState.money += gold
     saveMoney(uiState.money)
     // 战绩存档
@@ -3099,6 +3361,8 @@ export class Game {
       rec.games = (rec.games ?? 0) + 1
       localStorage.setItem('mojin_war_record', JSON.stringify(rec))
     } catch { /* 忽略 */ }
+    // 官方大战场专项活动战报（群星行动·贯穿封锁 / 战场畅玩月 / 逐命十字等）
+    reportWarGame(result, kills, uiState.warSniper)
     const modeName = this.warMode === 'ad' ? '攻防战' : '团队死斗'
     const title = result === 'win' ? `🏆 ${modeName} · 我方胜利` : result === 'lose' ? `💀 ${modeName} · 战败` : `⚔️ ${modeName} · 平局`
     const lines: string[] = []
@@ -3129,6 +3393,7 @@ export class Game {
     uiState.lootReveal = {}
     uiState.searching = -1
     uiState.extractProgress = -1
+    uiState.bossPlay = null
     uiState.lastRaidExtracted = extracted
     uiState.phase = 'menu'
     uiState.resultOpen = true
@@ -3259,6 +3524,24 @@ export class Game {
         if (jx) {
           this.toast(`🌠 极星守望：绩效 ${Math.min(jx.count, JIXING_GOAL)}/${JIXING_GOAL}`, 'cyan')
           if (jx.unlocked) this.toast('🌠 绩效等级达成！解锁 M700 传说外观「静点」（🎨 皮肤页装备）', 'red')
+        }
+        // 德穆兰档案：撤离类支线
+        const r4 = reportDossier(4)
+        if (r4.done) this.toast('🚁 德穆兰档案「老兵之路」完成！', 'cyan')
+        if (r4.unlockedNow) this.toast('🌠 德穆兰档案：扮演资格已解锁！活动页可前往扮演', 'red')
+        if (total >= 150000 && this.world.mapId === 'tower') {
+          const r3 = reportDossier(3)
+          if (r3.done) this.toast('💰 德穆兰档案「总监的门面」完成！', 'cyan')
+          if (r3.unlockedNow) this.toast('🌠 德穆兰档案：扮演资格已解锁！活动页可前往扮演', 'red')
+        }
+        // 扮演德穆兰：撤离结算——集齐 5 份身份牌判定行动成功
+        if (this.bossPlay) {
+          const won = this.bpTags >= TAGS_NEED
+          if (won) recordBossPlayWin()
+          const bonus = won ? 80000 : 15000
+          uiState.money += bonus
+          saveMoney(uiState.money)
+          this.toast(won ? `🌠 扮演行动大成功！安全总监绩效 +${bonus.toLocaleString()} 金币` : `🌠 扮演行动结束：身份牌未集齐，绩效 +${bonus.toLocaleString()} 金币`, won ? 'cyan' : 'white')
         }
       }
       const qres = recordRaid(season, raidStats)
@@ -3682,7 +3965,21 @@ export class Game {
       const atPad2 = distExtract2 < 6.2 && sameLevel2
       // 高塔天台直升机坪：重载/超重无法登机（直升机载重有限）
       const padHeavy = atPad2 && this.world.mapId === 'tower' && this.weightTier >= 2
-      if ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy)) {
+      // 极星守望·扮演德穆兰：普通撤离点关闭；开局 15 分钟后发射区专属撤离点开启（需集齐身份牌）
+      let bpAtPad = false
+      if (this.bossPlay) {
+        const ex = -(this.world.size - 14)
+        const nearEx = Math.hypot(this.pos.x - ex, this.pos.z) < 6.2 && Math.abs(this.pos.y - EYE) < 2.5
+        if (nearEx) {
+          const tnow = performance.now()
+          if (this.raidDuration - this.raidLeft < EXTRACT_UNLOCK_SEC) {
+            if (tnow > this.padWarnT) { this.padWarnT = tnow + 3000; this.toast('🚀 发射区专属撤离点尚未开启（开局 15 分钟后）', 'white') }
+          } else if (this.bpTags < TAGS_NEED) {
+            if (tnow > this.padWarnT) { this.padWarnT = tnow + 3000; this.toast(`🪪 干员身份牌不足：${this.bpTags}/${TAGS_NEED}——继续猎杀干员收集`, 'red') }
+          } else bpAtPad = true
+        }
+      }
+      if (this.bossPlay ? bpAtPad : ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy))) {
         this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
         if (this.extractT >= 1) { uiState.extractProgress = -1; if (this.war) this.endWar(this.warResultNow()); else this.endRaid(true) } // 大战场：站上撤离点可提前按当前战果结算
@@ -3783,6 +4080,10 @@ export class Game {
         if (this.skillCdT === 0) uiState.skillActive = ''
       }
       if (this.invisT > 0) this.invisT = Math.max(0, this.invisT - rawDt)
+      if (this.bpCarCd > 0) this.bpCarCd = Math.max(0, this.bpCarCd - rawDt)
+      if (this.bpTankCd > 0) this.bpTankCd = Math.max(0, this.bpTankCd - rawDt)
+      if (this.warStrikeCd > 0) this.warStrikeCd = Math.max(0, this.warStrikeCd - rawDt)
+      if (this.bossPlay) this.tickBossPlay(rawDt)
       if (this.sprayBuffT > 0) this.sprayBuffT = Math.max(0, this.sprayBuffT - rawDt)
       // 特调饮品：持续回血 + 过期清理
       if (this.drinkBuffs.length) {

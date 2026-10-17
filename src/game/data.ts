@@ -228,6 +228,9 @@ export const ITEMS: Record<string, ItemDef> = {
   dk_dark:      { id: 'dk_dark',      name: '黑暗特调',   kind: 'med', rarity: 'green', w: 1, h: 1, baseValue: 50, icon: '🤢', drink: { dur: 45, drunk: true } },
   // ===== 官方活动道具：红运福袋 / 猩红曼德尔砖（带出到仓库开启） =====
   ev_luckybag:    { id: 'ev_luckybag',    name: '红运福袋',     kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 5000,  icon: '🧧', stack: 3, openable: 'luckybag' },
+  ev_warpack:     { id: 'ev_warpack',     name: '洲末畅玩自选包', kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 6000,  icon: '📦', stack: 2, openable: 'warpack' },
+  ev_hotpot_bundle: { id: 'ev_hotpot_bundle', name: '猛火强攻捆绑包', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 20000, icon: '🍲', openable: 'hotpotbundle' },
+  v_idtag:        { id: 'v_idtag',        name: '干员身份牌',   kind: 'valuable', rarity: 'green',  w: 1, h: 1, baseValue: 500,   icon: '🪪', stack: 5 },
   ev_mandelbrick: { id: 'ev_mandelbrick', name: '猩红曼德尔砖', kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 20000, icon: '🧱', openable: 'mandelbrick' },
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },

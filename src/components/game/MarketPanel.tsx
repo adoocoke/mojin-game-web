@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react'
-import { useUI, engine } from '@/game/store'
+import { useUI, engine, uiState } from '@/game/store'
 import { ITEMS, MARKET_GOODS } from '@/game/data'
 import { RARITY_INFO } from '@/game/types'
 import { currentEvent, officialEventActive } from '@/game/events'
 import { loadOrders, orderableGoods, ARRIVE_RATE, MAX_ORDERS } from '@/game/orders'
 import { ItemArt } from './ItemArt'
+import { buyDirectorCard, loadBossPlay, regenQuota, quotaRegenLeft, CARD_MAX, QUOTA_MAX, CARD_PRICE } from '@/game/bossplay'
+import { saveMoney } from '@/game/stash'
 
 /** 交易行：用卖物资所得的金币购买枪械与辅助物资，买入后直接进仓库 */
 export function MarketPanel() {
   const ui = useUI()
   const [tab, setTab] = useState<'buy' | 'order'>('buy')
+  const [cardMsg, setCardMsg] = useState('')
   const orders = useMemo(() => (ui.marketOpen ? loadOrders() : []), [ui.marketOpen, ui.money])
   if (!ui.marketOpen || ui.phase !== 'menu') return null
   const halfOff = currentEvent().event?.id === 'gunsale'
@@ -45,6 +48,37 @@ export function MarketPanel() {
 
         {tab === 'order' ? <OrderTab orders={orders} /> : (
         <>
+        {officialEventActive('极星守望') && (() => {
+          const bp = regenQuota(loadBossPlay())
+          const regenH = Math.ceil(quotaRegenLeft(bp) / 3600000)
+          return (
+            <div className="mb-4">
+              <div className="text-sm font-bold text-zinc-300 mb-2">🌠 极星守望（限时）</div>
+              <div className="rounded-lg border border-violet-500/50 bg-violet-500/10 p-2.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-violet-200">🪪 安全总监工卡 <span className="text-[11px] text-zinc-400 font-normal">持有 {bp.cards}/{CARD_MAX}</span></div>
+                  <div className="text-[11px] text-zinc-400">
+                    扮演德穆兰的入场凭证 · 限购次数 {bp.quota}/{QUOTA_MAX}{bp.quota < QUOTA_MAX ? `（约 ${regenH} 小时后恢复 1 次）` : ''}
+                  </div>
+                  {cardMsg && <div className="text-[11px] text-amber-300 mt-0.5">{cardMsg}</div>}
+                </div>
+                <button
+                  onClick={() => {
+                    const r = buyDirectorCard(uiState.money)
+                    if (r.err) { setCardMsg(`❌ ${r.err}`); return }
+                    uiState.money -= CARD_PRICE
+                    saveMoney(uiState.money)
+                    setCardMsg('✅ 已购入安全总监工卡 ×1——活动中心「极星守望」前往扮演')
+                  }}
+                  disabled={ui.money < CARD_PRICE}
+                  className={`shrink-0 px-3 py-1.5 rounded-md text-sm font-black transition-all ${
+                    ui.money >= CARD_PRICE ? 'bg-yellow-500 hover:bg-yellow-400 text-black' : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                  }`}
+                >💰 {CARD_PRICE.toLocaleString()}</button>
+              </div>
+            </div>
+          )
+        })()}
         {cats.map(cat => (
           <div key={cat.category} className="mb-4">
             <div className="text-sm font-bold text-zinc-300 mb-2">{cat.icon} {cat.category}</div>

@@ -14,6 +14,7 @@ import { PassPanel } from '@/components/game/PassPanel'
 import { AchPanel } from '@/components/game/AchPanel'
 import { SkinPanel } from '@/components/game/SkinPanel'
 import { EventPanel } from '@/components/game/EventPanel'
+import { HotpotPanel } from '@/components/game/HotpotPanel'
 import { MixPanel } from '@/components/game/MixPanel'
 import { ReportPanel } from '@/components/game/ReportPanel'
 import { OnlinePanel } from '@/components/game/OnlinePanel'
@@ -97,6 +98,7 @@ function GameUI() {
       <AchPanel />
       <SkinPanel />
       <EventPanel />
+      <HotpotPanel />
       <MixPanel />
       <ReportPanel />
       <OnlinePanel />

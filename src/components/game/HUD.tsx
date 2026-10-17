@@ -298,6 +298,18 @@ export function HUD() {
         </div>
       )}
 
+      {/* 极星守望·扮演德穆兰：行动目标条 */}
+      {ui.bossPlay && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 max-w-lg rounded-lg border border-violet-500/50 bg-black/55 px-4 py-1.5 text-center">
+          <span className="text-xs font-bold text-violet-200">
+            🌠 扮演德穆兰 · 🪪 身份牌 {ui.bossPlay.tags}/{ui.bossPlay.need} · {ui.bossPlay.extractReady ? '🚀 发射区撤离点已开启' : '⏳ 撤离点开局 15 分钟后开启'}
+          </span>
+          <span className="block text-[10px] text-zinc-400 mt-0.5">
+            Q 威胁显像 · T 寻敌爆破车{ui.bossPlay.carCd > 0 ? `(${ui.bossPlay.carCd}s)` : ''} · G 脑机遥控战车{ui.bossPlay.tankCd > 0 ? `(${ui.bossPlay.tankCd}s)` : ''}
+          </span>
+        </div>
+      )}
+
       {/* 左下偏中：干员技能 */}
       {(() => {
         const op = OPERATORS.find(o => o.id === ui.operator) ?? OPERATORS[0]
