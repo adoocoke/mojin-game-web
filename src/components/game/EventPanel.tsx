@@ -8,6 +8,7 @@ import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QU
 import { WAR_REWARDS, claimWarReward, loadWarEvents, type WarEventId } from '@/game/warevents'
 import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
 import { makeItem } from '@/game/data'
+import { grantVehicleSkin } from '@/game/vehicles'
 import { addToStash, loadStash, saveMoney } from '@/game/stash'
 
 /** 大战场专项活动名 → 存档事件 id */
@@ -31,6 +32,7 @@ function claimWar(id: string) {
     uiState.stash = stash
   }
   if (r.skin) grantSkin(loadSkins(), r.skin)
+  if (r.vehicleSkin) grantVehicleSkin(r.vehicleSkin)
   notify()
 }
 

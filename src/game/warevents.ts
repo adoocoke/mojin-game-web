@@ -97,7 +97,7 @@ export function reportWarGame(result: 'win' | 'lose' | 'draw', kills: number, sn
 }
 
 /** 领取奖励：返回奖励发放描述，未完成/已领返回 null */
-export function claimWarReward(id: string): { items?: string[]; gold?: number; skin?: string } | null {
+export function claimWarReward(id: string): { items?: string[]; gold?: number; skin?: string; vehicleSkin?: string } | null {
   const r = WAR_REWARDS.find(w => w.id === id)
   if (!r) return null
   const s = loadWarEvents()
@@ -110,7 +110,7 @@ export function claimWarReward(id: string): { items?: string[]; gold?: number; s
     case 'fc_kill': return { items: ['at_hvk_gas'] }
     case 'cw_3': return { gold: 10000 }
     case 'cw_6': return { gold: 20000 }
-    case 'cw_10': return { skin: 'sk_trickster' }
+    case 'cw_10': return { skin: 'sk_trickster', vehicleSkin: 'vt_trickster' }
     case 'zj_win': return { gold: 15000 }
     case 'jh_d1': return { items: ['ev_warpack'] }
     case 'jh_d2': return { items: ['ev_warpack'] }

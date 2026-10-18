@@ -23,6 +23,21 @@ import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from '.
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
 import { reportWarGame, warEventActive, markWarLogin } from './warevents'
+import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
+
+/** 战场景内载具实例 */
+interface WarVehicle {
+  def: VehicleDef
+  group: THREE.Group
+  turret: THREE.Group
+  rotor: THREE.Mesh | null
+  hp: number
+  enemy: boolean
+  yaw: number          // 车体朝向
+  fireT: number        // 上次开火时间戳
+  aiT: number          // AI 决策节流
+  alt: number          // 直升机高度
+}
 
 // 极星守望：下一局以「扮演德穆兰」开局（模块级标记——切换地图会重建引擎实例，实例字段会丢）
 let bpPending = false
@@ -162,6 +177,12 @@ export class Game {
   private bpTags = 0           // 本局已集齐的干员身份牌
   private bpExtractRing: THREE.Mesh | null = null
   private warStrikeCd = 0      // 大战场「空地突袭」空袭冷却
+  // ===== 载具系统（大战场） =====
+  private vehicles: WarVehicle[] = []        // 友方载具（出生点停放，F 驾驶）
+  private enemyVehicles: WarVehicle[] = []   // 敌方载具（AI）
+  private vehicle: WarVehicle | null = null  // 玩家正在驾驶的载具
+  private vehThrottle = 0
+  private vehSpawnT = 12         // 敌方载具增援计时（首波较早制造压力）
 
   // 本局任务统计（赛季任务）
   private raidSearches = 0
@@ -863,6 +884,7 @@ export class Game {
 
   private tryShoot() {
     if (this.reloading || uiState.phase !== 'playing' || uiState.invOpen || this.fishing) return
+    if (this.vehicle) { this.vehicleFire(); return }
     const now = performance.now()
     if (now - this.lastShot < this.gunDef.fireInterval * (this.rallyT > 0 ? 0.85 : 1)) return
     if (this.gunDef.melee) { this.lastShot = now; this.meleeAttack(); return }
@@ -921,6 +943,17 @@ export class Game {
       this.spawnSpark(eHit.point, 0xff7a5a)
       if (killed) this.onEnemyKilled(eHit.enemy)
       return
+    }
+    // 命中敌方载具（大战场）
+    if (this.enemyVehicles.length) {
+      const vHit = this.raycastEnemyVehicles(origin, dir, Math.min(oDist, range))
+      if (vHit) {
+        this.spawnSpark(vHit.point, 0xffd28a)
+        uiState.hitMarker = performance.now()
+        sfx.hit()
+        this.damageVehicle(vHit.v, this.gunDef.damage, true)
+        return
+      }
     }
     // 宽容扇形：正前方近距离内的最近敌人（平视也能砍中躯干）
     let best: Enemy | null = null
@@ -1346,6 +1379,7 @@ export class Game {
 
   private tryInteract() {
     if (this.activeLoot) return
+    if (this.war && this.vehicleInteract()) return
     // ============ S11 活动：冰湖垂钓 + 守夜人口风琴（长弓溪谷） ============
     if (this.world.mapId === 'snow' && this.world.activity) {
       const act = this.world.activity
@@ -2605,10 +2639,17 @@ export class Game {
     uiState.warTime = 300; uiState.warRespawn = 0; uiState.warStreak = 0; uiState.warDeaths = 0
     uiState.warScoreUs = 0; uiState.warScoreThem = 0
     uiState.warTickets = this.tickets; uiState.warCapIdx = 0; uiState.warCapProg = 0; uiState.warCapHot = false
+    this.vehicle = null
+    this.vehicles = []
+    this.enemyVehicles = []
+    this.vehThrottle = 0
+    this.vehSpawnT = 12
+    uiState.vehicle = null
     if (this.war) {
       markWarLogin()
       this.buildCapturePoints()
       this.spawnAllies()
+      this.spawnWarVehicles()
     }
     // 大战场：纯枪法模式，新手无枪则系统配发一把步枪
     if (this.war && this.gunDef.melee && !this.ownedGun
@@ -2688,7 +2729,8 @@ export class Game {
     // 官方「登录领皮肤」类活动镜像：窗口期内首次开局发放对应皮肤
     for (const r of claimOfficialSkinRewards()) {
       const sd = skinDef(r.skinId)
-      this.toast(`🎁 ${r.from}：获得皮肤「${sd?.name ?? r.skinId}」！主菜单 🎨 皮肤 可装备`, 'cyan')
+      if (r.skinId) this.toast(`🎁 ${r.from}：获得皮肤「${sd?.name ?? r.skinId}」！主菜单 🎨 皮肤 可装备`, 'cyan')
+      if (r.vehicleSkin) this.toast(`🎁 ${r.from}：获得载具涂装「${vehicleSkinDef(r.vehicleSkin)?.name ?? r.vehicleSkin}」！`, 'cyan')
     }
     if (uiState.creator) this.grantCreatorLoadout()
     this.syncGunUI()
@@ -2916,6 +2958,484 @@ export class Game {
   }
 
   /** 生成己方 AI 队友小队（5 人，蓝色阵营） */
+  // ====================== 载具系统（大战场） ======================
+  /** 载具建模（原创低多边形造型；turret/rotor 分离便于转动） */
+  private buildVehicleMesh(def: VehicleDef, enemy: boolean): { group: THREE.Group; turret: THREE.Group; rotor: THREE.Mesh | null } {
+    const skin = enemy ? undefined : vehicleSkinDef(loadVehicles().skin)
+    const main = enemy ? 0x5a3a32 : (skin?.main ?? 0x4a5240)
+    const accent = enemy ? 0x38221e : (skin?.accent ?? 0x2c3128)
+    const group = new THREE.Group()
+    const turret = new THREE.Group()
+    let rotor: THREE.Mesh | null = null
+    const mat = (c: number, rough = 0.55) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.45 })
+    const wheel = (x: number, z: number, r: number) => {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 10), mat(0x1c1e20, 0.8))
+      w.rotation.z = Math.PI / 2
+      w.position.set(x, r, z)
+      group.add(w)
+    }
+    if (def.id === 'buggy') {
+      // 开放式突击车：低车架 + 防滚架 + 机枪架
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.45, 2.7), mat(main))
+      body.position.y = 0.62
+      group.add(body)
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 0.7), mat(accent))
+      nose.position.set(0, 0.55, 1.55)
+      group.add(nose)
+      const cage = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 1.2), mat(accent))
+      cage.position.set(0, 1.35, -0.3)
+      group.add(cage)
+      for (const [px, pz] of [[-0.72, 0.25], [0.72, 0.25], [-0.72, -0.85], [0.72, -0.85]] as const) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.75, 0.07), mat(accent))
+        bar.position.set(px, 0.98, pz)
+        group.add(bar)
+      }
+      wheel(-0.85, 1.05, 0.38); wheel(0.85, 1.05, 0.38); wheel(-0.85, -1.05, 0.38); wheel(0.85, -1.05, 0.38)
+      // 机枪架（炮塔）
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 8), mat(accent))
+      post.position.y = 0.3
+      turret.add(post)
+      const mg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 1.0), mat(0x22262a))
+      mg.position.set(0, 0.62, 0.4)
+      turret.add(mg)
+      turret.position.set(0, 1.35, -0.3)
+      group.add(turret)
+    } else if (def.id === 'lav') {
+      // 8 轮步战车：斜首车体 + 机炮塔
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 4.4), mat(main))
+      hull.position.y = 0.85
+      group.add(hull)
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.9), mat(accent))
+      nose.position.set(0, 0.62, 2.45)
+      nose.rotation.x = 0.45
+      group.add(nose)
+      for (let i = 0; i < 4; i++) { wheel(-1.15, 1.55 - i * 1.05, 0.42); wheel(1.15, 1.55 - i * 1.05, 0.42) }
+      const tur = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.5, 1.3), mat(accent))
+      tur.position.y = 0.25
+      turret.add(tur)
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.6, 8), mat(0x22262a))
+      barrel.rotation.x = Math.PI / 2
+      barrel.position.set(0, 0.32, 1.3)
+      turret.add(barrel)
+      turret.position.set(0, 1.45, -0.3)
+      group.add(turret)
+    } else if (def.id === 'tank') {
+      // 主战坦克：双履带 + 大倾角首上 + 长滑膛炮
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.85, 5.0), mat(main))
+      hull.position.y = 0.95
+      group.add(hull)
+      const nose = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.55, 1.0), mat(accent))
+      nose.position.set(0, 0.72, 2.7)
+      nose.rotation.x = 0.5
+      group.add(nose)
+      for (const sx of [-1.45, 1.45]) {
+        const track = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 5.2), mat(0x24282c, 0.85))
+        track.position.set(sx, 0.45, 0)
+        group.add(track)
+      }
+      const tur = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 2.0), mat(accent))
+      tur.position.y = 0.3
+      turret.add(tur)
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 3.2, 8), mat(0x22262a))
+      barrel.rotation.x = Math.PI / 2
+      barrel.position.set(0, 0.38, 2.4)
+      turret.add(barrel)
+      turret.position.set(0, 1.55, -0.4)
+      group.add(turret)
+    } else {
+      // 武装直升机：梭形机身 + 尾梁 + 主旋翼 + 短翼挂架
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), mat(main))
+      body.scale.set(0.85, 0.75, 1.9)
+      body.position.y = 0.9
+      group.add(body)
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8), new THREE.MeshStandardMaterial({ color: 0x18262e, roughness: 0.2, metalness: 0.7 }))
+      canopy.position.set(0, 1.15, 1.35)
+      group.add(canopy)
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 3.4, 8), mat(accent))
+      tail.rotation.x = Math.PI / 2
+      tail.position.set(0, 1.0, -2.9)
+      group.add(tail)
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.5), mat(accent))
+      fin.position.set(0, 1.5, -4.4)
+      group.add(fin)
+      for (const sx of [-1.5, 1.5]) {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.55), mat(accent))
+        wing.position.set(sx * 0.72, 0.85, -0.2)
+        group.add(wing)
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.8, 8), mat(0x22262a))
+        pod.rotation.x = Math.PI / 2
+        pod.position.set(sx * 1.28, 0.7, -0.2)
+        group.add(pod)
+      }
+      rotor = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.06, 0.28), mat(0x1c1e20, 0.4))
+      rotor.position.y = 1.95
+      group.add(rotor)
+      const tr = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 0.14), mat(0x1c1e20, 0.4))
+      tr.position.set(0.12, 1.5, -4.4)
+      group.add(tr)
+      // 滑橇
+      for (const sx of [-0.7, 0.7]) {
+        const skid = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.6), mat(0x22262a))
+        skid.position.set(sx, 0.1, 0.2)
+        group.add(skid)
+      }
+      // 机鼻炮塔
+      const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.9, 8), mat(0x22262a))
+      gun.rotation.x = Math.PI / 2
+      gun.position.set(0, 0.15, 0.7)
+      turret.add(gun)
+      turret.position.set(0, 0.55, 1.6)
+      group.add(turret)
+    }
+    // 阵营标识灯
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6),
+      new THREE.MeshBasicMaterial({ color: enemy ? 0xff3b30 : 0x38bdf8 }))
+    beacon.position.set(0, def.fly ? 2.15 : 1.9, -0.5)
+    group.add(beacon)
+    return { group, turret, rotor }
+  }
+
+  /** 大战场：出生点停放友方载具 */
+  private spawnWarVehicles() {
+    const list = WAR_VEHICLE_LOADOUT[this.warMode] ?? WAR_VEHICLE_LOADOUT.tdm
+    const base = this.world.playerSpawn
+    list.forEach((id, i) => {
+      const def = VEHICLES[id]
+      if (!def) return
+      const { group, turret, rotor } = this.buildVehicleMesh(def, false)
+      const ang = (i / list.length) * Math.PI * 2 + 0.6
+      const x = base.x + Math.cos(ang) * (3.4 + i * 2.2)
+      const z = base.z + Math.sin(ang) * (3.4 + i * 2.2)
+      const y = def.fly ? 0 : this.groundHeightAt(x, z, base.y)
+      group.position.set(x, y, z)
+      const yaw = Math.atan2(-base.x, -base.z) // 朝向战场中心
+      group.rotation.y = yaw
+      this.world.scene.add(group)
+      this.vehicles.push({ def, group, turret, rotor, hp: def.hp, enemy: false, yaw, fireT: 0, aiT: 0, alt: 0 })
+    })
+    this.toast(`🛻 战场载具已就位：${list.map(id => VEHICLES[id].name).join(' / ')}——靠近按 F 驾驶`, 'cyan')
+  }
+
+  /** 敌方载具增援（AI 驾驶） */
+  private spawnEnemyVehicle() {
+    const pool = this.warMode === 'ad' ? ['tank', 'lav', 'lav'] : ['lav', 'buggy', 'buggy']
+    const def = VEHICLES[pool[Math.floor(Math.random() * pool.length)]]
+    const sp = this.warEnemySpawnPos()
+    const { group, turret, rotor } = this.buildVehicleMesh(def, true)
+    group.position.set(sp.x + (Math.random() - 0.5) * 6, this.groundHeightAt(sp.x, sp.z, sp.y ?? 0), sp.z + (Math.random() - 0.5) * 6)
+    const yaw = Math.atan2(this.pos.x - group.position.x, this.pos.z - group.position.z)
+    group.rotation.y = yaw
+    this.world.scene.add(group)
+    this.enemyVehicles.push({ def, group, turret, rotor, hp: def.hp, enemy: true, yaw, fireT: 0, aiT: 0, alt: 0 })
+    uiState.killFeed = [`⚠️ 敌方${def.name}入场！`, ...uiState.killFeed].slice(0, 4)
+    this.toast(`⚠️ 敌方${def.name}入场！用爆炸物或集火摧毁它`, 'red')
+    notify()
+  }
+
+  /** F 驾驶/下车 */
+  private vehicleInteract(): boolean {
+    if (!this.war) return false
+    if (this.vehicle) { this.exitVehicle(); return true }
+    for (const v of this.vehicles) {
+      if (v.hp <= 0) continue
+      const d = Math.hypot(v.group.position.x - this.pos.x, v.group.position.z - this.pos.z)
+      if (d < 4) { this.enterVehicle(v); return true }
+    }
+    return false
+  }
+
+  private enterVehicle(v: WarVehicle) {
+    this.vehicle = v
+    this.vehThrottle = 0
+    v.alt = v.def.fly ? v.group.position.y : 0
+    uiState.vehicle = { name: v.def.name, icon: v.def.icon, hp: Math.ceil(v.hp), maxHp: v.def.hp, weapon: v.def.weapon.name }
+    this.toast(`${v.def.icon} 驾驶 ${v.def.name}：W/S 油门 · A/D 转向 · 左键 ${v.def.weapon.name}${v.def.fly ? ' · 空格/C 升降' : ''} · F 下车`, 'cyan')
+    notify()
+  }
+
+  private exitVehicle() {
+    const v = this.vehicle
+    if (!v) return
+    // 下车到车侧
+    const sx = v.group.position.x + Math.cos(v.yaw) * 3
+    const sz = v.group.position.z - Math.sin(v.yaw) * 3
+    const gy = this.groundHeightAt(sx, sz, v.group.position.y)
+    this.pos.set(sx, gy + EYE, sz)
+    this.vehicle = null
+    this.vehThrottle = 0
+    uiState.vehicle = null
+    this.toast('已下车', 'white')
+    notify()
+  }
+
+  /** 载具驾驶（替代步行移动） */
+  private vehicleDrive(dt: number) {
+    const v = this.vehicle
+    if (!v) return
+    const def = v.def
+    // 转向：A 左 D 右（地面载具需有油门才灵活，直升机原地可转）
+    const turnIn = (this.keys.has('a') ? 1 : 0) - (this.keys.has('d') ? 1 : 0)
+    const turnMul = def.fly ? 1 : (Math.abs(this.vehThrottle) > 0.05 ? 1 : 0.35)
+    v.yaw += turnIn * def.turn * turnMul * dt
+    // 油门：W 前 S 倒（倒车减半）
+    const thIn = (this.keys.has('w') ? 1 : 0) - (this.keys.has('s') ? 0.55 : 0)
+    this.vehThrottle = THREE.MathUtils.lerp(this.vehThrottle, thIn, Math.min(1, dt * 2.5))
+    const f = new THREE.Vector3(Math.sin(v.yaw), 0, Math.cos(v.yaw))
+    const nx = v.group.position.x + f.x * this.vehThrottle * def.speed * dt
+    const nz = v.group.position.z + f.z * this.vehThrottle * def.speed * dt
+    if (!this.playerCollide(nx, nz)) {
+      v.group.position.x = nx
+      v.group.position.z = nz
+    } else {
+      this.vehThrottle = 0
+    }
+    // 高度
+    if (def.fly) {
+      if (this.keys.has(' ')) v.alt = Math.min(def.maxY ?? 30, v.alt + 9 * dt)
+      if (this.keys.has('c')) v.alt = Math.max(0, v.alt - 9 * dt)
+      v.group.position.y = v.alt
+      if (v.alt > (def.minY ?? 5) && this.vehThrottle === 0 && turnIn === 0) v.group.rotation.z = Math.sin(performance.now() / 600) * 0.02 // 悬停微晃
+      else v.group.rotation.z = 0
+    } else {
+      v.group.position.y = this.groundHeightAt(nx, nz, v.group.position.y)
+    }
+    v.group.rotation.y = v.yaw
+    // 炮塔跟随玩家视角；旋翼旋转
+    v.turret.rotation.y = this.yaw - v.yaw + Math.PI
+    if (v.rotor) v.rotor.rotation.y += dt * 25
+    // 玩家吸附到驾驶位
+    this.pos.set(v.group.position.x, v.group.position.y + (def.fly ? 2.2 : 2.6), v.group.position.z)
+    // HUD 同步
+    if (uiState.vehicle && Math.abs(uiState.vehicle.hp - v.hp) > 0.5) {
+      uiState.vehicle = { ...uiState.vehicle, hp: Math.max(0, Math.ceil(v.hp)) }
+      notify()
+    }
+  }
+
+  /** 载具开火 */
+  private vehicleFire() {
+    const v = this.vehicle
+    if (!v) return
+    const w = v.def.weapon
+    const now = performance.now()
+    if (now - v.fireT < w.interval) return
+    v.fireT = now
+    this.muzzleFlash.intensity = 3
+    sfx.shot(w.dmg > 60)
+    const origin = this.camera.position.clone()
+    const dir = new THREE.Vector3()
+    this.camera.getWorldDirection(dir)
+    // 障碍遮挡
+    const rc = new THREE.Raycaster(origin, dir, 0, w.range)
+    const oHits = rc.intersectObjects(this.world.obstacleMeshes, false)
+    const oDist = oHits.length ? oHits[0].distance : Infinity
+    if (w.splash > 0) {
+      // 炮弹/火箭：找落点（敌人 / 地面 / 障碍）后 AOE
+      let dist = Math.min(oDist, w.range)
+      const eHit = this.enemies.raycast(origin, dir, w.range)
+      if (eHit && eHit.point.distanceTo(origin) < dist) dist = eHit.point.distanceTo(origin)
+      if (dir.y < -0.02) { // 打地面
+        const tGround = (0.2 - origin.y) / dir.y
+        if (tGround > 0 && tGround < dist) dist = tGround
+      }
+      const point = origin.clone().add(dir.clone().multiplyScalar(dist))
+      this.spawnTracer(origin.clone().add(dir.clone().multiplyScalar(1.5)), point, 0xffd28a)
+      this.spawnSpark(point, 0xff7a3c)
+      sfx.boom()
+      this.splashVsEnemies(point, w.splash + 1.8, w.dmg)
+      this.splashVsEnemyVehicles(point, w.splash + 1.8, w.dmg, true)
+    } else {
+      // 车载机枪：直射
+      const eHit = this.enemies.raycast(origin, dir, w.range)
+      if (eHit && eHit.point.distanceTo(origin) < oDist) {
+        this.spawnTracer(origin, eHit.point, 0xffd28a)
+        this.spawnSpark(eHit.point, 0xff7a5a)
+        uiState.hitMarker = performance.now()
+        sfx.hit()
+        if (this.enemies.damage(eHit.enemy, w.dmg)) this.onEnemyKilled(eHit.enemy)
+      } else {
+        const vHit = this.raycastEnemyVehicles(origin, dir, Math.min(oDist, w.range))
+        const end = vHit ? vHit.point : origin.clone().add(dir.clone().multiplyScalar(Math.min(oDist, w.range)))
+        this.spawnTracer(origin, end, 0xffd28a)
+        if (vHit) { this.spawnSpark(vHit.point, 0xffd28a); this.damageVehicle(vHit.v, w.dmg, true) }
+      }
+    }
+    notify()
+  }
+
+  /** 射线检测敌方载具（简化为包围球） */
+  private raycastEnemyVehicles(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): { v: WarVehicle; point: THREE.Vector3; dist: number } | null {
+    let best: { v: WarVehicle; point: THREE.Vector3; dist: number } | null = null
+    for (const v of this.enemyVehicles) {
+      if (v.hp <= 0) continue
+      const c = v.group.position.clone()
+      c.y += v.def.fly ? 1 : 1.1
+      const r = v.def.id === 'tank' ? 2.6 : v.def.id === 'lav' ? 2.2 : v.def.fly ? 2.2 : 1.6
+      const toC = c.clone().sub(origin)
+      const along = toC.dot(dir)
+      if (along < 0 || along > maxDist) continue
+      const perp = Math.sqrt(Math.max(0, toC.lengthSq() - along * along))
+      if (perp < r && (!best || along < best.dist)) best = { v, point: origin.clone().add(dir.clone().multiplyScalar(along)), dist: along }
+    }
+    return best
+  }
+
+  /** 载具掉血；byBullet 适用枪械减免 */
+  private damageVehicle(v: WarVehicle, dmg: number, byBullet: boolean) {
+    if (v.hp <= 0) return
+    v.hp -= byBullet ? dmg * (1 - v.def.bulletResist) : dmg
+    if (v.hp > 0) return
+    // 击毁：爆炸 AOE
+    const p = v.group.position.clone()
+    this.spawnSpark(p.clone().setY(p.y + 1), 0xff7a3c)
+    sfx.boom()
+    this.world.scene.remove(v.group)
+    if (v.enemy) {
+      this.enemyVehicles = this.enemyVehicles.filter(x => x !== v)
+      // 击毁计入战果（对齐官方：载具击毁计击杀）
+      this.kills += 2
+      uiState.kills = this.kills
+      this.warStreak += 1
+      if (this.warStreak > this.warBestStreak) this.warBestStreak = this.warStreak
+      this.scoreUs += 2
+      uiState.warScoreUs = this.scoreUs
+      uiState.warStreak = this.warStreak
+      uiState.killFeed = [`💥 击毁敌方${v.def.name}！`, ...uiState.killFeed].slice(0, 4)
+      const vs = loadVehicles()
+      vs.destroyed++
+      saveVehicles(vs)
+      // 爆炸波及周围敌人
+      this.splashVsEnemies(p, 5, 90)
+    } else {
+      this.vehicles = this.vehicles.filter(x => x !== v)
+      if (this.vehicle === v) {
+        // 载具被击毁：强制跳车 + 爆炸伤害
+        this.exitVehicle()
+        this.hp -= 55
+        uiState.hp = Math.max(0, this.hp)
+        uiState.damageFlash = performance.now()
+        sfx.hurt()
+        this.toast(`💥 载具被击毁！你被甩出车外`, 'red')
+        if (this.hp <= 0 && this.war) { this.hp = 0; uiState.hp = 0; this.respawnT = 4 }
+        notify()
+      }
+    }
+  }
+
+  /** 范围伤害：对敌人 */
+  private splashVsEnemies(point: THREE.Vector3, r: number, dmg: number) {
+    for (const e of [...this.enemies.enemies]) {
+      if (e.dead) continue
+      const de = Math.hypot(e.group.position.x - point.x, e.group.position.z - point.z)
+      if (de < r && this.enemies.damage(e, dmg * (1 - de / r))) this.onEnemyKilled(e)
+    }
+  }
+
+  /** 范围伤害：对敌方载具 */
+  private splashVsEnemyVehicles(point: THREE.Vector3, r: number, dmg: number, full: boolean) {
+    for (const v of [...this.enemyVehicles]) {
+      if (v.hp <= 0) continue
+      const dv = Math.hypot(v.group.position.x - point.x, v.group.position.z - point.z)
+      if (dv < r + 1.5) this.damageVehicle(v, dmg * (1 - dv / (r + 1.5)), !full)
+    }
+  }
+
+  /** 敌方载具 AI + 增援计时（warTick 调用） */
+  private vehicleTick(dt: number) {
+    // 增援
+    this.vehSpawnT -= dt
+    const maxEnemy = this.warMode === 'ad' ? 2 : 1
+    if (this.vehSpawnT <= 0 && this.enemyVehicles.filter(v => v.hp > 0).length < maxEnemy) {
+      this.vehSpawnT = 70
+      this.spawnEnemyVehicle()
+    }
+    // AI：向目标点机动，接近玩家/队友后开火
+    for (const v of this.enemyVehicles) {
+      if (v.hp <= 0) continue
+      v.aiT -= dt
+      // 目标：攻防=当前据点，死斗=玩家
+      const goal = this.warMode === 'ad' && this.capPoints[this.capIdx]
+        ? this.capPoints[this.capIdx].pos
+        : this.pos
+      const gp = v.group.position
+      const toGoal = Math.atan2(goal.x - gp.x, goal.z - gp.z)
+      let dyaw = toGoal - v.yaw
+      while (dyaw > Math.PI) dyaw -= Math.PI * 2
+      while (dyaw < -Math.PI) dyaw += Math.PI * 2
+      const distGoal = Math.hypot(goal.x - gp.x, goal.z - gp.z)
+      // 近距交战对象：玩家或最近队友
+      let tgtPos: THREE.Vector3 | null = null
+      let tgtAlly: Enemy | null = null
+      const dp = Math.hypot(this.pos.x - gp.x, this.pos.z - gp.z)
+      let bd = dp
+      if (this.allies) for (const a of this.allies.enemies) {
+        if (a.dead) continue
+        const da = a.group.position.distanceTo(gp)
+        if (da < bd) { bd = da; tgtAlly = a }
+      }
+      if (bd < 55) tgtPos = tgtAlly ? tgtAlly.group.position : this.pos
+      if (Math.abs(dyaw) > 0.08 && distGoal > 14 && !tgtPos) {
+        v.yaw += THREE.MathUtils.clamp(dyaw, -v.def.turn * 0.7 * dt, v.def.turn * 0.7 * dt)
+      }
+      if (!tgtPos && distGoal > 14) {
+        // 向目标机动
+        const f = new THREE.Vector3(Math.sin(v.yaw), 0, Math.cos(v.yaw))
+        const nx = gp.x + f.x * v.def.speed * 0.65 * dt
+        const nz = gp.z + f.z * v.def.speed * 0.65 * dt
+        gp.x = nx; gp.z = nz
+        gp.y = this.groundHeightAt(nx, nz, gp.y)
+      }
+      v.group.rotation.y = v.yaw
+      if (v.rotor) v.rotor.rotation.y += dt * 25
+      // 开火
+      if (tgtPos && v.aiT <= 0) {
+        v.aiT = v.def.weapon.interval / 1000 * 2.5
+        const from = gp.clone(); from.y += 1.6
+        const aim = tgtPos.clone(); aim.y += 1.2
+        // 炮塔指向目标
+        const face = Math.atan2(aim.x - gp.x, aim.z - gp.z)
+        v.turret.rotation.y = face - v.yaw + Math.PI
+        const hitP = Math.random() < (tgtAlly ? 0.5 : 0.38)
+        const end = hitP ? aim : aim.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 5))
+        this.spawnTracer(from, end, 0xff6a4a)
+        sfx.enemyShot()
+        if (v.def.weapon.splash > 0) {
+          this.spawnSpark(end, 0xff7a3c)
+          sfx.boom()
+          // 溅射对玩家/队友/玩家载具
+          const dp2 = Math.hypot(this.pos.x - end.x, this.pos.z - end.z)
+          if (dp2 < v.def.weapon.splash + 1.5 && hitP) {
+            if (this.vehicle) this.damageVehicle(this.vehicle, v.def.weapon.dmg * 0.8, false)
+            else if (this.hp > 0 && this.protectT <= 0) {
+              this.hp -= v.def.weapon.dmg * 0.3
+              uiState.hp = Math.max(0, this.hp)
+              uiState.damageFlash = performance.now()
+              sfx.hurt()
+              if (this.hp <= 0 && this.war) { this.hp = 0; uiState.hp = 0; this.respawnT = 4 }
+            }
+          }
+          if (this.allies) for (const a of [...this.allies.enemies]) {
+            if (a.dead) continue
+            const da = a.group.position.distanceTo(end)
+            if (da < v.def.weapon.splash + 1 && this.allies.damage(a, v.def.weapon.dmg * 0.5, gp)) this.onAllyDeath(a)
+          }
+        } else if (hitP) {
+          if (tgtAlly && this.allies) {
+            if (this.allies.damage(tgtAlly, v.def.weapon.dmg * 0.8, gp)) this.onAllyDeath(tgtAlly)
+          } else if (this.vehicle) {
+            this.damageVehicle(this.vehicle, v.def.weapon.dmg, true)
+          } else if (this.hp > 0 && this.protectT <= 0) {
+            this.hp -= v.def.weapon.dmg * 0.4
+            uiState.hp = Math.max(0, this.hp)
+            uiState.damageFlash = performance.now()
+            sfx.hurt()
+            if (this.hp <= 0 && this.war) { this.hp = 0; uiState.hp = 0; this.respawnT = 4 }
+          }
+        }
+      }
+    }
+  }
+
   private spawnAllies() {
     this.allies = new EnemyManager(this.world.scene, this.world.colliders)
     for (let i = 0; i < 5; i++) this.spawnAlly(Game.ALLY_KINDS[i % Game.ALLY_KINDS.length])
@@ -3226,6 +3746,11 @@ export class Game {
         const da = Math.hypot(a.group.position.x - s.x, a.group.position.z - s.z)
         if (!s.friendly && da < 5.5 && this.allies.damage(a, 90 * (1 - da / 5.5))) this.onAllyDeath(a)
       }
+      for (const v of [...this.enemyVehicles]) {
+        if (v.hp <= 0) continue
+        const dv = Math.hypot(v.group.position.x - s.x, v.group.position.z - s.z)
+        if (dv < 6.5) this.damageVehicle(v, 220 * (1 - dv / 6.5), false)
+      }
       for (const e of [...this.enemies.enemies]) {
         if (e.dead) continue
         const de = Math.hypot(e.group.position.x - s.x, e.group.position.z - s.z)
@@ -3308,6 +3833,8 @@ export class Game {
     }
     // 队友 AI
     this.alliesTick(rawDt)
+    // 载具：敌方增援 + AI
+    this.vehicleTick(rawDt)
     // 攻防：占领逻辑
     if (this.warMode === 'ad') this.adTick(rawDt)
     // 胜负判定
@@ -3344,6 +3871,8 @@ export class Game {
   private endWar(result: 'win' | 'lose' | 'draw' = 'win') {
     this.running = false
     this.firing = false
+    this.vehicle = null
+    uiState.vehicle = null
     uiState.phase = 'menu'
     try { document.exitPointerLock() } catch { /* 忽略 */ }
     const kills = uiState.kills
@@ -3394,6 +3923,8 @@ export class Game {
     uiState.searching = -1
     uiState.extractProgress = -1
     uiState.bossPlay = null
+    uiState.vehicle = null
+    this.vehicle = null
     uiState.lastRaidExtracted = extracted
     uiState.phase = 'menu'
     uiState.resultOpen = true
@@ -3808,6 +4339,7 @@ export class Game {
       // 移动（键鼠或触屏）
       const inputActive = (this.locked || this.isTouch) && !uiState.invOpen && !this.fishing
       if (inputActive) {
+        if (this.vehicle) this.vehicleDrive(rawDt)
         const sprint = this.sprinting || this.mSprint
         // 冰湖减速区
         let slowMul = 1
@@ -3834,7 +4366,7 @@ export class Game {
           move.add(f.clone().multiplyScalar(-this.mMove.y))
           move.add(r.clone().multiplyScalar(this.mMove.x))
         }
-        if (move.lengthSq() > 0) {
+        if (move.lengthSq() > 0 && !this.vehicle) {
           if (move.lengthSq() > 1) move.normalize()
           move.multiplyScalar(speed * dt)
           const nx = this.pos.x + move.x
@@ -3842,8 +4374,8 @@ export class Game {
           if (!this.playerCollide(nx, this.pos.z)) this.pos.x = nx
           if (!this.playerCollide(this.pos.x, nz)) this.pos.z = nz
         }
-        // 垂直：楼梯上行 / 悬空下落
-        {
+        // 垂直：楼梯上行 / 悬空下落（驾驶时由载具高度接管）
+        if (this.vehicle) { /* 驾驶中：位置由 vehicleDrive 吸附 */ } else {
           const feet = this.pos.y - EYE
           const target = this.groundHeightAt(this.pos.x, this.pos.z, feet)
           if (target >= feet - 0.001) {
@@ -3925,6 +4457,7 @@ export class Game {
               }
             }
           }
+          if (this.war) this.splashVsEnemyVehicles(g.target, 5, 130, true)
           const d = this.pos.distanceTo(g.target)
           if (d < 5 && this.hp > 0 && !uiState.creator) {
             this.hp -= 35 * (1 - d / 5)
@@ -4458,6 +4991,11 @@ export class Game {
       ? this.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3))
       : this.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4))
     this.spawnTracer(from.clone().add(new THREE.Vector3(0, 0.2, 0)), target, 0xff6a4a)
+    if (hit && this.vehicle) {
+      // 玩家在载具内：子弹由载具装甲吸收
+      this.damageVehicle(this.vehicle, dmg, true)
+      return
+    }
     if (hit && this.hp > 0) {
       if (uiState.creator) return
       // 干员减伤：被动「重型装甲」+ 主动「能量护甲」

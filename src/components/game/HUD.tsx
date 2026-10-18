@@ -298,6 +298,22 @@ export function HUD() {
         </div>
       )}
 
+      {/* 载具驾驶状态 */}
+      {ui.vehicle && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-lg border border-sky-500/50 bg-black/55 px-4 py-2 text-center min-w-[15rem]">
+          <div className="text-sm font-black text-sky-200">{ui.vehicle.icon} {ui.vehicle.name} <span className="text-[10px] font-normal text-zinc-400">{ui.vehicle.weapon}</span></div>
+          <div className="mt-1 h-2 rounded bg-zinc-800 overflow-hidden">
+            <div
+              className={`h-full transition-all ${ui.vehicle.hp / ui.vehicle.maxHp > 0.4 ? 'bg-sky-400' : 'bg-red-500'}`}
+              style={{ width: `${Math.max(0, (ui.vehicle.hp / ui.vehicle.maxHp) * 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-zinc-400 mt-1 font-mono">
+            耐久 {ui.vehicle.hp}/{ui.vehicle.maxHp} · W/S 油门 A/D 转向 · F 下车
+          </div>
+        </div>
+      )}
+
       {/* 极星守望·扮演德穆兰：行动目标条 */}
       {ui.bossPlay && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 max-w-lg rounded-lg border border-violet-500/50 bg-black/55 px-4 py-1.5 text-center">
