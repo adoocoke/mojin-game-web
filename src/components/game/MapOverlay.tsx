@@ -17,7 +17,7 @@ export function MapOverlay() {
   const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
   const S = ui.mapSize || 140
-  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
+  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'oldtown' ? '摩格旧城区' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
   const ang = Math.atan2(fx, -fz) * 180 / Math.PI
@@ -91,6 +91,15 @@ export function MapOverlay() {
                 <circle cx={m.x} cy={m.z} r="7" fill="#2b1650" stroke="#a78bfa" strokeWidth="1.5" />
                 <text x={m.x} y={m.z + 4} textAnchor="middle" fontSize="9">🎯</text>
                 {m.name && <text x={m.x} y={m.z - 10} textAnchor="middle" fontSize="8" fill="#c4b5fd" fontWeight="bold">{m.name}</text>}
+              </g>
+            )
+            if (m.kind === 'raven') return (
+              <g key={i}>
+                <circle cx={m.x} cy={m.z} r="7" fill="#2a1a05" stroke="#f59e0b" strokeWidth="1.5">
+                  <animate attributeName="opacity" values="1;0.6;1" dur="1.6s" repeatCount="indefinite" />
+                </circle>
+                <text x={m.x} y={m.z + 4} textAnchor="middle" fontSize="9">🐦‍⬛</text>
+                {m.name && <text x={m.x} y={m.z - 10} textAnchor="middle" fontSize="8" fill="#fcd34d" fontWeight="bold">渡鸦路灯</text>}
               </g>
             )
             if (m.kind === 'house') return (

@@ -5,7 +5,8 @@ import { loadSkins, skinDef, grantSkin } from '@/game/skins'
 import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
 import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
 import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QUOTA_MAX } from '@/game/bossplay'
-import { WAR_REWARDS, claimWarReward, loadWarEvents, type WarEventId } from '@/game/warevents'
+import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, type WarEventId } from '@/game/warevents'
+import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, type TrickShopItem } from '@/game/trickster'
 import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
 import { makeItem } from '@/game/data'
 import { grantVehicleSkin } from '@/game/vehicles'
@@ -19,6 +20,11 @@ const WAR_EVENT_NAMES: Record<string, WarEventId> = {
   '逐命十字': 'zhumling',
   '畅玩月保分': 'baofen',
   '洲末军火库': 'junhuoku',
+  '畅玩月：狂欢加码': 'kuanghuan1',
+  '畅玩月：狂欢加码Ⅱ': 'kuanghuan2',
+  '畅玩月：超载焕新': 'overload',
+  '畅玩月：钢铁洪流再临': 'steel',
+  '黑潮挑战': 'heichao',
 }
 
 /** 领取大战场活动奖励并实际入账（金币/物资入仓/皮肤） */
@@ -33,7 +39,138 @@ function claimWar(id: string) {
   }
   if (r.skin) grantSkin(loadSkins(), r.skin)
   if (r.vehicleSkin) grantVehicleSkin(r.vehicleSkin)
+  if (r.trickTokens) addTrickTokens(r.trickTokens)
+  if (r.playTokens) addPlayTokens(r.playTokens)
   notify()
+}
+
+/** 商店兑换结果入账（金币/皮肤/收藏外观/物资入仓） */
+function applyShopResult(r: { kind: string; payload: string | number; name: string } | null): string {
+  if (!r) return ''
+  if (r.kind === 'gold') { uiState.money += Number(r.payload); saveMoney(uiState.money) }
+  else if (r.kind === 'skin') grantSkin(loadSkins(), String(r.payload))
+  else if (r.kind === 'cosmetic') grantCosmetic(String(r.payload))
+  else if (r.kind === 'item') {
+    const stash = loadStash()
+    addToStash(stash, [makeItem(String(r.payload), 1)])
+    uiState.stash = stash
+  }
+  notify()
+  return r.name
+}
+
+/** 代币兑换商店（捣蛋鬼商店 / 畅玩加码 / 物流凭证共用样式） */
+function TokenShop({ shop, balance, balanceLabel, onMsg }: {
+  shop: TrickShopItem[]
+  balance: number
+  balanceLabel: string
+  onMsg: (m: string) => void
+}) {
+  const ts = loadTrickster()
+  const skinsOwned = loadSkins().owned
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-2">
+      <div className="text-[10px] font-bold text-amber-300 mb-1.5">{balanceLabel}：<span className="font-mono">{balance}</span></div>
+      <div className="space-y-1">
+        {shop.map(it => {
+          const owned = it.kind === 'skin' ? skinsOwned.includes(String(it.payload))
+            : it.kind === 'cosmetic' ? ts.cosmetics.includes(String(it.payload))
+            : !it.repeat && ts.shopClaimed.includes(it.id)
+          const can = !owned && balance >= it.cost
+          return (
+            <div key={it.id} className="flex items-center gap-2 text-[11px]">
+              <span>{it.icon}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-zinc-200 truncate">{it.name}</span>
+                <span className="block text-[9px] text-zinc-500 truncate">{it.desc}</span>
+              </span>
+              <button
+                disabled={!can}
+                onClick={e => {
+                  e.stopPropagation()
+                  const r = applyShopResult(onRedeem(it.id))
+                  if (r) onMsg(`✅ 已兑换：${r}`)
+                  else onMsg('❌ 兑换失败：代币不足或已兑换')
+                }}
+                className={`shrink-0 rounded px-2 py-0.5 border font-mono text-[10px] ${
+                  owned
+                    ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-300'
+                    : can
+                      ? 'border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold hover:bg-amber-500/30'
+                      : 'border-zinc-700 bg-zinc-800/60 text-zinc-500'
+                }`}
+              >
+                {owned ? '已拥有' : `${it.cost} 代币`}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function onRedeem(id: string) {
+  if (id.startsWith('ts_')) return redeemTrick(id)
+  if (id.startsWith('ps_')) return redeemPlay(id)
+  return redeemLogi(id)
+}
+
+/** 群星行动：绝地反击——阶段任务线 */
+function JdBlock({ onMsg }: { onMsg: (m: string) => void }) {
+  const ws = loadWarEvents()
+  const stages = [0, 1, 2]
+  return (
+    <div className="mt-2 rounded-lg border border-sky-500/25 bg-sky-500/5 px-2.5 py-2 space-y-1.5">
+      {stages.map(st => {
+        const unlocked = jdStageUnlocked(st, ws)
+        const tasks = JD_TASKS.filter(t => t.stage === st)
+        return (
+          <div key={st}>
+            <div className="text-[10px] font-bold text-sky-300 mb-0.5">
+              {unlocked ? '🔓' : '🔒'} 第 {['一', '二', '三'][st]} 阶段{st === 2 ? '（本周核心任务）' : ''}
+              {!unlocked && <span className="text-zinc-500 font-normal">——完成上阶段至少 1 个任务解锁</span>}
+            </div>
+            {tasks.map(t => {
+              const done = ws.jdDone.includes(t.id)
+              const prog = Math.min(t.progress(ws), t.need)
+              const can = unlocked && !done && prog >= t.need
+              return (
+                <div key={t.id} className="flex items-center gap-2 text-[10px] pl-4">
+                  <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+                  <span className={`flex-1 ${unlocked ? 'text-zinc-300' : 'text-zinc-600'}`}>{t.icon} {t.name}（{prog}/{t.need}）→ {t.rewardText}</span>
+                  {can && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        const r = claimJdTask(t.id)
+                        if (!r) return
+                        if (r.vehicleSkin) grantVehicleSkin(r.vehicleSkin)
+                        if (r.items) {
+                          const stash = loadStash()
+                          addToStash(stash, r.items.map(d => makeItem(d, 1)))
+                          uiState.stash = stash
+                        }
+                        if (r.box) {
+                          const stash = loadStash()
+                          addToStash(stash, [makeItem('ev_actionbox', 1)])
+                          uiState.stash = stash
+                        }
+                        notify()
+                        onMsg(`✅ ${t.name} 完成：${t.rewardText}${r.box ? '｜累计 4 任务达成：行动补给箱 ×1 已入仓' : ''}`)
+                      }}
+                      className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+                    >领取</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+      <div className="text-[9px] text-zinc-500 pl-1">累计完成 {ws.jdDone.length}/{JD_TASKS.length} 个任务（{JD_BOX_NEED} 个解锁行动补给箱）</div>
+    </div>
+  )
 }
 
 /** 由活动名生成稳定色相，让每个活动有专属配色的横幅 */
@@ -58,7 +195,7 @@ function fmtDate(ts: number): string {
   return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
-function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
+function EventCard({ ev, now, onMsg }: { ev: OfficialEventInfo; now: number; onMsg: (m: string) => void }) {
   const H = hueOf(ev.name)
   const active = ev.status === 'active'
   const skin = ev.skin ? skinDef(ev.skin) : undefined
@@ -90,6 +227,19 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
           )}
         </div>
         <div className={`text-xs mt-1.5 leading-relaxed ${active ? 'text-zinc-300' : 'text-zinc-500'}`}>{ev.desc}</div>
+        {ev.name === '捣蛋鬼商店' && active && (
+          <TokenShop shop={TRICK_SHOP} balance={loadTrickster().tokens} balanceLabel="🎃 捣蛋代币" onMsg={onMsg} />
+        )}
+        {ev.name === '捣蛋鬼商店·黑潮爆破' && active && (
+          <TokenShop shop={TRICK_SHOP} balance={loadTrickster().tokens} balanceLabel="🎃 捣蛋代币（与烽火地带共用）" onMsg={onMsg} />
+        )}
+        {ev.name === '畅玩加码' && active && (
+          <TokenShop shop={PLAY_SHOP} balance={loadTrickster().playTokens} balanceLabel="🎁 畅玩代币" onMsg={onMsg} />
+        )}
+        {ev.name === '花小蝶返场' && active && (
+          <TokenShop shop={LOGI_SHOP} balance={loadTrickster().logiVouchers} balanceLabel="🦋 物流凭证" onMsg={onMsg} />
+        )}
+        {ev.name === '群星行动：绝地反击' && active && <JdBlock onMsg={onMsg} />}
         {ev.name === '极星守望' && active && (() => {
           const bp = loadBossPlay()
           return (
@@ -219,6 +369,26 @@ function EventCard({ ev, now }: { ev: OfficialEventInfo; now: number }) {
               </span>
             )
           })()}
+          {ev.name === '惊喜渡鸦' && active && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-amber-500/40 bg-amber-500/10 text-amber-200 font-mono">
+              🐦‍⬛ 捣蛋代币 {loadTrickster().tokens} · 累计提交 {loadTrickster().ravenTotal} 次 · 局内找路灯按 F
+            </span>
+          )}
+          {(ev.name === '捣蛋鬼商店' || ev.name === '捣蛋鬼商店·黑潮爆破') && active && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-orange-500/40 bg-orange-500/10 text-orange-200 font-mono">
+              🎃 捣蛋代币余额 {loadTrickster().tokens}{ev.name.includes('黑潮') ? '（与烽火地带共用商店）' : ''}
+            </span>
+          )}
+          {ev.name === '花小蝶返场' && active && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-cyan-500/40 bg-cyan-500/10 text-cyan-200 font-mono">
+              🦋 物流凭证 {loadTrickster().logiVouchers} · 累计带出花小蝶 {loadTrickster().butterflies}
+            </span>
+          )}
+          {ev.name === '畅玩加码' && active && (
+            <span className="text-[11px] rounded px-2 py-0.5 border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 font-mono">
+              🎁 畅玩代币余额 {loadTrickster().playTokens}
+            </span>
+          )}
           {skin && (
             <span className="text-[11px] flex items-center gap-1.5 rounded px-2 py-0.5 border border-pink-500/40 bg-pink-500/10 text-pink-200">
               <span
@@ -243,6 +413,7 @@ export function EventPanel() {
   const ui = useUI()
   const [, force] = useReducer((x: number) => x + 1, 0)
   const [voucherMsg, setVoucherMsg] = useState('')
+  const [shopMsg, setShopMsg] = useState('')
   useEffect(() => {
     if (!ui.eventsOpen) return
     // 官方「限时三角券狂欢」：登录即领（9/26 +500、10/1 +1000，幂等）
@@ -273,6 +444,13 @@ export function EventPanel() {
           带 🎁 的活动在窗口期内首次开局自动发放皮肤，可到 🎨 皮肤 页装备。
         </div>
 
+        {shopMsg && (
+          <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 flex items-center justify-between">
+            <span>{shopMsg}</span>
+            <button className="text-zinc-500 hover:text-zinc-200 px-1" onClick={() => setShopMsg('')}>✕</button>
+          </div>
+        )}
+
         {voucherMsg && (
           <div className="mb-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 flex items-center justify-between">
             <span>{voucherMsg}</span>
@@ -283,7 +461,7 @@ export function EventPanel() {
         <div className="text-sm font-bold text-emerald-300 mb-2">进行中 · {act.length} 场</div>
         <div className="space-y-2.5 mb-5">
           {act.length > 0 ? (
-            act.map(e => <EventCard key={e.name + e.start} ev={e} now={now} />)
+            act.map(e => <EventCard key={e.name + e.start} ev={e} now={now} onMsg={setShopMsg} />)
           ) : (
             <div className="text-xs text-zinc-500 border border-zinc-800 rounded-lg px-3 py-2.5">暂无进行中的官方活动</div>
           )}
@@ -292,7 +470,7 @@ export function EventPanel() {
         {up.length > 0 && (
           <>
             <div className="text-sm font-bold text-zinc-400 mb-2">即将开启 · {up.length} 场</div>
-            <div className="space-y-2.5">{up.map(e => <EventCard key={e.name + e.start} ev={e} now={now} />)}</div>
+            <div className="space-y-2.5">{up.map(e => <EventCard key={e.name + e.start} ev={e} now={now} onMsg={setShopMsg} />)}</div>
           </>
         )}
       </div>

@@ -209,6 +209,7 @@ export function MenuScreen() {
             { id: 'blocks' as const, icon: '🔥', name: '烬区', tags: '烧毁城区 · 大火场', desc: '破损楼群与汽车残骸间巷战，火焰封锁街道' },
             { id: 'pipeline' as const, icon: '🛢️', name: '贯穿', tags: '炼油厂区 · 蒸汽喷口', desc: '储油罐群与高架管道桥，蒸汽阀周期喷发' },
             { id: 'trench' as const, icon: '🪖', name: '堑壕战', tags: '一战战场 · 迫击炮', desc: '瞭望塔与坦克残骸，铁丝网+无人区炮击' },
+            { id: 'oldtown' as const, icon: '🏘️', name: '摩格旧城区', tags: '超载焕新 · 新图', desc: '环形石楼环抱中央集市，窄巷短兵相接（畅玩月：超载焕新 新增地图）' },
           ] : [
             { id: 'wild' as const, icon: '🏗️', name: '零号大坝', tags: '物资一般 · 敌人分散', desc: '大坝与水泥厂区，稳扎稳打积累财富' },
             { id: 'tower' as const, icon: '🚀', name: '航天基地', tags: '四层高塔 · Boss 镇守', desc: '发射塔内物资极品，整体爆率更高' },

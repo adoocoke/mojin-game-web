@@ -22,7 +22,8 @@ import { loadStats, recordCareer, loadAchClaimed, saveAchClaimed, ACHIEVEMENTS }
 import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from './orders'
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
-import { reportWarGame, warEventActive, markWarLogin } from './warevents'
+import { reportWarGame, warEventActive, markWarLogin, reportWarKill } from './warevents'
+import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, COSMETIC_NAMES } from './trickster'
 import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
 
 /** 战场景内载具实例 */
@@ -183,6 +184,9 @@ export class Game {
   private vehicle: WarVehicle | null = null  // 玩家正在驾驶的载具
   private vehThrottle = 0
   private vehSpawnT = 12         // 敌方载具增援计时（首波较早制造压力）
+  // ===== 官方活动「惊喜渡鸦」：渡鸦路灯 =====
+  private ravenLamps: { x: number; z: number; floorY: number; mesh: THREE.Group; lantern: THREE.MeshStandardMaterial; left: number }[] = []
+  private ravenActive = false
 
   // 本局任务统计（赛季任务）
   private raidSearches = 0
@@ -374,6 +378,7 @@ export class Game {
         if (uiState.creator) { engine.exitCreator(); this.toast('🛠️ 已退出创作者模式', 'white'); return }
         return
       }
+      if (uiState.ravenOpen) { if (k === 'escape' || k === 'f') this.closeRaven(); return }
       if (uiState.invOpen) { if (k === 'escape') this.closeLoot(); return }
       this.keys.add(k)
       if (k === 'r') this.startReload()
@@ -1078,6 +1083,17 @@ export class Game {
 
   private onEnemyKilled(e: Enemy, cause?: 'explosive') {
     this.kills++
+    // 官方 10/22 公告活动：爆炸物击杀计入「黑潮挑战」（全模式等价镜像）
+    if (cause === 'explosive' && warEventActive('heichao')) reportWarKill('explosive')
+    // 大战场：狂欢加码（近/远程）+ 钢铁洪流（载具击杀）进度
+    if (this.war) {
+      if (this.vehicle) reportWarKill('vehicle')
+      else if (cause !== 'explosive') {
+        const gid = this.gunDef.id
+        if (['uzi', 'mp5', 'vector', 's12k', 'm870', 'p92', 'deagle', 'knife'].includes(gid)) reportWarKill('close')
+        else if (['sks', 'mini14', 'm24', 'awm', 'm700'].includes(gid)) reportWarKill('far')
+      }
+    }
     // 赛季主题任务：爆炸物击杀
     if (cause === 'explosive' && this.theme.quest.tag === 'explosive' && (this.theme.quest.stat ?? 'themeActions') === 'themeActions') this.themeActions++
     // 赛季主题任务：毒雾区域内击杀
@@ -1378,7 +1394,7 @@ export class Game {
   }
 
   private tryInteract() {
-    if (this.activeLoot) return
+    if (this.activeLoot || uiState.ravenOpen) return
     if (this.war && this.vehicleInteract()) return
     // ============ S11 活动：冰湖垂钓 + 守夜人口风琴（长弓溪谷） ============
     if (this.world.mapId === 'snow' && this.world.activity) {
@@ -1400,6 +1416,23 @@ export class Game {
             notify()
             return
           }
+        }
+      }
+    }
+    // ============ 官方活动「惊喜渡鸦」：路灯提交 ============
+    if (this.ravenActive) {
+      const feetY = this.pos.y - EYE
+      for (let i = 0; i < this.ravenLamps.length; i++) {
+        const l = this.ravenLamps[i]
+        if (l.left <= 0) continue
+        if (Math.abs(l.floorY - feetY) > 2.5) continue
+        if (Math.hypot(l.x - this.pos.x, l.z - this.pos.z) < 2.6) {
+          uiState.ravenLamp = { idx: i, left: l.left }
+          uiState.ravenOpen = true
+          try { document.exitPointerLock() } catch { /* 忽略 */ }
+          sfx.search()
+          notify()
+          return
         }
       }
     }
@@ -1756,6 +1789,7 @@ export class Game {
       if (evLoot.has('drinkMat') && Math.random() < 0.15) autoPlace(c.grid, makeItem(DRINK_MATS[Math.floor(Math.random() * DRINK_MATS.length)], 1))
       if (evLoot.has('luckybag') && Math.random() < 0.1) autoPlace(c.grid, makeItem('ev_luckybag', 1))
       if (evLoot.has('mandelbrick') && Math.random() < 0.04) autoPlace(c.grid, makeItem('ev_mandelbrick', 1))
+      if (evLoot.has('huaxiaodie') && c.title === '鸟窝' && Math.random() < 0.3) autoPlace(c.grid, makeItem('v_butterfly', 1)) // 花小蝶返场：鸟窝概率掉落
       // 官方活动「极星守望」：容器概率产出可组装收集品碎片（德小兰 / 灰鲭鲨）
       if (evLoot.has('jixing') && Math.random() < 0.05) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'ev_jx_doll' : 'ev_jx_shark', 1))
       // 官方活动「哈夫克军工配件」：武器箱小概率产出 M700 专属 HVK 配件（对应官方：大武器箱小概率产出）
@@ -2021,6 +2055,38 @@ export class Game {
         uiState.money += 30000
         saveMoney(uiState.money)
         msg = fresh ? '🔥 猛火强攻捆绑包：获得限定皮肤「猛火强攻」+ 30,000 金币！' : '🔥 猛火强攻捆绑包：+30,000 金币（皮肤已拥有）'
+      } else if (def.openable === 'turingbrick') {
+        // 图灵砖：开出典藏挂饰（等价镜像为收藏外观）或金币（对应官方：图灵砖开典藏挂饰）
+        const COS_POOL = ['cos_charm_trickster', 'cos_dogtag_raven', 'cos_avatar_trick', 'cos_spray_gaga']
+        const ts = loadTrickster()
+        const fresh = COS_POOL.filter(c => !ts.cosmetics.includes(c))
+        if (fresh.length && Math.random() < 0.45) {
+          const pick = fresh[Math.floor(Math.random() * fresh.length)]
+          ts.cosmetics.push(pick)
+          saveTrickster(ts)
+          msg = `🧩 图灵砖开出典藏挂饰「${COSMETIC_NAMES[pick]}」！（已入收藏）`
+        } else {
+          const gold = 8000 + Math.floor(Math.random() * 7001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🧩 图灵砖开出 ${gold.toLocaleString()} 金币！`
+        }
+      } else if (def.openable === 'actionbox') {
+        // 行动补给箱：图灵砖或赛季军功卡（等价镜像为金币）（对应官方：行动补给箱抽图灵砖/赛季军功卡）
+        if (Math.random() < 0.4) {
+          if (autoPlace(uiState.stash, makeItem('ev_turingbrick', 1))) {
+            msg = '🎁 行动补给箱开出「图灵砖」×1！'
+          } else {
+            uiState.money += 16000
+            saveMoney(uiState.money)
+            msg = '🎁 开出「图灵砖」，仓库已满折现 +16,000 金币'
+          }
+        } else {
+          const gold = 5000 + Math.floor(Math.random() * 5001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🎁 行动补给箱开出赛季军功卡，兑换 +${gold.toLocaleString()} 金币！`
+        }
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资
         const reds = Object.values(ITEMS).filter(d => d.rarity === 'red' && d.kind === 'valuable' && !d.openable)
@@ -2242,6 +2308,8 @@ export class Game {
     engine.startBossPlay = () => this.startBossPlay()
     engine.openHotpot = () => { uiState.hotpotOpen = true; notify() }
     engine.closeHotpot = () => { uiState.hotpotOpen = false; notify() }
+    engine.ravenSubmit = (uid: string) => this.ravenSubmit(uid)
+    engine.closeRaven = () => this.closeRaven()
     engine.toggleWarSniper = () => {
       uiState.warSniper = !uiState.warSniper
       try { localStorage.setItem('mojin_war_sniper', uiState.warSniper ? '1' : '0') } catch { /* 忽略 */ }
@@ -2645,6 +2713,8 @@ export class Game {
     this.vehThrottle = 0
     this.vehSpawnT = 12
     uiState.vehicle = null
+    uiState.ravenOpen = false; uiState.ravenLamp = null
+    this.setupRavenLamps()
     if (this.war) {
       markWarLogin()
       this.buildCapturePoints()
@@ -2932,6 +3002,7 @@ export class Game {
     blocks:   [{ x: 0, z: -60 }, { x: 0, z: 8 }, { x: 0, z: 78 }],
     pipeline: [{ x: -80, z: 0 }, { x: 5, z: 0 }, { x: 95, z: 0 }],
     trench:   [{ x: 0, z: -58 }, { x: 0, z: 0 }, { x: 0, z: 58 }],
+    oldtown:  [{ x: 0, z: -60 }, { x: 0, z: 4 }, { x: 0, z: 66 }], // 摩格旧城区：北街口 → 中央集市 → 南广场
   }
 
   private warKindPool(): EnemyKind {
@@ -3096,6 +3167,160 @@ export class Game {
   }
 
   /** 大战场：出生点停放友方载具 */
+  /** 官方活动「惊喜渡鸦」：每张摸金地图刷新 4 盏渡鸦路灯（黑夜/潮汐监狱/大战场/战役/扮演/联机除外） */
+  private setupRavenLamps() {
+    for (const l of this.ravenLamps) this.world.scene.remove(l.mesh)
+    this.ravenLamps = []
+    this.world.mapMarkers = this.world.mapMarkers.filter(m => m.kind !== 'raven')
+    uiState.mapMarkers = this.world.mapMarkers
+    this.ravenActive = false
+    if (this.war || this.camp || this.bossPlay || this.vs) return
+    if (uiState.night || this.world.mapId === 'prison') return // 官方：黑夜行动与监狱不刷新
+    if (!trickActive('raven')) return
+    // 优先借用鸟窝点位（保证可达），不足 4 盏用其他地面容器补齐
+    const nests = this.world.containers.filter(c => c.title === '鸟窝' && !c.enemyDrop && !c.hidden)
+    const others = this.world.containers.filter(c => c.title !== '鸟窝' && c.title !== '售货机' && !c.enemyDrop && !c.hidden)
+    const spots = [...nests]
+    for (const c of others) { if (spots.length >= 4) break; spots.push(c) }
+    for (const c of spots.slice(0, 4)) {
+      const ang = Math.random() * Math.PI * 2
+      const x = c.pos.x + Math.cos(ang) * 2.4
+      const z = c.pos.z + Math.sin(ang) * 2.4
+      const floorY = c.pos.y - 0.5
+      const { group, lantern } = this.buildRavenLampMesh()
+      group.position.set(x, floorY, z)
+      group.rotation.y = Math.random() * Math.PI * 2
+      this.world.scene.add(group)
+      this.ravenLamps.push({ x, z, floorY, mesh: group, lantern, left: RAVEN_CANDLES })
+      this.world.mapMarkers.push({ x, z, kind: 'raven', name: '🐦‍⬛渡鸦路灯' })
+    }
+    if (this.ravenLamps.length) {
+      this.ravenActive = true
+      uiState.mapMarkers = this.world.mapMarkers
+      // 延迟播报，避免被开局连发提示覆盖
+      const n = this.ravenLamps.length
+      setTimeout(() => {
+        if (this.ravenActive) this.toast(`🐦‍⬛ 惊喜渡鸦：本图刷新 ${n} 盏渡鸦路灯——按 F 提交紫色以上收藏品试试运气（提交越多收益越高、风险越大）`, 'cyan')
+      }, 900)
+    }
+  }
+
+  /** 渡鸦路灯模型（原创造型：铁艺灯柱 + 悬吊灯盏 + 渡鸦栖于灯顶） */
+  private buildRavenLampMesh(): { group: THREE.Group; lantern: THREE.MeshStandardMaterial } {
+    const g = new THREE.Group()
+    const iron = new THREE.MeshStandardMaterial({ color: 0x1c1c22, roughness: 0.5, metalness: 0.8 })
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.6, 8), iron)
+    pole.position.y = 1.3
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.24, 8), iron)
+    base.position.y = 0.12
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), iron)
+    arm.position.set(0.28, 2.5, 0)
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, emissive: 0xffb84d, emissiveIntensity: 1.4, roughness: 0.4 })
+    const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.34, 0.26), lanternMat)
+    lantern.position.set(0.58, 2.3, 0)
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.16, 4), iron)
+    cap.position.set(0.58, 2.55, 0)
+    // 渡鸦：黑羽躯干 + 头 + 喙 + 尾（原创低多边形）
+    const feather = new THREE.MeshStandardMaterial({ color: 0x0d0d14, roughness: 0.9 })
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), feather)
+    body.scale.set(1, 0.9, 1.4); body.position.set(-0.02, 2.72, 0)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), feather)
+    head.position.set(-0.02, 2.83, 0.12)
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 6), new THREE.MeshStandardMaterial({ color: 0x3a3a42, roughness: 0.6 }))
+    beak.rotation.x = Math.PI / 2; beak.position.set(-0.02, 2.82, 0.24)
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.2), feather)
+    tail.position.set(-0.02, 2.7, -0.18); tail.rotation.x = -0.4
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3b30 }))
+    eye.position.set(0.05, 2.85, 0.15)
+    const light = new THREE.PointLight(0xffb84d, 5, 9)
+    light.position.set(0.58, 2.3, 0)
+    g.add(pole, base, arm, lantern, cap, body, head, beak, tail, eye, light)
+    g.traverse(o => { o.castShadow = true })
+    return { group: g, lantern: lanternMat }
+  }
+
+  /** 惊喜渡鸦：提交背包中紫色以上收藏品（活动/任务/联动收集品不收）。返回结果描述，非法提交返回 null */
+  ravenSubmit(uid: string): string | null {
+    if (!this.ravenActive || uiState.ravenLamp == null) return null
+    const lamp = this.ravenLamps[uiState.ravenLamp.idx]
+    if (!lamp || lamp.left <= 0) return null
+    const placed = findPlaced(this.backpack, uid)
+    if (!placed) return null
+    const def = defOf(placed.item)
+    const TIER = ['purple', 'cyan', 'red'] as const
+    if (def.kind !== 'valuable' || !(TIER as readonly string[]).includes(placed.item.rarity)) return null
+    if (def.openable || def.id.startsWith('ev_') || def.id === 'v_idtag' || def.id === 'v_butterfly') return null // 官方：联动/活动/任务收集品不收
+    // 消耗 1 件
+    placed.item.count -= 1
+    if (placed.item.count <= 0) removeItem(this.backpack, uid)
+    const lampUsed = RAVEN_CANDLES - lamp.left
+    const outcome = rollRavenOutcome(lampUsed)
+    lamp.left--
+    uiState.ravenLamp = { idx: uiState.ravenLamp.idx, left: lamp.left }
+    // 代币与累计次数入账
+    const ts = loadTrickster()
+    ts.ravenTotal++
+    ts.tokens += RAVEN_TOKENS[outcome]
+    saveTrickster(ts)
+    // 灯盏随蜡烛烧尽而暗淡
+    lamp.lantern.emissiveIntensity = 0.25 + 1.15 * (lamp.left / RAVEN_CANDLES)
+    // 产出池：排除活动/任务/联动收集品的普通变卖物
+    const poolAll = Object.values(ITEMS).filter(d => d.kind === 'valuable' && !d.openable && !d.id.startsWith('ev_') && d.id !== 'v_idtag' && d.id !== 'v_butterfly')
+    const byRarity = (r: string, exclude?: string) => poolAll.filter(d => d.rarity === r && d.id !== exclude)
+    const ti = (TIER as readonly string[]).indexOf(placed.item.rarity)
+    let outDef: typeof def | null = null
+    if (outcome === 'surprise') {
+      const up = byRarity(TIER[Math.min(ti + 1, 2)], def.id)
+      outDef = up.length ? up[Math.floor(Math.random() * up.length)] : null
+    } else if (outcome === 'equal') {
+      const eq = byRarity(placed.item.rarity, def.id)
+      outDef = eq.length ? eq[Math.floor(Math.random() * eq.length)] : null
+    } else if (outcome === 'down') {
+      const dn = byRarity(ti > 0 ? TIER[ti - 1] : 'blue', def.id)
+      outDef = dn.length ? dn[Math.floor(Math.random() * dn.length)] : null
+    }
+    let msg: string
+    if (outcome === 'trick' || !outDef) {
+      msg = outcome === 'trick'
+        ? `🐦‍⬛ 渡鸦丢下一句「谢了伙计」，叼着你的「${def.name}」飞得没影……（捣蛋代币 +${RAVEN_TOKENS[outcome]}）`
+        : `🐦‍⬛ 渡鸦歪头看了半天，把「${def.name}」没收了（捣蛋代币 +${RAVEN_TOKENS[outcome]}）`
+    } else {
+      const it = makeItem(outDef.id, 1)
+      if (!autoPlace(this.backpack, it)) {
+        // 背包装不下：掉在路灯旁的盒子里
+        const m = buildDeathCrateMesh()
+        m.position.set(lamp.x + 0.8, lamp.floorY + 0.35, lamp.z + 0.8)
+        this.world.scene.add(m)
+        const grid = makeGrid(6, 4)
+        autoPlace(grid, it)
+        this.world.containers.push({ id: `raven${Date.now()}`, mesh: m, pos: new THREE.Vector3(lamp.x + 0.8, lamp.floorY + 0.5, lamp.z + 0.8), grid, searched: true, title: '渡鸦的还礼', luck: 0, enemyDrop: true })
+      }
+      if (outcome === 'surprise') msg = `🐦‍⬛ 惊喜！礼花炸响——「${def.name}」变成了「${outDef.name}」！（捣蛋代币 +${RAVEN_TOKENS[outcome]}）`
+      else if (outcome === 'equal') msg = `🐦‍⬛ 等价互换：「${def.name}」→「${outDef.name}」（捣蛋代币 +${RAVEN_TOKENS[outcome]}）`
+      else msg = `🐦‍⬛ 掉价了……「${def.name}」→「${outDef.name}」（捣蛋代币 +${RAVEN_TOKENS[outcome]}）`
+    }
+    // 蜡烛烧尽：路灯作废
+    if (lamp.left <= 0) {
+      this.world.scene.remove(lamp.mesh)
+      this.world.mapMarkers = this.world.mapMarkers.filter(mk => mk.kind !== 'raven' || Math.hypot(mk.x - lamp.x, mk.z - lamp.z) > 0.5)
+      uiState.mapMarkers = this.world.mapMarkers
+      uiState.ravenOpen = false
+      uiState.ravenLamp = null
+      msg += '｜🕯️ 蜡烛烧尽，这盏路灯的渡鸦飞走了'
+    }
+    sfx.search()
+    this.syncGrids()
+    notify()
+    return msg
+  }
+
+  /** 关闭渡鸦提交面板 */
+  closeRaven() {
+    uiState.ravenOpen = false
+    uiState.ravenLamp = null
+    notify()
+  }
+
   private spawnWarVehicles() {
     const list = WAR_VEHICLE_LOADOUT[this.warMode] ?? WAR_VEHICLE_LOADOUT.tdm
     const base = this.world.playerSpawn
@@ -3304,6 +3529,7 @@ export class Game {
       const vs = loadVehicles()
       vs.destroyed++
       saveVehicles(vs)
+      reportWarKill('vehDestroy') // 钢铁洪流再临/绝地反击：击毁敌方载具
       // 爆炸波及周围敌人
       this.splashVsEnemies(p, 5, 90)
     } else {
@@ -3873,6 +4099,8 @@ export class Game {
     this.firing = false
     this.vehicle = null
     uiState.vehicle = null
+    uiState.ravenOpen = false
+    uiState.ravenLamp = null
     uiState.phase = 'menu'
     try { document.exitPointerLock() } catch { /* 忽略 */ }
     const kills = uiState.kills
@@ -3891,7 +4119,7 @@ export class Game {
       localStorage.setItem('mojin_war_record', JSON.stringify(rec))
     } catch { /* 忽略 */ }
     // 官方大战场专项活动战报（群星行动·贯穿封锁 / 战场畅玩月 / 逐命十字等）
-    reportWarGame(result, kills, uiState.warSniper)
+    reportWarGame(result, kills, uiState.warSniper, this.warMode)
     const modeName = this.warMode === 'ad' ? '攻防战' : '团队死斗'
     const title = result === 'win' ? `🏆 ${modeName} · 我方胜利` : result === 'lose' ? `💀 ${modeName} · 战败` : `⚔️ ${modeName} · 平局`
     const lines: string[] = []
@@ -3924,6 +4152,8 @@ export class Game {
     uiState.extractProgress = -1
     uiState.bossPlay = null
     uiState.vehicle = null
+    uiState.ravenOpen = false
+    uiState.ravenLamp = null
     this.vehicle = null
     uiState.lastRaidExtracted = extracted
     uiState.phase = 'menu'
@@ -4050,6 +4280,15 @@ export class Game {
       if (extracted) {
         const vGot = claimVoucherRaid()
         if (vGot > 0) this.toast(`🎟️ 限时三角券 +${vGot}（每日首次撤离奖励）`, 'cyan')
+        // 官方活动「花小蝶返场」：带出的每只花小蝶兑换 1 张物流凭证
+        if (trickActive('butterfly')) {
+          let bf = 0
+          for (const g of [this.backpack, this.safebox]) for (const p of g.placed) if (p.item.defId === 'v_butterfly') bf += p.item.count
+          if (bf > 0) {
+            const total = addLogiVouchers(bf)
+            this.toast(`🦋 花小蝶 ×${bf} 兑换物流凭证 +${bf}（余额 ${total}，活动中心可兑换奖励）`, 'cyan')
+          }
+        }
         // 官方活动「极星守望」：航天基地成功撤离累计绩效，达标解锁 M700 传说外观「静点」
         const jx = trackJixingExtract(this.world.mapId)
         if (jx) {
@@ -4131,7 +4370,7 @@ export class Game {
       // ============ 赛季通行证经验 ============
       if (gained > 0) {
         const bp = loadBp()
-        const lvres = gainBpXp(bp, gained)
+        const lvres = gainBpXp(bp, Math.round(gained * bpRushMul())) // 赛季通行证冲刺：窗口内经验 150%
         if (lvres.after > lvres.before) {
           lines.push(lvres.after >= BP_MAX_LV
             ? `🎫 通行证经验 +${gained}，已满级 Lv.${BP_MAX_LV}！`
@@ -4866,6 +5105,12 @@ export class Game {
         }
         else if (Math.hypot(act.hut.x - this.pos.x, act.hut.z - this.pos.z) < 3.2) prompt = '按 F 与守夜人佐拉交谈'
         else if (this.harpSave.stage === 2 && act.pages.some(pg => pg.mesh.visible && Math.hypot(pg.x - this.pos.x, pg.z - this.pos.z) < 2.4)) prompt = '按 F 拾取乐谱残页'
+      }
+      // 惊喜渡鸦：路灯提示
+      if (this.ravenActive && !uiState.invOpen && !prompt) {
+        const feetY2 = this.pos.y - EYE
+        const lamp = this.ravenLamps.find(l => l.left > 0 && Math.abs(l.floorY - feetY2) < 2.5 && Math.hypot(l.x - this.pos.x, l.z - this.pos.z) < 2.6)
+        if (lamp) prompt = `🐦‍⬛ 按 F 向渡鸦路灯提交收藏品（蜡烛 ${lamp.left}/${RAVEN_CANDLES}，提交越多收益越高风险越大）`
       }
       if ((distExtract < 6.2 && sameLevel) || (distExtract2 < 6.2 && sameLevel2)) prompt = '正在撤离，请勿离开光圈！'
       else if ((distExtract < 12 && sameLevel) || (distExtract2 < 12 && sameLevel2)) prompt = '再走进青色光圈中心一些即可撤离'

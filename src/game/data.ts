@@ -235,6 +235,10 @@ export const ITEMS: Record<string, ItemDef> = {
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
   ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },
+  // —— 官方 10/22 公告活动道具（惊喜渡鸦/花小蝶返场/群星行动：绝地反击） ——
+  v_butterfly:    { id: 'v_butterfly',    name: '花小蝶',       kind: 'valuable', rarity: 'cyan',   w: 1, h: 1, baseValue: 2400,  icon: '🦋', stack: 3 },
+  ev_turingbrick: { id: 'ev_turingbrick', name: '图灵砖',       kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 16000, icon: '🧩', openable: 'turingbrick' },
+  ev_actionbox:   { id: 'ev_actionbox',   name: '行动补给箱',   kind: 'valuable', rarity: 'purple', w: 2, h: 2, baseValue: 8000,  icon: '🎁', stack: 2, openable: 'actionbox' },
   c_jx_model:  { id: 'c_jx_model',  name: '灰鲭鲨·德小兰', kind: 'valuable', rarity: 'red',    w: 2, h: 2, baseValue: 26000, icon: '🐋' },
 }
 

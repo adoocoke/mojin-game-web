@@ -111,6 +111,8 @@ export interface UIState {
   harpCdUntil: number       // 口琴冷却截止（performance.now() 时间轴）
   bossPlay: { tags: number; need: number; extractReady: boolean; carCd: number; tankCd: number } | null // 极星守望·扮演德穆兰局内状态
   hotpotOpen: boolean       // 火锅对决小游戏面板
+  ravenOpen: boolean        // 惊喜渡鸦：路灯提交面板
+  ravenLamp: { idx: number; left: number } | null  // 当前交互的路灯（剩余蜡烛）
   vehicle: { name: string; icon: string; hp: number; maxHp: number; weapon: string } | null  // 正在驾驶的载具
   warSniper: boolean        // 逐命十字：大战场狙击对抗规则勾选
 }
@@ -161,6 +163,7 @@ export const uiState: UIState = {
   harpCdUntil: 0,
   bossPlay: null,
   hotpotOpen: false,
+  ravenOpen: false, ravenLamp: null,
   vehicle: null,
   warSniper: localStorage.getItem('mojin_war_sniper') === '1',
 }
@@ -223,6 +226,8 @@ export interface EngineAPI {
   startBossPlay: () => void
   openHotpot: () => void
   closeHotpot: () => void
+  ravenSubmit: (uid: string) => string | null
+  closeRaven: () => void
   toggleWarSniper: () => void
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
@@ -287,7 +292,7 @@ export const engine: EngineAPI = {
   toggleInventory: () => {}, restart: () => {},
   toMenu: () => {}, closeResult: () => {}, openStash: () => {}, closeStash: () => {}, stashMove: () => {}, stashClear: () => {}, sellStashItem: () => {}, sortStash: () => {}, sellAllValuables: () => {}, claimBossReward: () => {}, toggleQuestHud: () => {},
   mobileMove: () => {}, mobileLook: () => {}, mobileFire: () => {},
-  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {}, startBossPlay: () => {}, openHotpot: () => {}, closeHotpot: () => {}, toggleWarSniper: () => {},
+  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {}, startBossPlay: () => {}, openHotpot: () => {}, closeHotpot: () => {}, ravenSubmit: () => null, closeRaven: () => {}, toggleWarSniper: () => {},
   selectMap: (id) => {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_map', id)

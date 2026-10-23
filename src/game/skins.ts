@@ -54,6 +54,8 @@ export const SKINS: SkinDef[] = [
     desc: '「高雅黑补给」活动发放：曜石黑枪身配哑金描边（对应官方：高雅黑系列武器外观，配色原创）' },
   { id: 'sk_cookie', name: '贪吃鬼',     icon: '🍪', rarity: 'blue',   gun: 'any',  main: 0x6a4a36, accent: 0xf2e3c8, emissive: 0xff9fb0, emissiveIntensity: 0.15, price: 6000,
     desc: '「贪吃鬼系列外观」活动期间上架：可可甜趣涂鸦涂装（对应官方：贪吃鬼系列，配色原创）' },
+  { id: 'sk_asara', name: '阿萨拉恶灵', icon: '🐍', rarity: 'purple', gun: 'any', main: 0x3a4a2a, accent: 0x8a2a1a, emissive: 0x6aff3a, emissiveIntensity: 0.2,
+    desc: '「捣蛋鬼商店 / 畅玩加码」代币兑换：苔绿枪身缠赤纹、泛毒光（对应官方：P90冲锋枪-阿萨拉恶灵；本游戏无 P90，等价镜像为全武器通用涂装，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

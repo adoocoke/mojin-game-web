@@ -30,7 +30,7 @@ export interface Container {
   reveal?: Record<string, number>  // 逐格揭示：uid → 揭示时间戳（三角洲式放大镜扫描）
 }
 
-export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' // 后三个为大战场专属竞技场
+export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' | 'oldtown' // 后四个为大战场专属竞技场（oldtown=摩格旧城区）
 
 /** 可推开的门：铰链在门扇一侧，openT 0→1 旋开；lockedBy 为所需房卡 */
 export interface Door {
@@ -46,7 +46,7 @@ export interface Door {
   lockedName?: string    // 房卡名称（提示用）
 }
 
-export interface MapMarker { x: number; z: number; kind: 'tower' | 'house' | 'locked' | 'block' | 'mission' | 'airdrop' | 'gas' | 'patrol'; name?: string }
+export interface MapMarker { x: number; z: number; kind: 'tower' | 'house' | 'locked' | 'block' | 'mission' | 'airdrop' | 'gas' | 'patrol' | 'raven'; name?: string }
 
 /** 大战场环境机制：烬区火焰 / 贯穿蒸汽 / 堑壕战迫击炮 */
 export interface Hazard {
@@ -495,7 +495,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'pipeline' ? 170 : 140
+  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'oldtown' ? 150 : mapId === 'pipeline' ? 170 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -519,7 +519,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   // 地面
   const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 40, 40)
   const groundKind = mapId === 'snow' ? 'snow' : mapId === 'desert' ? 'sand' : mapId === 'trench' ? 'mud'
-    : mapId === 'blocks' || mapId === 'pipeline' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
+    : mapId === 'blocks' || mapId === 'pipeline' || mapId === 'oldtown' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
   const groundMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: groundTexture(groundKind, Math.max(6, Math.round(size / 9))),
@@ -531,7 +531,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.add(ground)
   // 网格道路（雪地图被积雪覆盖，不铺路）
   const roadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: asphaltTexture(Math.round(size / 6)), roughness: 0.95 })
-  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline'; i++) {
+  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline' && mapId !== 'oldtown'; i++) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(size * 2, 6), roadMat)
     road.rotation.x = -Math.PI / 2
     road.position.set(0, 0.02, i * 40)
@@ -786,7 +786,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     doors.push({ id: `d${did++}`, pivot, x: cx, z: cz, rot, w, base, open: false, openT: 0, lockedBy, lockedName })
   }
 
-  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : 20260807)
+  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : mapId === 'oldtown' ? 20261023 : 20260807)
   const spawnPoints: THREE.Vector3[] = []
   const bossSpawns: World['bossSpawns'] = []
   let missionWall: World['missionWall'] = undefined
@@ -2720,6 +2720,65 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     playerSpawn = new THREE.Vector3(0, 0, -128); playerYaw = Math.PI
     for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 70], [0, -30], [-24, 0], [24, 0], [-115, -115], [115, -115], [-115, 115], [115, 115], [0, -115], [-115, 0], [115, 0]] as const) spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
+  if (mapId === 'oldtown') {
+    // ===== 摩格旧城区：环形石砌楼群环抱中央集市，十字主街 + 斜向窄巷穿插（对应官方：超载焕新新增地图） =====
+    // 外环石楼（暖砂岩色，高低错落）
+    for (const [bx, bz, bw, bd, bh] of [
+      [-48, -48, 18, 16, 7], [48, -48, 16, 18, 5], [-48, 48, 20, 14, 6], [48, 48, 18, 16, 8],
+      [0, -58, 22, 12, 5], [0, 58, 22, 12, 6], [-58, 0, 12, 22, 7], [58, 0, 12, 22, 5],
+    ] as const) mkBox(bx, bz, bw, bd, bh, 0xb09a72)
+    // 内环矮房（围出集市巷道）
+    for (const [bx, bz, bw, bd] of [[-24, -24, 12, 10], [24, -24, 10, 12], [-24, 24, 12, 10], [24, 24, 10, 12]] as const)
+      mkBox(bx, bz, bw, bd, 3.2, 0x9a8a64)
+    // 中央集市：摊位棚 + 喷泉水池（掩体）
+    for (const [sx, sz, awn] of [[-8, -6, 0xc23a2a], [8, -4, 0x2a6ac2], [-6, 8, 0xc2a02a], [10, 8, 0x3a8a4a]] as const) {
+      mkBox(sx, sz, 3.2, 2.2, 1.1, 0x8a7a5a) // 摊台
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.08, 2.8),
+        new THREE.MeshStandardMaterial({ color: awn, roughness: 0.9 }))
+      canopy.position.set(sx, 2.1, sz)
+      canopy.castShadow = true
+      scene.add(canopy); obstacleMeshes.push(canopy)
+      for (const [px, pz] of [[-1.7, -1.2], [1.7, -1.2], [-1.7, 1.2], [1.7, 1.2]] as const)
+        mkBox(sx + px, sz + pz, 0.12, 0.12, 2.1, 0x5a4a36) // 棚柱
+    }
+    const pool = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.9, 18),
+      new THREE.MeshStandardMaterial({ color: 0x8a8272, roughness: 0.8 }))
+    pool.position.set(0, 0.45, -34)
+    pool.castShadow = true
+    scene.add(pool); obstacleMeshes.push(pool)
+    colliders.push({ minX: -3.4, maxX: 3.4, minZ: -37.4, maxZ: -30.6, top: 0.9 })
+    const water = new THREE.Mesh(new THREE.CircleGeometry(3.0, 18),
+      new THREE.MeshStandardMaterial({ color: 0x2a6a8a, roughness: 0.2, metalness: 0.4 }))
+    water.rotation.x = -Math.PI / 2; water.position.set(0, 0.82, -34)
+    scene.add(water)
+    // 窄巷掩体：货箱与矮墙
+    for (const [cx, cz] of [[-14, -40], [16, -44], [-40, 12], [40, -14], [-12, 42], [14, 38], [-38, -14], [36, 16]] as const)
+      mkBox(cx, cz, 2.2, 2.2, 1.25, 0x7a6a4e)
+    for (const [wx, wz, ww, wd] of [[-30, -34, 8, 1.1], [30, 34, 8, 1.1], [-34, 30, 1.1, 8], [34, -30, 1.1, 8]] as const)
+      mkBox(wx, wz, ww, wd, 1.4, 0xa89878)
+    // 地标：外圈残破塔楼 + 晾衣绳彩旗（老城区天际线）
+    for (const [tx, tz, th] of [[-80, -80, 12], [82, -78, 10], [-78, 82, 11], [80, 80, 9], [-96, 8, 8], [96, -8, 10]] as const)
+      mkRuin(tx, tz, 12, 10, Math.round(th / 3), 0xa8946c)
+    for (const [fx, fz, fr] of [[-20, 18, 0.3], [22, -18, 1.4], [0, 30, 2.1]] as const) {
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 10, 4),
+        new THREE.MeshStandardMaterial({ color: 0x3a3428 }))
+      line.rotation.z = Math.PI / 2; line.rotation.y = fr
+      line.position.set(fx, 3.4, fz)
+      scene.add(line)
+      for (let i = -3; i <= 3; i++) {
+        const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.36),
+          new THREE.MeshStandardMaterial({ color: [0xc23a2a, 0xc2a02a, 0x2a6ac2, 0x3a8a4a][Math.abs(i) % 4], side: THREE.DoubleSide, roughness: 1 }))
+        flag.position.set(fx + Math.cos(fr) * i * 1.3, 3.2, fz - Math.sin(fr) * i * 1.3)
+        scene.add(flag)
+      }
+    }
+    mkContainer(-20, -20, '弹药箱', 0.5, 0, rng); mkContainer(20, 20, '弹药箱', 0.5, 0, rng); mkContainer(0, -34, '医疗物资', 0.8, 0, rng)
+    mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '中央集市' })
+    mapMarkers.push({ x: 0, z: -34, kind: 'block', name: '喷泉池' })
+    playerSpawn = new THREE.Vector3(0, 0, -128); playerYaw = Math.PI
+    for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 66], [0, -30], [-26, 0], [26, 0], [-110, -110], [110, -110], [-110, 110], [110, 110], [0, -112], [-110, 0], [110, 0]] as const)
+      spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+  }
   if (mapId === 'pipeline') {
     // ===== 贯穿：狭长管道走廊（东西向主管廊正面硬刚 + 南北侧道绕后） =====
     for (const [wx, wlen] of [[-52, 60], [28, 76]] as const) mkBox(wx, -8, wlen, 1.6, 3.2, 0x6a6f76) // 管廊北墙两段
@@ -3246,6 +3305,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       prison: [0x5d7186, 0x9aa8b5], snow: [0x7d95b5, 0xd8e2ec],
       desert: [0x4a7fc9, 0xe8cf9a], blocks: [0x46689f, 0xc3ccd4],
       pipeline: [0x46689f, 0xc3ccd4], trench: [0x54687f, 0xb6ab93],
+      oldtown: [0x7a86a8, 0xd8c9a8],
     }
     const [topC, horC] = skySpec[mapId] ?? [0x3d6cb2, 0xc2d6e8]
     buildSky(scene, topC, horC, sun.position)

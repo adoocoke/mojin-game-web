@@ -66,6 +66,7 @@ export const VEHICLE_SKINS: VehicleSkin[] = [
   { id: 'vt_default', name: '丛林涂装', icon: '🌲', main: 0x4a5240, accent: 0x2c3128, desc: '制式丛林绿涂装' },
   { id: 'vt_zhouyear', name: '洲年赤金', icon: '🏎️', main: 0x7a1622, accent: 0xd8c88a, desc: '「洲年载具登录领」活动涂装（对应官方：洲年限定载具造型，配色原创）' },
   { id: 'vt_trickster', name: '捣蛋鬼', icon: '🎃', main: 0x8a4a12, accent: 0x5a2a7a, desc: '「战场畅玩月」LAV-G1 载具涂装（对应官方：LAV-G1-捣蛋鬼，配色原创）' },
+  { id: 'vt_greensand', name: '绿沙', icon: '🏜️', main: 0x7a7a4a, accent: 0x4a4a2e, desc: '「群星行动：绝地反击」核心任务奖励载具涂装（对应官方：全地形车-绿沙，配色原创）' },
 ]
 
 export interface VehicleSave {
