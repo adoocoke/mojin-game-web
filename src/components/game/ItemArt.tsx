@@ -5,6 +5,10 @@ import { ITEMS } from '@/game/data'
  * 变卖物矢量图标库 —— 原创绘制，写实藏品风格。
  * 每个图标 64×64 视窗：材质渐变着色 + 镜面高光 + 落地软阴影，营造体积感与金属/玻璃/宝石质感。
  * 未收录的 defId（武器/护甲/医疗等）回退到 data.ts 里的 emoji。
+ *
+ * 【永久规则 · 2026-10-30 用户订立】所有新增变卖物/活动道具（收藏品、代币箱、活动容器道具等）
+ * 必须在本文件收录原创手绘矢量图标，禁止上线 emoji 兜底质感。
+ * 每件新物品 = data.ts 条目 + 本文件 ART 条目，缺一不可。
  */
 
 /** 共享材质渐变：金 / 银 / 钢 / 青铜 / 木 / 皮 / 纸 / 玻璃 / 宝石 / 特种 */
@@ -61,6 +65,12 @@ const D = (
     <radialGradient id="iaAmber" cx="0.4" cy="0.32" r="0.85">
       <stop offset="0" stopColor="#ffd98f" /><stop offset="0.55" stopColor="#e09a2e" /><stop offset="1" stopColor="#9c5f10" />
     </radialGradient>
+    <radialGradient id="iaBflyC" cx="0.4" cy="0.3" r="0.9">
+      <stop offset="0" stopColor="#e8fbff" /><stop offset="0.45" stopColor="#56c8e8" /><stop offset="1" stopColor="#1a6a9a" />
+    </radialGradient>
+    <linearGradient id="iaBflyD" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stopColor="#ff6a6a" /><stop offset="0.25" stopColor="#ffb84d" /><stop offset="0.5" stopColor="#7ddb62" /><stop offset="0.75" stopColor="#4db8ff" /><stop offset="1" stopColor="#b06ae8" />
+    </linearGradient>
     <radialGradient id="iaGlowO" cx="0.5" cy="0.5" r="0.6">
       <stop offset="0" stopColor="#ffd27a" /><stop offset="0.55" stopColor="#f28c1e" /><stop offset="1" stopColor="#8a3c08" />
     </radialGradient>
@@ -1209,6 +1219,87 @@ const ART: Record<string, ReactNode> = {
     <circle cx="51" cy="27" r="1.4" fill="#5e0f18" stroke="#f8e29a" strokeWidth="0.5"/>
     {/* 高光 */}
     <path d="M12 25.5h24" stroke="#fff3c2" strokeWidth="1.4" strokeLinecap="round" opacity="0.85"/>
+  </>),
+  // ===== 官方活动收集品（手绘藏品风） =====
+  v_butterfly: (<>
+    {sh(15, 55, 3, 0.22)}
+    {/* 后翅 */}
+    <ellipse cx="23" cy="41" rx="8.5" ry="6" fill="url(#iaGemB)" stroke="#0f3d68" strokeWidth="1" transform="rotate(18 23 41)"/>
+    <ellipse cx="41" cy="41" rx="8.5" ry="6" fill="url(#iaGemB)" stroke="#0f3d68" strokeWidth="1" transform="rotate(-18 41 41)"/>
+    {/* 前翅 */}
+    <path d="M30 30C22 15 10 13 9 23.5c-1 8.5 8 14.5 21 12.5z" fill="url(#iaBflyC)" stroke="#1a6a9a" strokeWidth="1.2"/>
+    <path d="M34 30C42 15 54 13 55 23.5c1 8.5-8 14.5-21 12.5z" fill="url(#iaBflyC)" stroke="#1a6a9a" strokeWidth="1.2"/>
+    {/* 翅脉高光 */}
+    <path d="M27 27c-5-5.5-11-7.5-15-5.5M37 27c5-5.5 11-7.5 15-5.5" stroke="#e8fbff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.85"/>
+    {/* 翅斑 */}
+    <circle cx="18" cy="24" r="2" fill="#e8fbff" opacity="0.9"/>
+    <circle cx="46" cy="24" r="2" fill="#e8fbff" opacity="0.9"/>
+    {/* 身体与触角 */}
+    <ellipse cx="32" cy="34" rx="2.6" ry="9.5" fill="url(#iaObsidian)" stroke="#05070a" strokeWidth="0.8"/>
+    <circle cx="32" cy="23.5" r="2.7" fill="url(#iaObsidian)" stroke="#05070a" strokeWidth="0.8"/>
+    <path d="M30.4 21.6c-2-3.6-5-5.2-7.6-5.8M33.6 21.6c2-3.6 5-5.2 7.6-5.8" stroke="#0e1013" strokeWidth="1" fill="none" strokeLinecap="round"/>
+    <circle cx="22.4" cy="15.4" r="1.1" fill="#56c8e8"/>
+    <circle cx="41.6" cy="15.4" r="1.1" fill="#56c8e8"/>
+  </>),
+  v_butterfly_dazzle: (<>
+    {sh(15, 55, 3, 0.22)}
+    <ellipse cx="23" cy="41" rx="8.5" ry="6" fill="url(#iaBflyD)" stroke="#6a4a9a" strokeWidth="1" transform="rotate(18 23 41)"/>
+    <ellipse cx="41" cy="41" rx="8.5" ry="6" fill="url(#iaBflyD)" stroke="#6a4a9a" strokeWidth="1" transform="rotate(-18 41 41)"/>
+    <path d="M30 30C22 15 10 13 9 23.5c-1 8.5 8 14.5 21 12.5z" fill="url(#iaBflyD)" stroke="#7a5ab0" strokeWidth="1.2"/>
+    <path d="M34 30C42 15 54 13 55 23.5c1 8.5-8 14.5-21 12.5z" fill="url(#iaBflyD)" stroke="#7a5ab0" strokeWidth="1.2"/>
+    <path d="M27 27c-5-5.5-11-7.5-15-5.5M37 27c5-5.5 11-7.5 15-5.5" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.9"/>
+    <ellipse cx="32" cy="34" rx="2.6" ry="9.5" fill="url(#iaObsidian)" stroke="#05070a" strokeWidth="0.8"/>
+    <circle cx="32" cy="23.5" r="2.7" fill="url(#iaObsidian)" stroke="#05070a" strokeWidth="0.8"/>
+    <path d="M30.4 21.6c-2-3.6-5-5.2-7.6-5.8M33.6 21.6c2-3.6 5-5.2 7.6-5.8" stroke="#0e1013" strokeWidth="1" fill="none" strokeLinecap="round"/>
+    <circle cx="22.4" cy="15.4" r="1.1" fill="#ffd27a"/>
+    <circle cx="41.6" cy="15.4" r="1.1" fill="#ffd27a"/>
+    {/* 炫彩星闪 */}
+    <path d="M50 8l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="#ffffff"/>
+    <path d="M12 9.5l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z" fill="#fff6cf" opacity="0.95"/>
+  </>),
+  ev_turingbrick: (<>
+    {sh(17, 55)}
+    {/* 顶部拼图凸榫 */}
+    <path d="M26 19v-2.6a6 4.6 0 0 1 12 0V19z" fill="url(#iaObsidian)" stroke="#0a0d12" strokeWidth="1.2"/>
+    {/* 砖体 */}
+    <rect x="10" y="18" width="44" height="30" rx="3" fill="url(#iaObsidian)" stroke="#0a0d12" strokeWidth="1.5"/>
+    {/* 电路走线 */}
+    <path d="M26 30h-9M26 36h-9M38 30h9M38 36h9M17 30v-5.5h-4.5M17 36v5.5h-4.5M47 30v-5.5h4.5M47 36v5.5h4.5" stroke="#59f2e0" strokeWidth="1.1" fill="none" opacity="0.9"/>
+    <circle cx="12.5" cy="24.5" r="1.5" fill="#59f2e0"/>
+    <circle cx="12.5" cy="41.5" r="1.5" fill="#59f2e0"/>
+    <circle cx="51.5" cy="24.5" r="1.5" fill="#59f2e0"/>
+    <circle cx="51.5" cy="41.5" r="1.5" fill="#59f2e0"/>
+    {/* 核心芯片 */}
+    <rect x="26" y="26" width="12" height="14" rx="1.6" fill="url(#iaSteel)" stroke="#68d0f0" strokeWidth="1"/>
+    <circle cx="30" cy="31" r="1.1" fill="#9fe8ff"/><circle cx="34" cy="31" r="1.1" fill="#9fe8ff"/>
+    <circle cx="30" cy="35.5" r="1.1" fill="#9fe8ff"/><circle cx="34" cy="35.5" r="1.1" fill="#9fe8ff"/>
+    {/* 边缘铆钉 */}
+    <circle cx="14.5" cy="22.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="49.5" cy="22.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="14.5" cy="43.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="49.5" cy="43.5" r="1.3" fill="url(#iaSilver)"/>
+    {/* 高光 */}
+    <path d="M13.5 20.5h28" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.3"/>
+  </>),
+  ev_actionbox: (<>
+    {sh(19, 55)}
+    {/* 顶部提手 */}
+    <path d="M24 21.5a8 6.5 0 0 1 16 0" stroke="#333940" strokeWidth="2.6" fill="none"/>
+    {/* 箱盖 */}
+    <path d="M8 27a3 3 0 0 1 3-3h42a3 3 0 0 1 3 3v4H8z" fill="url(#iaIron)" stroke="#20242a" strokeWidth="1.2"/>
+    {/* 箱体 */}
+    <rect x="8" y="31" width="48" height="17" rx="2.4" fill="url(#iaSteel)" stroke="#20242a" strokeWidth="1.5"/>
+    {/* 警示斜纹 */}
+    <path d="M13 35l4.5 9M21 35l4.5 9M29 35l4.5 9M37 35l4.5 9M45 35l4.5 9" stroke="#e0a02e" strokeWidth="2.4" opacity="0.85"/>
+    {/* 中央锁扣 */}
+    <rect x="27" y="27" width="10" height="9.5" rx="1.6" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1"/>
+    <circle cx="32" cy="31.5" r="1.8" fill="#4a3410"/>
+    {/* 包角 */}
+    <path d="M8 43h6v5h-3.4a2.6 2.6 0 0 1-2.6-2.6zM56 43h-6v5h3.4a2.6 2.6 0 0 0 2.6-2.6z" fill="url(#iaIron)"/>
+    {/* 状态灯 */}
+    <circle cx="51" cy="28" r="1.6" fill="#5ff0a0"/>
+    {/* 高光 */}
+    <path d="M12 26h22" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" opacity="0.35"/>
   </>),
 }
 
