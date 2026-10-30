@@ -5,8 +5,8 @@ import { loadSkins, skinDef, grantSkin } from '@/game/skins'
 import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
 import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
 import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QUOTA_MAX } from '@/game/bossplay'
-import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, type WarEventId } from '@/game/warevents'
-import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, type TrickShopItem } from '@/game/trickster'
+import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, ZW_TASKS, ZW_BOX_NEED, zwStageUnlocked, claimZwTask, D0_REWARDS, claimD0, type WarEventId } from '@/game/warevents'
+import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, GLIMMER_REWARDS, markGlimmerLogin, claimGlimmer, type TrickShopItem } from '@/game/trickster'
 import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
 import { makeItem } from '@/game/data'
 import { grantVehicleSkin } from '@/game/vehicles'
@@ -25,6 +25,7 @@ const WAR_EVENT_NAMES: Record<string, WarEventId> = {
   '畅玩月：超载焕新': 'overload',
   '畅玩月：钢铁洪流再临': 'steel',
   '黑潮挑战': 'heichao',
+  '黑潮挑战Ⅱ': 'heichao2',
 }
 
 /** 领取大战场活动奖励并实际入账（金币/物资入仓/皮肤） */
@@ -173,6 +174,135 @@ function JdBlock({ onMsg }: { onMsg: (m: string) => void }) {
   )
 }
 
+/** 微光时刻将至：累计登录领取武器外观 + 物流凭证 */
+function GlimmerBlock({ onMsg }: { onMsg: (m: string) => void }) {
+  const ts = loadTrickster()
+  const days = ts.glimmerDays.length
+  return (
+    <div className="mt-2 rounded-lg border border-yellow-500/25 bg-yellow-500/5 px-2.5 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-yellow-300">🕯️ 已累计登录 {days} 天（每日开局或打开本面板即记）</div>
+      {GLIMMER_REWARDS.map(r => {
+        const done = ts.glimmerClaimed.includes(r.id)
+        const can = !done && days >= r.day
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{Math.min(days, r.day)}/{r.day} 天）→ {r.vouchers ? `物流凭证 ×${r.vouchers}` : ''}{r.skin ? ' + 武器外观「哈夫克卫队」' : ''}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimGlimmer(r.id)
+                  if (!res) return
+                  if (res.skin) grantSkin(loadSkins(), res.skin)
+                  notify()
+                  onMsg(`✅ ${res.name}：${res.vouchers ? `物流凭证 +${res.vouchers}` : ''}${res.skin ? '，外观「哈夫克卫队」已发放（🎨 皮肤页装备）' : ''}`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 群星行动：战线未止——阶段任务线（与绝地反击同规则、独立计数） */
+function ZwBlock({ onMsg }: { onMsg: (m: string) => void }) {
+  const ws = loadWarEvents()
+  const stages = [0, 1, 2]
+  return (
+    <div className="mt-2 rounded-lg border border-sky-500/25 bg-sky-500/5 px-2.5 py-2 space-y-1.5">
+      {stages.map(st => {
+        const unlocked = zwStageUnlocked(st, ws)
+        const tasks = ZW_TASKS.filter(t => t.stage === st)
+        return (
+          <div key={st}>
+            <div className="text-[10px] font-bold text-sky-300 mb-0.5">
+              {unlocked ? '🔓' : '🔒'} 第 {['一', '二', '三'][st]} 阶段{st === 2 ? '（本周核心任务）' : ''}
+              {!unlocked && <span className="text-zinc-500 font-normal">——完成上阶段至少 1 个任务解锁</span>}
+            </div>
+            {tasks.map(t => {
+              const done = ws.zwDone.includes(t.id)
+              const prog = Math.min(t.progress(ws), t.need)
+              const can = unlocked && !done && prog >= t.need
+              return (
+                <div key={t.id} className="flex items-center gap-2 text-[10px] pl-4">
+                  <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+                  <span className={`flex-1 ${unlocked ? 'text-zinc-300' : 'text-zinc-600'}`}>{t.icon} {t.name}（{prog}/{t.need}）→ {t.rewardText}</span>
+                  {can && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        const r = claimZwTask(t.id)
+                        if (!r) return
+                        if (r.items) {
+                          const stash = loadStash()
+                          addToStash(stash, r.items.map(d => makeItem(d, 1)))
+                          uiState.stash = stash
+                        }
+                        if (r.box) {
+                          const stash = loadStash()
+                          addToStash(stash, [makeItem('ev_actionbox', 1)])
+                          uiState.stash = stash
+                        }
+                        notify()
+                        onMsg(`✅ ${t.name} 完成：${t.rewardText}${r.box ? '｜累计 4 任务达成：行动补给箱 ×1 已入仓' : ''}`)
+                      }}
+                      className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+                    >领取</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+      <div className="text-[9px] text-zinc-500 pl-1">累计完成 {ws.zwDone.length}/{ZW_TASKS.length} 个任务（{ZW_BOX_NEED} 个解锁行动补给箱）</div>
+    </div>
+  )
+}
+
+/** 黑潮赛季补给：D0 赛季累计对局奖励 */
+function D0Block({ onMsg }: { onMsg: (m: string) => void }) {
+  const ws = loadWarEvents()
+  return (
+    <div className="mt-2 rounded-lg border border-red-500/25 bg-red-500/5 px-2.5 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-red-300">🏴 累计对局 {ws.d0Games} 局（任意模式完成对局即累计）</div>
+      {D0_REWARDS.map(r => {
+        const done = ws.d0Claimed.includes(r.id)
+        const can = !done && ws.d0Games >= r.need
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{Math.min(ws.d0Games, r.need)}/{r.need} 局）→ {r.rewardText}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimD0(r.id)
+                  if (!res) return
+                  if (res.items) {
+                    const stash = loadStash()
+                    addToStash(stash, res.items.map(d => makeItem(d, 1)))
+                    uiState.stash = stash
+                  }
+                  if (res.skin) grantSkin(loadSkins(), res.skin)
+                  if (res.cosmetic) grantCosmetic(res.cosmetic)
+                  notify()
+                  onMsg(`✅ ${res.name}：${res.rewardText} 已发放`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** 由活动名生成稳定色相，让每个活动有专属配色的横幅 */
 function hueOf(str: string): number {
   let h = 0
@@ -240,6 +370,9 @@ function EventCard({ ev, now, onMsg }: { ev: OfficialEventInfo; now: number; onM
           <TokenShop shop={LOGI_SHOP} balance={loadTrickster().logiVouchers} balanceLabel="🦋 物流凭证" onMsg={onMsg} />
         )}
         {ev.name === '群星行动：绝地反击' && active && <JdBlock onMsg={onMsg} />}
+        {ev.name === '群星行动：战线未止' && active && <ZwBlock onMsg={onMsg} />}
+        {ev.name === '微光时刻将至' && active && <GlimmerBlock onMsg={onMsg} />}
+        {ev.name === '黑潮赛季补给' && active && <D0Block onMsg={onMsg} />}
         {ev.name === '极星守望' && active && (() => {
           const bp = loadBossPlay()
           return (
@@ -419,6 +552,7 @@ export function EventPanel() {
     // 官方「限时三角券狂欢」：登录即领（9/26 +500、10/1 +1000，幂等）
     const got = claimVoucherLogins()
     if (got > 0) setVoucherMsg(`🎟️ 登录奖励：限时三角券 +${got.toLocaleString()}！可到 🎨 皮肤 页使用`)
+    markGlimmerLogin() // 微光时刻将至：打开活动中心即记当日登录
     const t = setInterval(force, 1000)
     return () => clearInterval(t)
   }, [ui.eventsOpen])

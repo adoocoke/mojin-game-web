@@ -14,6 +14,10 @@ export const TRICK_WINDOWS = {
   juedi:     { start: '2026-10-23T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 群星行动：绝地反击
   heichao:   { start: '2026-10-23T00:00:00+08:00', end: '2026-10-29T23:59:59+08:00' }, // 黑潮挑战
   bprush:    { start: '2026-10-26T10:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 赛季通行证冲刺（10/26 上午 10 点开启）
+  // ===== 2026-10-29 公告批次 =====
+  glimmer:   { start: '2026-10-30T00:00:00+08:00', end: '2026-11-08T23:59:59+08:00' }, // 微光时刻将至（登录任务）
+  sprint:    { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 赛季冲刺（排位双倍/BP 经验加码）
+  airdrop:   { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 空投夺宝（烽火地带）
 } as const
 
 export type TrickWindowId = keyof typeof TRICK_WINDOWS
@@ -32,10 +36,12 @@ export interface TricksterSave {
   ravenTotal: number    // 惊喜渡鸦：累计提交次数
   cosmetics: string[]   // 已拥有的挂饰/军牌/头像/喷漆 id（本游戏无对应槽位，作收藏记录）
   shopClaimed: string[] // 已兑换的限购商品 id
+  glimmerDays: string[]    // 微光时刻将至：累计登录日（YYYY-MM-DD）
+  glimmerClaimed: string[] // 微光时刻将至：已领取的奖励 id
 }
 
 function def(): TricksterSave {
-  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [] }
+  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [], glimmerDays: [], glimmerClaimed: [] }
 }
 
 export function loadTrickster(): TricksterSave {
@@ -77,6 +83,7 @@ export const COSMETIC_NAMES: Record<string, string> = {
   cos_dogtag_raven: '军牌「渡鸦」',
   cos_avatar_trick: '头像「捣蛋夜」',
   cos_spray_gaga: '喷漆「嘎嘎吓人」',
+  cos_badge_heichao: '纪念徽章「黑潮 D0」',
 }
 
 // ===================== 捣蛋鬼商店（捣蛋代币兑换） =====================
@@ -177,8 +184,53 @@ export function rollRavenOutcome(lampUsed: number, rand: () => number = Math.ran
 /** 各结果发放的捣蛋代币（惊喜最多，整蛊保底 1 枚） */
 export const RAVEN_TOKENS: Record<RavenOutcome, number> = { surprise: 6, equal: 3, down: 2, trick: 1 }
 
-// ===================== 赛季通行证冲刺 =====================
-/** 冲刺窗口内通行证经验 ×1.5（官方：对局经验提升至 150%，每周总经验上限解除；本游戏通行证无周上限，仅经验加成） */
+// ===================== 赛季通行证冲刺 & 赛季冲刺 =====================
+/** 通行证经验倍率：通行证冲刺窗口 ×1.5；赛季冲刺窗口（官方：排位赛和晋升之路获胜双倍积分、通行证周经验无上限）
+ *  等价镜像为行动档案（通行证）经验 ×2。两窗口重叠取较高倍率。 */
 export function bpRushMul(now = Date.now()): number {
+  if (trickActive('sprint', now)) return 2
   return trickActive('bprush', now) ? 1.5 : 1
+}
+
+// ===================== 微光时刻将至（2026-10-29 公告批次，登录任务） =====================
+// 官方规则：全新赛季「微光」即将来临，完成登录任务领取 ASh-12战斗步枪-哈夫克卫队、物流凭证十连抽。
+// 本游戏无 ASh-12（等价镜像为全武器通用涂装）；物流凭证十连抽等价镜像为累计登录 3 天共发 10 张物流凭证。
+export interface GlimmerReward {
+  id: string
+  day: number          // 需要累计登录天数
+  icon: string
+  name: string
+  vouchers?: number    // 物流凭证
+  skin?: string        // 皮肤 id
+}
+
+export const GLIMMER_REWARDS: GlimmerReward[] = [
+  { id: 'gl_d1', day: 1, icon: '🎟️', name: '微光登录 · 第 1 天', vouchers: 3 },
+  { id: 'gl_d2', day: 2, icon: '🎟️', name: '微光登录 · 第 2 天', vouchers: 3 },
+  { id: 'gl_d3', day: 3, icon: '🛡️', name: '微光登录 · 第 3 天', vouchers: 4, skin: 'sk_ash12_hvk' },
+]
+
+/** 记录今日登录（窗口期内每日一次） */
+export function markGlimmerLogin() {
+  if (!trickActive('glimmer')) return
+  const s = loadTrickster()
+  const today = new Date().toISOString().slice(0, 10)
+  if (!s.glimmerDays.includes(today)) {
+    s.glimmerDays.push(today)
+    saveTrickster(s)
+  }
+}
+
+/** 领取微光登录奖励；返回奖励内容（由调用方入账），失败返回 null */
+export function claimGlimmer(id: string): { vouchers?: number; skin?: string; name: string } | null {
+  if (!trickActive('glimmer')) return null
+  const r = GLIMMER_REWARDS.find(g => g.id === id)
+  if (!r) return null
+  const s = loadTrickster()
+  if (s.glimmerClaimed.includes(id)) return null
+  if (s.glimmerDays.length < r.day) return null
+  s.glimmerClaimed.push(id)
+  if (r.vouchers) s.logiVouchers += r.vouchers
+  saveTrickster(s)
+  return { vouchers: r.vouchers, skin: r.skin, name: r.name }
 }

@@ -27,7 +27,7 @@ export interface ItemDef {
   gunId?: string     // kind === weapon 时关联枪械
   heal?: number      // kind === med
   drink?: DrinkBuff  // kind === med 的特调饮品：饮用后获得限时增益（黑暗特调为醉酒减益）
-  openable?: 'luckybag' | 'mandelbrick' | 'warpack' | 'hotpotbundle'  // 可在仓库开启的活动道具（红运福袋 / 猩红曼德尔砖 / 洲末自选包 / 猛火强攻捆绑包）
+  openable?: 'luckybag' | 'mandelbrick' | 'warpack' | 'hotpotbundle' | 'turingbrick' | 'actionbox'  // 可在仓库开启的活动道具（红运福袋 / 猩红曼德尔砖 / 洲末自选包 / 猛火强攻捆绑包）
   stack?: number     // 最大堆叠
   slot?: AttSlot     // kind === attachment 时的配件槽位
   guns?: string[]    // kind === attachment 时的适用枪械 gunId 列表（缺省 = 全武器通用，如哈夫克军工 M700 专属配件）

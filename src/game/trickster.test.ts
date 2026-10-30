@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { rollRavenOutcome, redeemTrick, TRICK_SHOP, RAVEN_CANDLES, loadTrickster } from './trickster'
+import { rollRavenOutcome, redeemTrick, RAVEN_CANDLES, loadTrickster } from './trickster'
 
 // localStorage shim（node 环境）
 const store: Record<string, string> = {}

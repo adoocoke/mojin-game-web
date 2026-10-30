@@ -22,8 +22,8 @@ import { loadStats, recordCareer, loadAchClaimed, saveAchClaimed, ACHIEVEMENTS }
 import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from './orders'
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
-import { reportWarGame, warEventActive, markWarLogin, reportWarKill } from './warevents'
-import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, COSMETIC_NAMES } from './trickster'
+import { reportWarGame, warEventActive, markWarLogin, reportWarKill, reportD0Game } from './warevents'
+import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, addTrickTokens, COSMETIC_NAMES } from './trickster'
 import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
 
 /** 战场景内载具实例 */
@@ -1795,6 +1795,12 @@ export class Game {
       // 官方活动「哈夫克军工配件」：武器箱小概率产出 M700 专属 HVK 配件（对应官方：大武器箱小概率产出）
       if (evLoot.has('hvk') && c.title === '武器箱' && Math.random() < 0.1) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'at_hvk_body' : 'at_hvk_gas', 1))
     }
+    // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
+    if (c.tag === 'airdrop' && trickActive('airdrop')) {
+      addTrickTokens(2)
+      this.toast('🎃 夺宝空投：捣蛋代币 +2', 'cyan')
+      if (Math.random() < 0.3) autoPlace(c.grid, makeItem('v_butterfly_dazzle', 1)) // 炫彩花小蝶
+    }
     if (c.title !== '售货机') c.searched = true // 售货机可反复投币
     this.raidSearches++ // 赛季任务统计
     uiState.raidLive = { ...uiState.raidLive, searches: this.raidSearches }
@@ -2715,6 +2721,8 @@ export class Game {
     uiState.vehicle = null
     uiState.ravenOpen = false; uiState.ravenLamp = null
     this.setupRavenLamps()
+    this.setupAirdropTreasure()
+    markGlimmerLogin() // 微光时刻将至：开局即记当日登录
     if (this.war) {
       markWarLogin()
       this.buildCapturePoints()
@@ -3203,6 +3211,28 @@ export class Game {
         if (this.ravenActive) this.toast(`🐦‍⬛ 惊喜渡鸦：本图刷新 ${n} 盏渡鸦路灯——按 F 提交紫色以上收藏品试试运气（提交越多收益越高、风险越大）`, 'cyan')
       }, 900)
     }
+  }
+
+  /** 空投夺宝（2026-10-29 公告批次）：窗口期内烽火地带（黑夜除外）每局落 2 个夺宝空投 */
+  private setupAirdropTreasure() {
+    if (this.war || this.camp || this.bossPlay || this.vs) return
+    if (uiState.night) return // 官方：黑夜行动不掉落
+    if (!trickActive('airdrop')) return
+    const W = this.world
+    const R = W.size - 40
+    for (let i = 0; i < 2; i++) {
+      const x = (Math.random() - 0.5) * 2 * R
+      const z = (Math.random() - 0.5) * 2 * R
+      const y = this.groundHeightAt(x, z, 10)
+      spawnAirDrop(W, x, z, y)
+      W.mapMarkers.push({ x, z, kind: 'airdrop', name: '夺宝空投' })
+    }
+    uiState.mapMarkers = W.mapMarkers
+    // 延迟播报，避免被开局连发提示覆盖
+    setTimeout(() => {
+      this.toast('🪂 空投夺宝：2 个夺宝空投已落地——开出惊喜物资与捣蛋代币，还有概率掉落炫彩花小蝶！（看地图 M）', 'cyan')
+      uiState.killFeed = ['🪂 空投夺宝：2 个夺宝空投落地', ...uiState.killFeed].slice(0, 4)
+    }, 1200)
   }
 
   /** 渡鸦路灯模型（原创造型：铁艺灯柱 + 悬吊灯盏 + 渡鸦栖于灯顶） */
@@ -4120,6 +4150,7 @@ export class Game {
     } catch { /* 忽略 */ }
     // 官方大战场专项活动战报（群星行动·贯穿封锁 / 战场畅玩月 / 逐命十字等）
     reportWarGame(result, kills, uiState.warSniper, this.warMode)
+    reportD0Game() // 黑潮赛季补给：对局累计
     const modeName = this.warMode === 'ad' ? '攻防战' : '团队死斗'
     const title = result === 'win' ? `🏆 ${modeName} · 我方胜利` : result === 'lose' ? `💀 ${modeName} · 战败` : `⚔️ ${modeName} · 平局`
     const lines: string[] = []
@@ -4139,6 +4170,7 @@ export class Game {
   }
 
   private endRaid(extracted: boolean) {
+    reportD0Game() // 黑潮赛季补给：对局累计（全模式等价镜像）
     // 第一步：无条件切换界面状态，保证玩家一定回到主页
     this.running = false
     this.firing = false
@@ -4287,6 +4319,15 @@ export class Game {
           if (bf > 0) {
             const total = addLogiVouchers(bf)
             this.toast(`🦋 花小蝶 ×${bf} 兑换物流凭证 +${bf}（余额 ${total}，活动中心可兑换奖励）`, 'cyan')
+          }
+        }
+        // 官方活动「空投夺宝」：炫彩花小蝶每只兑换 3 张物流凭证（稀有变种）
+        {
+          let dz = 0
+          for (const g of [this.backpack, this.safebox]) for (const p of g.placed) if (p.item.defId === 'v_butterfly_dazzle') dz += p.item.count
+          if (dz > 0) {
+            const total = addLogiVouchers(dz * 3)
+            this.toast(`🦋 炫彩花小蝶 ×${dz} 兑换物流凭证 +${dz * 3}（余额 ${total}）`, 'cyan')
           }
         }
         // 官方活动「极星守望」：航天基地成功撤离累计绩效，达标解锁 M700 传说外观「静点」

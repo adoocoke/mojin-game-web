@@ -29,7 +29,12 @@ export function PassPanel() {
           <button onClick={() => engine.closePass()} className="text-zinc-500 hover:text-zinc-200 text-xl px-2">✕</button>
         </div>
         <div className="text-xs text-zinc-400 mb-3">{bpSeasonName()} · 对局获得经验即可升级（与干员经验同源），跨月自动重置</div>
-        {trickActive('bprush') && (
+        {trickActive('sprint') ? (
+          <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-xs text-red-200 font-bold flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            ⚡ 赛季冲刺进行中：行动档案经验 ×2、周经验上限解除（至 11月4日）——对应官方 10/30-11/4 赛季冲刺
+          </div>
+        ) : trickActive('bprush') && (
           <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 font-bold flex items-center gap-2">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             🚀 赛季通行证冲刺进行中：对局经验提升至 150%（至 11月4日）——对应官方 10/26-11/4 冲刺活动
