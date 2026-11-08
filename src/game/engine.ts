@@ -220,6 +220,7 @@ export class Game {
   private raidScouts: string[] = []   // 本局已完成交互的调查任务 id
   private scoutSpawns: { questId: string; mesh: THREE.Group; x: number; z: number; floorY?: number }[] = []
   private inLake = false                         // 冰湖减速提示状态
+  private inTide = false                         // 天际港涉水提示状态
   private missionAccepted = false   // 已在任务点接取
   private missionStarted = false    // 已安放炸药 / 已启动装置
   private missionTimer = 0          // 引爆/坚守倒计时
@@ -1794,6 +1795,12 @@ export class Game {
       if (evLoot.has('jixing') && Math.random() < 0.05) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'ev_jx_doll' : 'ev_jx_shark', 1))
       // 官方活动「哈夫克军工配件」：武器箱小概率产出 M700 专属 HVK 配件（对应官方：大武器箱小概率产出）
       if (evLoot.has('hvk') && c.title === '武器箱' && Math.random() < 0.1) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'at_hvk_body' : 'at_hvk_gas', 1))
+      // 官方活动「影之刃零联动」：烽火地带鸟窝概率掉落联动限定收藏品（对应官方：鸟窝掉落联动限定收藏品）
+      if (evLoot.has('yzbl') && c.title === '鸟窝' && Math.random() < 0.28) autoPlace(c.grid, makeItem(Math.random() < 0.35 ? 'v_yzbl_lion' : 'v_yzbl_coin', 1))
+      // 官方活动「巴克什阵营对抗」：巴克什容器小概率产出两大阵营顶级信物（对应官方：完成阵营专属行动获三级信物）
+      if (evLoot.has('faction') && this.world.mapId === 'desert' && Math.random() < 0.015) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'v_charm_asara' : 'v_charm_havk', 1))
+      // 官方活动「图灵砖·微光换新」：S12 新版图灵砖全图小概率产出（旧版图灵砖停产，存货仍可开启）
+      if (evLoot.has('turing2') && Math.random() < 0.03) autoPlace(c.grid, makeItem('ev_turingbrick2', 1))
     }
     // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
     if (c.tag === 'airdrop' && trickActive('airdrop')) {
@@ -3011,6 +3018,7 @@ export class Game {
     pipeline: [{ x: -80, z: 0 }, { x: 5, z: 0 }, { x: 95, z: 0 }],
     trench:   [{ x: 0, z: -58 }, { x: 0, z: 0 }, { x: 0, z: 58 }],
     oldtown:  [{ x: 0, z: -60 }, { x: 0, z: 4 }, { x: 0, z: 66 }], // 摩格旧城区：北街口 → 中央集市 → 南广场
+    skyport:  [{ x: 0, z: -110 }, { x: 0, z: -30 }, { x: 0, z: 40 }], // 天际港：海关前庭 → 集装箱堆场 → 潮间栈桥
   }
 
   private warKindPool(): EnemyKind {
@@ -3958,6 +3966,10 @@ export class Game {
           if (h.phase === 2) h.jet.rotation.y += dt * 1.5
         }
         if (h.phase === 2) this.hazardZoneDamage(h, 14, dt, '💨 蒸汽烫伤！')
+      } else if (h.type === 'tide') {
+        // 天际港潮汐：水面约 56s 一个涨落周期，涨潮淹没低栈桥（对应官方：天际港动态水位）
+        h.t += dt
+        if (h.jet) h.jet.position.y = 0.32 + Math.sin(h.t / 9) * 0.55
       } else if (h.type === 'artillery') {
         h.t -= dt
         if (h.t <= 0) {
@@ -4630,6 +4642,20 @@ export class Game {
         if (onIce !== this.inLake) {
           this.inLake = onIce
           if (onIce) this.toast('🧊 冰面湿滑，移动减速！', 'cyan')
+        }
+        // 天际港潮汐涉水：水位高过脚踝即减速，涨潮时大幅减速（对应官方：天际港动态水位）
+        let tideIn = false
+        for (const hz of this.world.hazards ?? []) {
+          if (hz.type !== 'tide' || !hz.jet) continue
+          const wy = hz.jet.position.y
+          if (wy > 0.15 && Math.abs(this.pos.x - hz.x) < hz.r && Math.abs(this.pos.z - hz.z) < (hz.r2 ?? hz.r)) {
+            tideIn = true
+            slowMul = Math.min(slowMul, wy > 0.55 ? 0.55 : 0.8)
+          }
+        }
+        if (tideIn !== this.inTide) {
+          this.inTide = tideIn
+          if (tideIn) this.toast('🌊 涉水前行，移动减速（注意潮汐涨落）', 'cyan')
         }
         const canSprint = this.weightTier < 3
         const sprintNow = sprint && canSprint

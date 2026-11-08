@@ -17,7 +17,7 @@ export function MapOverlay() {
   const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
   const S = ui.mapSize || 140
-  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'oldtown' ? '摩格旧城区' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
+  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'oldtown' ? '摩格旧城区' : ui.worldMapId === 'skyport' ? '天际港' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
   const ang = Math.atan2(fx, -fz) * 180 / Math.PI

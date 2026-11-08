@@ -1,5 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { rollRavenOutcome, redeemTrick, RAVEN_CANDLES, loadTrickster } from './trickster'
+
+// 固定系统时间到捣蛋鬼商店窗口内（活动 2026-10-23 ~ 11-04，避免测试随真实日期过期失效）
+vi.useFakeTimers()
+vi.setSystemTime(new Date('2026-10-25T12:00:00+08:00'))
 
 // localStorage shim（node 环境）
 const store: Record<string, string> = {}

@@ -1301,6 +1301,128 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M12 26h22" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" opacity="0.35"/>
   </>),
+  // ===== 影之刃零联动限定收集品（原创造型，写实藏品风） =====
+  v_yzbl_lion: (<>
+    {sh(15, 56, 3, 0.24)}
+    {/* 狮鬃：赤金双色瓣环绕 */}
+    {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+      <ellipse key={a} cx={32 + 13.5 * Math.cos(a * Math.PI / 180)} cy={30 + 13.5 * Math.sin(a * Math.PI / 180)}
+        rx="6.4" ry="4.6" fill={a % 90 === 0 ? 'url(#iaGoldR)' : '#b02838'} stroke="#6e0f1d" strokeWidth="0.9"
+        transform={`rotate(${a} ${32 + 13.5 * Math.cos(a * Math.PI / 180)} ${30 + 13.5 * Math.sin(a * Math.PI / 180)})`}/>
+    ))}
+    {/* 狮面 */}
+    <circle cx="32" cy="30" r="12.5" fill="url(#iaGoldR)" stroke="#8a5a10" strokeWidth="1.2"/>
+    {/* 额头火纹 */}
+    <path d="M32 19.5c-2.4 2.8-2.4 5 0 7 2.4-2 2.4-4.2 0-7z" fill="#b02838" stroke="#6e0f1d" strokeWidth="0.7"/>
+    {/* 眉眼 */}
+    <path d="M23.5 27.5q4-3 7.5-1M33 27.5q4-3 7.5-1" stroke="#3a1a0c" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+    <circle cx="26.5" cy="30.5" r="2.1" fill="#161310"/><circle cx="37.5" cy="30.5" r="2.1" fill="#161310"/>
+    <circle cx="27.2" cy="29.8" r="0.7" fill="#fff6cf"/><circle cx="38.2" cy="29.8" r="0.7" fill="#fff6cf"/>
+    {/* 鼻与嘴 */}
+    <path d="M30 33.5h4l-2 2.6z" fill="#8a1f2b" stroke="#5e0f18" strokeWidth="0.6"/>
+    <path d="M27 38q5 3.4 10 0" stroke="#5e3a10" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    {/* 獠牙 */}
+    <path d="M28.5 38.5l1 2.8 1.2-2.6zM34.3 38.7l1 2.8 1.2-2.6z" fill="#fdf6e3" stroke="#b8a06a" strokeWidth="0.5"/>
+    {/* 绒球耳环 */}
+    <circle cx="19" cy="39" r="2.6" fill="url(#iaGemR)" stroke="#6e0f1d" strokeWidth="0.8"/>
+    <circle cx="45" cy="39" r="2.6" fill="url(#iaGemR)" stroke="#6e0f1d" strokeWidth="0.8"/>
+    {/* 高光 */}
+    <path d="M24 22.5q5-3.5 11-2.6" stroke="#fff3c2" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.85"/>
+  </>),
+  v_yzbl_coin: (<>
+    {sh(15, 55, 3, 0.22)}
+    {/* 币身 */}
+    <circle cx="32" cy="31" r="17" fill="url(#iaBronze)" stroke="#5e3a16" strokeWidth="1.4"/>
+    <circle cx="32" cy="31" r="13.2" fill="none" stroke="#7c4f26" strokeWidth="1" opacity="0.9"/>
+    {/* 方孔 */}
+    <rect x="27.6" y="26.6" width="8.8" height="8.8" rx="1" fill="#241608" stroke="#e5b787" strokeWidth="0.9"/>
+    {/* 刃形缺口的赤芒（破空之意） */}
+    <path d="M44 15.5l3.2-4.2-1.4 5.4 4.6-2-3.4 4.4" stroke="#d81f2e" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+    {/* 币面刃纹刻痕 */}
+    <path d="M20.5 24.5l6 3.4M20.5 37.5l6-3.4M43.5 24.5l-6 3.4M43.5 37.5l-6-3.4" stroke="#5e3a16" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 上下篆点 */}
+    <circle cx="32" cy="21" r="1.3" fill="#3a2410"/>
+    <circle cx="32" cy="41" r="1.3" fill="#3a2410"/>
+    {/* 边缘磨损高光 */}
+    <path d="M19 22.5a15 15 0 0 1 9-6.5" stroke="#ffe9c2" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.85"/>
+    <path d="M45 39.5a15 15 0 0 1-7 5.5" stroke="#2a1a0a" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.6"/>
+  </>),
+  // ===== S12 换新图灵砖·微光（黑曜砖体 + 暖金微光电路） =====
+  ev_turingbrick2: (<>
+    {sh(17, 55)}
+    {/* 微光晕环 */}
+    <circle cx="32" cy="33" r="21" fill="#ffd27a" opacity="0.1"/>
+    {/* 顶部拼图凸榫 */}
+    <path d="M26 19v-2.6a6 4.6 0 0 1 12 0V19z" fill="url(#iaObsidian)" stroke="#0a0d12" strokeWidth="1.2"/>
+    {/* 砖体 */}
+    <rect x="10" y="18" width="44" height="30" rx="3" fill="url(#iaObsidian)" stroke="#0a0d12" strokeWidth="1.5"/>
+    {/* 微光电路走线（暖金） */}
+    <path d="M26 30h-9M26 36h-9M38 30h9M38 36h9M17 30v-5.5h-4.5M17 36v5.5h-4.5M47 30v-5.5h4.5M47 36v5.5h4.5" stroke="#ffce6a" strokeWidth="1.1" fill="none" opacity="0.95"/>
+    <circle cx="12.5" cy="24.5" r="1.5" fill="#ffce6a"/>
+    <circle cx="12.5" cy="41.5" r="1.5" fill="#ffce6a"/>
+    <circle cx="51.5" cy="24.5" r="1.5" fill="#ffce6a"/>
+    <circle cx="51.5" cy="41.5" r="1.5" fill="#ffce6a"/>
+    {/* 核心烛焰芯片（微光主题） */}
+    <rect x="26" y="26" width="12" height="14" rx="1.6" fill="url(#iaSteel)" stroke="#ffce6a" strokeWidth="1"/>
+    <path d="M32 29.2c-2 2.4-2 4.2 0 6 2-1.8 2-3.6 0-6z" fill="url(#iaGoldR)" stroke="#d88a1a" strokeWidth="0.7"/>
+    <circle cx="32" cy="33.8" r="0.9" fill="#fff3c2"/>
+    {/* 边缘铆钉 */}
+    <circle cx="14.5" cy="22.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="49.5" cy="22.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="14.5" cy="43.5" r="1.3" fill="url(#iaSilver)"/>
+    <circle cx="49.5" cy="43.5" r="1.3" fill="url(#iaSilver)"/>
+    {/* 星闪 */}
+    <path d="M52 9l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8-2.8-1.1 2.8-1.1z" fill="#fff6cf"/>
+    {/* 高光 */}
+    <path d="M13.5 20.5h28" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.3"/>
+  </>),
+  // ===== 巴克什阵营顶级信物（原创造型） =====
+  v_charm_asara: (<>
+    {sh(14, 56, 3, 0.22)}
+    {/* 挂绳 */}
+    <path d="M26 8q6 5 12 0" stroke="#7a5a2a" strokeWidth="2" fill="none" strokeLinecap="round"/>
+    <path d="M32 8v6" stroke="#7a5a2a" strokeWidth="2.2" strokeLinecap="round"/>
+    {/* 金框挂坠 */}
+    <path d="M32 13l13 9v13l-13 9-13-9V22z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1.3"/>
+    {/* 绿宝石主石（卫队之绿） */}
+    <path d="M32 18.5l8.5 6v9l-8.5 6-8.5-6v-9z" fill="url(#iaGemG)" stroke="#12512c" strokeWidth="1.1"/>
+    {/* 刻面 */}
+    <path d="M32 18.5v21M23.5 24.5l17 9M40.5 24.5l-17 9" stroke="#c8f2cd" strokeWidth="0.8" opacity="0.7"/>
+    {/* 三星等级錾刻 */}
+    <path d="M32 21.2l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="#f8e29a"/>
+    {/* 底部流苏 */}
+    <path d="M30 44v5M32 44v6M34 44v5" stroke="#b84a2a" strokeWidth="1.4" strokeLinecap="round"/>
+    {/* 高光 */}
+    <path d="M25 21.5l5.5-4" stroke="#fff3c2" strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/>
+  </>),
+  v_charm_havk: (<>
+    {sh(15, 56, 3, 0.24)}
+    {/* 挂带 */}
+    <path d="M24 6h16v6H24z" fill="#2a4a6a" stroke="#16283c" strokeWidth="1"/>
+    <path d="M27 6v-2.4a5 4 0 0 1 10 0V6" stroke="#16283c" strokeWidth="1.6" fill="none"/>
+    {/* 工卡本体：钢蓝硬卡 */}
+    <rect x="14" y="12" width="36" height="40" rx="3.4" fill="url(#iaSteel)" stroke="#20242a" strokeWidth="1.5"/>
+    <rect x="16.5" y="14.5" width="31" height="35" rx="2.2" fill="#1d2733" stroke="#3c4a5c" strokeWidth="0.9"/>
+    {/* 卡头企业色带（哈夫克工业黄黑） */}
+    <path d="M16.5 19.5a2.2 2.2 0 0 1 2.2-2.2h26.6a2.2 2.2 0 0 1 2.2 2.2v3h-31z" fill="#e0a02e"/>
+    <path d="M19 17.3l3 5.2M25 17.3l3 5.2M31 17.3l3 5.2M37 17.3l3 5.2M43 17.3l3 5.2" stroke="#20242a" strokeWidth="1.6" opacity="0.8"/>
+    {/* 照片位与信息条 */}
+    <rect x="20" y="26" width="10" height="12" rx="1" fill="url(#iaLens)" stroke="#0f3d68" strokeWidth="0.8"/>
+    <circle cx="25" cy="30.5" r="2.4" fill="#0f3d68"/>
+    <path d="M21.5 37.5a3.5 3.5 0 0 1 7 0z" fill="#0f3d68"/>
+    <rect x="33" y="27" width="11" height="2" rx="1" fill="#8fa2b8"/>
+    <rect x="33" y="31" width="11" height="2" rx="1" fill="#8fa2b8" opacity="0.7"/>
+    <rect x="33" y="35" width="8" height="2" rx="1" fill="#8fa2b8" opacity="0.5"/>
+    {/* 芯片 */}
+    <rect x="20" y="41.5" width="7" height="5.4" rx="1" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.7"/>
+    <path d="M21.5 44.2h4M23.5 41.5v5.4" stroke="#7d5410" strokeWidth="0.6"/>
+    {/* 三级权限星 */}
+    {[34, 38.5, 43].map((x) => (
+      <path key={x} d={`M${x} 42l.9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z`} fill="#ffce6a" stroke="#b8841a" strokeWidth="0.5"/>
+    ))}
+    {/* 高光 */}
+    <path d="M18.5 15.5v24" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.28"/>
+  </>),
 }
 
 interface ItemArtProps {

@@ -60,6 +60,13 @@ export const SKINS: SkinDef[] = [
     desc: '「微光时刻将至」登录嘉奖：卫队墨绿枪身镶徽金线（对应官方：ASh-12战斗步枪-哈夫克卫队；本游戏无 ASh-12，等价镜像为全武器通用涂装，配色原创）' },
   { id: 'sk_m4a1_sanshi', name: '散失', icon: '🌫️', rarity: 'red', gun: 'm4a1', main: 0x1a1d22, accent: 0x4a5a6a, emissive: 0x6a8aaa, emissiveIntensity: 0.22,
     desc: '「黑潮赛季补给」累计嘉奖：雾灰枪身如硝烟散佚（对应官方：M4A1突击步枪-散失，配色原创）' },
+  // ---------- S12 微光赛季 · 影之刃零联动 ----------
+  { id: 'sk_g3_qixing', name: '七星', icon: '✨', rarity: 'red', gun: 'any', main: 0x141c2e, accent: 0x8a96b8, emissive: 0xbfd4ff, emissiveIntensity: 0.32,
+    desc: '「影之刃零联动」登录嘉奖：玄青枪身缀七点银星，如夜空列宿（对应官方：G3战斗步枪-七星；本游戏无 G3，等价镜像为全武器通用涂装，配色原创）' },
+  { id: 'sk_knife_heishang', name: '黑伤', icon: '⚔️', rarity: 'red', gun: 'knife', main: 0x121216, accent: 0x3a0d12, emissive: 0xd81f2e, emissiveIntensity: 0.4, price: 52000,
+    desc: '影之刃零联动传说近战：玄铁刀身，刃锋半褪时赤芒流转（对应官方：黑伤捆绑包；等价镜像为战术匕首涂装，限时金币上架，配色原创）' },
+  { id: 'sk_thunderbreath', name: '雷霆之息', icon: '⚡', rarity: 'cyan', gun: 'any', main: 0x1a2a4a, accent: 0x6a7a92, emissive: 0x4ab8ff, emissiveIntensity: 0.38, price: 15000,
+    desc: '「银翼·雷霆之息」窗口期上架：雷云蓝枪身缠绕电弧光纹（对应官方：干员研究外观 银翼-雷霆之息；本游戏无干员外观系统，等价镜像为全武器通用涂装，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

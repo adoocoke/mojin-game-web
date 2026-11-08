@@ -21,6 +21,8 @@ export const GUNS: Record<string, GunDef> = {
   m249:   { id: 'm249',   name: 'M249 轻机枪',    type: '轻机枪',   damage: 24, headMult: 1.9, fireInterval: 80,  mag: 100,reloadTime: 3600, auto: true,  spread: 0.034, range: 130, pellets: 1, zoom: 1.3,  recoil: 0.015, color: 0x3f4436, barrelLen: 0.70, bulky: 0.085 },
   // 官方「极星守望」同步枪型：M700 栓动狙击（定位介于 M24 与 AWM 之间，数值为本游戏平衡原创）
   m700:   { id: 'm700',   name: 'M700 狙击枪',    type: '狙击枪',   damage: 96, headMult: 2.7, fireInterval: 1500,mag: 5,  reloadTime: 2700, auto: false, spread: 0.0015,range: 350, pellets: 1, zoom: 5.0,  recoil: 0.068, color: 0x37414d, barrelLen: 0.88, bulky: 0.062 },
+  // 官方 S12「微光」同步枪型：AN94 突击步枪（5.45×39mm，对应官方：前两发射速极快且后坐力小、爆发力强；数值为本游戏平衡原创）
+  an94:   { id: 'an94',   name: 'AN94 突击步枪',  type: '突击步枪', damage: 26, headMult: 2.0, fireInterval: 82,  mag: 30, reloadTime: 1850, auto: true,  spread: 0.017, range: 112, pellets: 1, zoom: 1.35, recoil: 0.011, color: 0x3d3a33, barrelLen: 0.60, bulky: 0.058 },
 }
 
 /** 初始近战武器：战术匕首（永久装备，不掉落、不用弹药；捡到枪后按 1 随时切回） */
@@ -241,6 +243,20 @@ export const ITEMS: Record<string, ItemDef> = {
   ev_turingbrick: { id: 'ev_turingbrick', name: '图灵砖',       kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 16000, icon: '🧩', openable: 'turingbrick' },
   ev_actionbox:   { id: 'ev_actionbox',   name: '行动补给箱',   kind: 'valuable', rarity: 'purple', w: 2, h: 2, baseValue: 8000,  icon: '🎁', stack: 2, openable: 'actionbox' },
   c_jx_model:  { id: 'c_jx_model',  name: '灰鲭鲨·德小兰', kind: 'valuable', rarity: 'red',    w: 2, h: 2, baseValue: 26000, icon: '🐋' },
+  // —— 官方 S12「微光」赛季批次（2026-11-05 上线）——
+  w_an94:    { id: 'w_an94',    name: 'AN94 突击步枪', kind: 'weapon', rarity: 'cyan', w: 4, h: 2, baseValue: 2400, icon: '🔫', gunId: 'an94' },
+  // 影之刃零联动限定收集品（官方：烽火地带鸟窝概率掉落联动限定收藏品）
+  v_yzbl_lion: { id: 'v_yzbl_lion', name: '烈焰狮头', kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2000, icon: '🦁', stack: 3 },
+  v_yzbl_coin: { id: 'v_yzbl_coin', name: '破空刃币', kind: 'valuable', rarity: 'cyan',   w: 1, h: 1, baseValue: 3400, icon: '🗡️', stack: 3 },
+  // 巴克什阵营对抗顶级信物（对应官方：阿萨拉三级挂坠 / 哈夫克三级工卡，完成阵营专属行动获得）
+  v_charm_asara: { id: 'v_charm_asara', name: '阿萨拉三级挂坠', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 9800, icon: '📿' },
+  v_charm_havk:  { id: 'v_charm_havk',  name: '哈夫克三级工卡', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 9800, icon: '🪪' },
+  // 图灵砖 S12 换新（对应官方：S12 开启时图灵砖换新、洲年贺礼系列停产、典藏挂饰重组；仍开重组后典藏挂饰）
+  ev_turingbrick2: { id: 'ev_turingbrick2', name: '图灵砖·微光', kind: 'valuable', rarity: 'red', w: 2, h: 1, baseValue: 18000, icon: '🧩', openable: 'turingbrick' },
+  // S12 新配件（对应官方：PKM无托套件 / M250磐石供弹弹仓 / SR-25双发后托套件；本游戏无对应枪型，等价镜像为通用配件）
+  at_pkm_bullpup: { id: 'at_pkm_bullpup', name: '无托改装套件', kind: 'attachment', rarity: 'purple', w: 2, h: 1, baseValue: 4200, icon: '🦾', slot: 'stock' },
+  at_m250_drum:   { id: 'at_m250_drum',   name: '磐石供弹弹仓', kind: 'attachment', rarity: 'purple', w: 1, h: 1, baseValue: 4600, icon: '🥁', slot: 'mag' },
+  at_sr25_twin:   { id: 'at_sr25_twin',   name: '双发后托套件', kind: 'attachment', rarity: 'cyan',   w: 2, h: 1, baseValue: 6800, icon: '✌️', slot: 'stock' },
 }
 
 /** 极星守望合成配方：德小兰碎片 ×3 + 灰鲭鲨碎片 ×3 → 灰鲭鲨·德小兰 ×1（对应官方碎片组装玩法） */
@@ -311,7 +327,7 @@ export const WEAPON_LOOT_POOL: { defId: string; weight: number }[] = [
   { defId: 'w_deagle', weight: 7 }, { defId: 'w_mp5', weight: 6 }, { defId: 'w_mini14', weight: 4.5 },
   { defId: 'w_vector', weight: 3.6 }, { defId: 'w_akm', weight: 4 }, { defId: 'w_m4a1', weight: 3.6 }, { defId: 'w_scar', weight: 3.4 },
   { defId: 'w_aug', weight: 2 }, { defId: 'w_m24', weight: 1.4 }, { defId: 'w_m249', weight: 1.2 },
-  { defId: 'w_awm', weight: 0.2 }, { defId: 'w_m700', weight: 0.7 },
+  { defId: 'w_awm', weight: 0.2 }, { defId: 'w_m700', weight: 0.7 }, { defId: 'w_an94', weight: 1.6 },
   // 配件（武器箱也出）
   { defId: 'at_rdot', weight: 4 }, { defId: 'at_comp', weight: 3.5 }, { defId: 'at_qmag', weight: 3.5 },
   { defId: 'at_scope4', weight: 1.8 }, { defId: 'at_supp', weight: 1.5 }, { defId: 'at_emag', weight: 1.8 },
@@ -394,7 +410,7 @@ export const AIR_LOOT_POOL: { defId: string; weight: number }[] = [
   { defId: 'a_ammo', weight: 12 }, { defId: 'm_medkit', weight: 10 }, { defId: 'm_bandage', weight: 6 },
   { defId: 'w_mp5', weight: 8 }, { defId: 'w_mini14', weight: 6 }, { defId: 'w_vector', weight: 5.5 },
   { defId: 'w_akm', weight: 5 }, { defId: 'w_m4a1', weight: 4.5 }, { defId: 'w_scar', weight: 4.5 },
-  { defId: 'w_aug', weight: 2.5 }, { defId: 'w_m24', weight: 1.5 },
+  { defId: 'w_aug', weight: 2.5 }, { defId: 'w_m24', weight: 1.5 }, { defId: 'w_an94', weight: 2.2 },
   { defId: 'v_gpu', weight: 6 }, { defId: 'v_goldbar', weight: 5 }, { defId: 'v_intel', weight: 5 },
   { defId: 'v_necklace', weight: 3.5 }, { defId: 'v_jade', weight: 2 }, { defId: 'v_diamond', weight: 1.4 },
   { defId: 'v_phoenix', weight: 0.36 }, { defId: 'v_meteor', weight: 0.32 }, { defId: 'v_pearl', weight: 0.14 },
@@ -404,6 +420,7 @@ export const AIR_LOOT_POOL: { defId: string; weight: number }[] = [
   { defId: 'a_ammo3', weight: 3 }, { defId: 'a_ammo4', weight: 1.6 }, { defId: 'a_ammo5', weight: 0.5 },
   { defId: 'at_scope4', weight: 1.2 }, { defId: 'at_supp', weight: 1 }, { defId: 'at_emag', weight: 1.2 },
   { defId: 'at_stock_s', weight: 1.4 }, { defId: 'at_grip_v', weight: 1.6 }, { defId: 'at_laser', weight: 0.7 },
+  { defId: 'at_pkm_bullpup', weight: 0.6 }, { defId: 'at_m250_drum', weight: 0.55 }, { defId: 'at_sr25_twin', weight: 0.4 },
   { defId: 'armor2', weight: 1.2 }, { defId: 'helmet2', weight: 1.2 }, { defId: 'armor3', weight: 0.4 }, { defId: 'helmet3', weight: 0.4 },
 ]
 
@@ -522,6 +539,16 @@ export const OPERATORS: OperatorDef[] = [
       { icon: '🧭', name: '战场嗅觉', desc: '搜索容器速度提升 20%', mods: { search: 1.2 } },
     ],
   },
+  // —— 官方 S12「微光」同步干员：野火（突击型；官方技能：环形烟幕 / 高爆手雷 / 盾式破障器 + 被动愈战愈勇，本游戏按 1 主动 + 2 被动等价镜像，数值原创） ——
+  {
+    id: 'wildfire', name: '野火', icon: '🔥', title: '破障突击', desc: '纵是棋子，亦燃微光。她冲锋的路上，没有撞不开的门。',
+    active: { icon: '🛡️', name: '盾式破障器', desc: '持盾向前猛冲，震慑并击倒 12 米内的敌人 3 秒（对应官方：冲撞重击造成范围伤害与击倒）', cd: 45, kind: 'stun', power: 12, dur: 3 },
+    growth: { cd: -3, power: 1.2, dur: 0.3 },
+    passives: [
+      { icon: '🔥', name: '愈战愈勇', desc: '战意燃烧：移速 +8%、换弹速度 +15%（对应官方：击倒敌人或低血量时短暂提升移速与换弹速度）', mods: { speed: 1.08, reload: 0.85 } },
+      { icon: '💨', name: '环形烟幕', desc: '烟幕随行：敌人发现你的距离缩短 15%（对应官方：肩载烟幕发射器展开环形烟幕掩护）', mods: { seeRange: 0.85 } },
+    ],
+  },
 ]
 
 // ===================== 交易行商品（用金币购买，价格比卖价高不少） =====================
@@ -534,7 +561,7 @@ export const MARKET_GOODS: { category: string; icon: string; goods: MarketGood[]
   },
   {
     category: '霰弹枪 / 步枪', icon: '💥',
-    goods: [gunPrice('w_m870'), gunPrice('w_s12k'), gunPrice('w_sks'), gunPrice('w_mini14'), gunPrice('w_akm'), gunPrice('w_m4a1'), gunPrice('w_scar'), gunPrice('w_aug')],
+    goods: [gunPrice('w_m870'), gunPrice('w_s12k'), gunPrice('w_sks'), gunPrice('w_mini14'), gunPrice('w_akm'), gunPrice('w_m4a1'), gunPrice('w_scar'), gunPrice('w_aug'), gunPrice('w_an94', 3.2)],
   },
   {
     category: '狙击 / 机枪', icon: '🎯',
@@ -580,6 +607,9 @@ export const MARKET_GOODS: { category: string; icon: string; goods: MarketGood[]
       { defId: 'at_stock_s', price: 6300 },
       { defId: 'at_stock_l', price: 6000 },
       { defId: 'at_laser', price: 9600 },
+      { defId: 'at_pkm_bullpup', price: 12600 },
+      { defId: 'at_m250_drum', price: 13800 },
+      { defId: 'at_sr25_twin', price: 20400 },
     ],
   },
 ]

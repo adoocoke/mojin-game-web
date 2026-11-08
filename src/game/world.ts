@@ -30,7 +30,7 @@ export interface Container {
   reveal?: Record<string, number>  // 逐格揭示：uid → 揭示时间戳（三角洲式放大镜扫描）
 }
 
-export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' | 'oldtown' // 后四个为大战场专属竞技场（oldtown=摩格旧城区）
+export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' | 'oldtown' | 'skyport' // 后五个为大战场专属竞技场（oldtown=摩格旧城区，skyport=天际港）
 
 /** 可推开的门：铰链在门扇一侧，openT 0→1 旋开；lockedBy 为所需房卡 */
 export interface Door {
@@ -50,11 +50,12 @@ export interface MapMarker { x: number; z: number; kind: 'tower' | 'house' | 'lo
 
 /** 大战场环境机制：烬区火焰 / 贯穿蒸汽 / 堑壕战迫击炮 */
 export interface Hazard {
-  type: 'fire' | 'steam' | 'artillery'
-  x: number; z: number; r: number       // 伤害半径（artillery 为系统级，r=0）
+  type: 'fire' | 'steam' | 'artillery' | 'tide'
+  x: number; z: number; r: number       // 伤害半径（artillery 为系统级，r=0；tide 为水域 x 向半宽）
+  r2?: number                           // tide：水域 z 向半宽（缺省 = r）
   flames?: THREE.Object3D[]             // fire：火焰锥（引擎闪烁动画）
   light?: THREE.PointLight              // fire：火光
-  jet?: THREE.Object3D                  // steam：喷汽柱
+  jet?: THREE.Object3D                  // steam：喷汽柱 / tide：水面网格（引擎驱动涨落）
   t: number                             // 相位计时
   phase?: number                        // steam：0 间歇 1 预警 2 喷发
 }
@@ -495,7 +496,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'oldtown' ? 150 : mapId === 'pipeline' ? 170 : 140
+  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'oldtown' ? 150 : mapId === 'skyport' ? 170 : mapId === 'pipeline' ? 170 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -519,7 +520,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   // 地面
   const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 40, 40)
   const groundKind = mapId === 'snow' ? 'snow' : mapId === 'desert' ? 'sand' : mapId === 'trench' ? 'mud'
-    : mapId === 'blocks' || mapId === 'pipeline' || mapId === 'oldtown' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
+    : mapId === 'blocks' || mapId === 'pipeline' || mapId === 'oldtown' || mapId === 'skyport' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
   const groundMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: groundTexture(groundKind, Math.max(6, Math.round(size / 9))),
@@ -531,7 +532,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.add(ground)
   // 网格道路（雪地图被积雪覆盖，不铺路）
   const roadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: asphaltTexture(Math.round(size / 6)), roughness: 0.95 })
-  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline' && mapId !== 'oldtown'; i++) {
+  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline' && mapId !== 'oldtown' && mapId !== 'skyport'; i++) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(size * 2, 6), roadMat)
     road.rotation.x = -Math.PI / 2
     road.position.set(0, 0.02, i * 40)
@@ -786,7 +787,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     doors.push({ id: `d${did++}`, pivot, x: cx, z: cz, rot, w, base, open: false, openT: 0, lockedBy, lockedName })
   }
 
-  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : mapId === 'oldtown' ? 20261023 : 20260807)
+  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : mapId === 'oldtown' ? 20261023 : mapId === 'skyport' ? 20261105 : 20260807)
   const spawnPoints: THREE.Vector3[] = []
   const bossSpawns: World['bossSpawns'] = []
   let missionWall: World['missionWall'] = undefined
@@ -2779,6 +2780,130 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     for (const [sx, sz] of [[-70, -70], [70, -70], [-70, 70], [70, 70], [0, 66], [0, -30], [-26, 0], [26, 0], [-110, -110], [110, -110], [-110, 110], [110, 110], [0, -112], [-110, 0], [110, 0]] as const)
       spawnPoints.push(new THREE.Vector3(sx, 0, sz))
   }
+  if (mapId === 'skyport') {
+    // ===== 天际港：滨海集装箱码头（对应官方：全面战场新图「天际港」· 动态水位；布局与美术原创） =====
+    // 北岸码头作业区：集装箱堆场 + 仓库 + 龙门吊；南岸为港区水域，水面随潮汐涨落（涉水减速）
+    // —— 集装箱堆场（彩色箱体成排，巷道式掩体） ——
+    const boxColors = [0x3a5a8a, 0x8a3a2e, 0x6a7a3a, 0x8a6a2e, 0x5a6a72, 0x7a3a5a]
+    for (const [row, rz] of [[0, -120], [1, -96], [2, -72], [3, -44]] as const) {
+      for (let i = 0; i < 6; i++) {
+        const cx = -125 + i * 46 + (row % 2) * 14
+        const st = 1 + Math.floor(rng() * 2.4)
+        const bc = boxColors[Math.floor(rng() * boxColors.length)]
+        for (let s = 0; s < st; s++) {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.6, 2.5),
+            new THREE.MeshStandardMaterial({ color: bc, map: concreteTexture('#7a7a74', 1), roughness: 0.6, metalness: 0.3 }))
+          box.position.set(cx + (rng() - 0.5) * 0.8, 1.3 + s * 2.62, rz + (rng() - 0.5) * 1.2)
+          box.rotation.y = (rng() - 0.5) * 0.06
+          box.castShadow = true; box.receiveShadow = true
+          scene.add(box); obstacleMeshes.push(box)
+        }
+        colliders.push({ minX: cx - 3.3, maxX: cx + 3.3, minZ: rz - 1.5, maxZ: rz + 1.5, top: 2.6 * st })
+      }
+    }
+    // —— 两座门式起重机（龙门吊）：支腿 + 主梁 + 小车 + 吊索垂箱 ——
+    const mkCrane = (gx: number, gz: number) => {
+      for (const lx of [-11, 11]) {
+        mkBox(gx + lx, gz, 1.3, 1.3, 15, 0xb0842a) // 支腿
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(26, 1.6, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0xc2942e, roughness: 0.55, metalness: 0.45 }))
+      beam.position.set(gx, 15.6, gz); beam.castShadow = true
+      scene.add(beam); obstacleMeshes.push(beam)
+      const trolley = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.4, 2.6),
+        new THREE.MeshStandardMaterial({ color: 0x6a6f76, roughness: 0.5, metalness: 0.6 }))
+      trolley.position.set(gx + (rng() - 0.5) * 14, 14.4, gz); trolley.castShadow = true
+      scene.add(trolley)
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 7.5, 4),
+        new THREE.MeshStandardMaterial({ color: 0x2a2d33 }))
+      cable.position.set(trolley.position.x, 10.4, gz)
+      scene.add(cable)
+      const hang = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.6, 2.5),
+        new THREE.MeshStandardMaterial({ color: boxColors[Math.floor(rng() * boxColors.length)], roughness: 0.6, metalness: 0.3 }))
+      hang.position.set(trolley.position.x, 6.2, gz); hang.castShadow = true
+      scene.add(hang); obstacleMeshes.push(hang)
+    }
+    mkCrane(-55, -20); mkCrane(60, -28)
+    // —— 码头仓库与海关办公楼（北岸线） ——
+    mkBox(-95, -148, 34, 14, 7, 0x8a8578)
+    mkBox(-30, -150, 26, 12, 5.5, 0x9a9284)
+    mkBox(48, -148, 30, 14, 6.5, 0x87816f)
+    mkBox(118, -146, 20, 12, 9, 0x7d8894) // 海关塔楼
+    // —— 岸线矮墙（码头边缘掩体） ——
+    for (const [wx, ww] of [[-120, 60], [-20, 50], [70, 60], [145, 30]] as const) mkBox(wx, 12, ww, 1.2, 1.1, 0x9aa0a8)
+    // —— 港区水域：潮汐水面（引擎驱动涨落），范围 z∈[20,164] ——
+    const tideWater = new THREE.Mesh(new THREE.PlaneGeometry(332, 146, 24, 12),
+      new THREE.MeshStandardMaterial({ color: 0x2a5a78, transparent: true, opacity: 0.6, roughness: 0.18, metalness: 0.45, depthWrite: false }))
+    tideWater.rotation.x = -Math.PI / 2
+    tideWater.position.set(0, 0.32, 93)
+    scene.add(tideWater)
+    hazards.push({ type: 'tide', x: 0, z: 93, r: 166, r2: 73, jet: tideWater, t: 0 })
+    // —— 两条低栈桥伸入水面（视觉掩体，涨潮时被淹没） ——
+    for (const px of [-45, 50]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(5, 0.3, 58),
+        new THREE.MeshStandardMaterial({ color: 0x6b5236, map: concreteTexture('#6b5236', 2), roughness: 0.85 }))
+      pier.position.set(px, 0.3, 48)
+      pier.castShadow = true; pier.receiveShadow = true
+      scene.add(pier); obstacleMeshes.push(pier)
+      for (const pz of [26, 44, 62]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.6, 6),
+          new THREE.MeshStandardMaterial({ color: 0x4a3a26, roughness: 0.9 }))
+        post.position.set(px - 2.2, 0.4, pz); scene.add(post)
+        const post2 = post.clone(); post2.position.x = px + 2.2; scene.add(post2)
+      }
+      // 栈桥上的货箱掩体
+      mkBox(px, 36, 2.2, 2.2, 1.2, 0x7a6a4e)
+      mkBox(px, 58, 2.2, 2.2, 1.2, 0x6a7a5e)
+    }
+    // —— 灯塔岛（东南水域地标：礁石 + 条纹灯塔） ——
+    const islet = new THREE.Mesh(new THREE.CylinderGeometry(9, 11, 1.6, 14),
+      new THREE.MeshStandardMaterial({ color: 0x5d5a52, map: concreteTexture('#5d5a52', 2), roughness: 0.95 }))
+    islet.position.set(108, 0.4, 122)
+    islet.castShadow = true; islet.receiveShadow = true
+    scene.add(islet); obstacleMeshes.push(islet)
+    colliders.push({ minX: 99, maxX: 117, minZ: 113, maxZ: 131, top: 1.2 })
+    for (let seg = 0; seg < 5; seg++) {
+      const segMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.2 - seg * 0.22, 2.4 - seg * 0.22, 2.6, 12),
+        new THREE.MeshStandardMaterial({ color: seg % 2 === 0 ? 0xd8d2c4 : 0xb23a2e, roughness: 0.7 }))
+      segMesh.position.set(108, 2.5 + seg * 2.6, 122)
+      segMesh.castShadow = true
+      scene.add(segMesh); obstacleMeshes.push(segMesh)
+    }
+    const lampRoom = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 1.8, 10),
+      new THREE.MeshStandardMaterial({ color: 0x2a2d33, emissive: 0xffd98a, emissiveIntensity: 0.9, roughness: 0.4 }))
+    lampRoom.position.set(108, 15.8, 122)
+    scene.add(lampRoom)
+    // —— 浮标与防波堤（水域点缀） ——
+    for (const [bx, bz] of [[-90, 60], [-10, 96], [70, 74], [-130, 110], [20, 140]] as const) {
+      const buoy = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xc23a2a, roughness: 0.6 }))
+      buoy.position.set(bx, 0.7, bz)
+      scene.add(buoy)
+    }
+    mkBox(-60, 158, 120, 3, 2.2, 0x6f6a60) // 防波堤西段
+    mkBox(90, 158, 90, 3, 2.2, 0x6f6a60)  // 防波堤东段（中间留航道口）
+    // —— 码头零散掩体：叉车托盘 / 油桶堆 / 缆桩 ——
+    for (const [cx, cz] of [[-12, -132], [16, -108], [-68, -58], [88, -64], [-140, -34], [130, -100], [-6, -30], [36, -12], [-100, -110]] as const)
+      mkBox(cx, cz, 2.2, 2.2, 1.25, 0x7a6a4e)
+    for (const [bx, bz] of [[-40, -128], [70, -116], [-118, -76]] as const) {
+      for (let i = 0; i < 3; i++) {
+        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.15, 10),
+          new THREE.MeshStandardMaterial({ color: [0x3a5a8a, 0x8a3a2e, 0x6a7a3a][i], roughness: 0.55, metalness: 0.35 }))
+        drum.position.set(bx + i * 1.35, 0.58, bz + (i % 2) * 0.6)
+        drum.castShadow = true
+        scene.add(drum); obstacleMeshes.push(drum)
+      }
+      colliders.push({ minX: bx - 0.8, maxX: bx + 3.6, minZ: bz - 0.8, maxZ: bz + 1.4, top: 1.15 })
+    }
+    mkContainer(-55, -34, '武器箱', 0.6, 0, rng); mkContainer(60, -42, '弹药箱', 0.5, 0, rng)
+    mkContainer(0, 6, '医疗物资', 0.8, 0, rng); mkContainer(-130, -132, '高级旅行箱', 0.4, 0, rng)
+    mapMarkers.push({ x: 0, z: -84, kind: 'block', name: '集装箱码头' })
+    mapMarkers.push({ x: 0, z: 93, kind: 'block', name: '港区水域' })
+    mapMarkers.push({ x: 108, z: 122, kind: 'block', name: '灯塔' })
+    playerSpawn = new THREE.Vector3(0, 0, -158); playerYaw = Math.PI
+    for (const [sx, sz] of [[-80, -140], [80, -140], [-140, -60], [140, -60], [-45, 40], [50, 40], [0, -70], [-100, -20], [100, -16], [108, 112], [-20, -160], [40, -160], [-160, -120], [160, -120]] as const)
+      spawnPoints.push(new THREE.Vector3(sx, 0, sz))
+  }
   if (mapId === 'pipeline') {
     // ===== 贯穿：狭长管道走廊（东西向主管廊正面硬刚 + 南北侧道绕后） =====
     for (const [wx, wlen] of [[-52, 60], [28, 76]] as const) mkBox(wx, -8, wlen, 1.6, 3.2, 0x6a6f76) // 管廊北墙两段
@@ -3305,7 +3430,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       prison: [0x5d7186, 0x9aa8b5], snow: [0x7d95b5, 0xd8e2ec],
       desert: [0x4a7fc9, 0xe8cf9a], blocks: [0x46689f, 0xc3ccd4],
       pipeline: [0x46689f, 0xc3ccd4], trench: [0x54687f, 0xb6ab93],
-      oldtown: [0x7a86a8, 0xd8c9a8],
+      oldtown: [0x7a86a8, 0xd8c9a8], skyport: [0x4a6a9f, 0xe0c9a2],
     }
     const [topC, horC] = skySpec[mapId] ?? [0x3d6cb2, 0xc2d6e8]
     buildSky(scene, topC, horC, sun.position)
