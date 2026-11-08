@@ -5,9 +5,10 @@ import { loadSkins, skinDef, grantSkin } from '@/game/skins'
 import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP } from '@/game/vouchers'
 import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
 import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QUOTA_MAX } from '@/game/bossplay'
-import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, ZW_TASKS, ZW_BOX_NEED, zwStageUnlocked, claimZwTask, D0_REWARDS, claimD0, type WarEventId } from '@/game/warevents'
-import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, GLIMMER_REWARDS, markGlimmerLogin, claimGlimmer, type TrickShopItem } from '@/game/trickster'
+import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, ZW_TASKS, ZW_BOX_NEED, zwStageUnlocked, claimZwTask, D0_REWARDS, claimD0, ZM_WAR_REWARDS, claimZmWar, markZmWarLogin, type WarEventId } from '@/game/warevents'
+import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, addLogiVouchers, GLIMMER_REWARDS, markGlimmerLogin, claimGlimmer, INVITE_REWARDS, markInviteLogin, claimInvite, ZM_REWARDS, claimZm, type TrickShopItem } from '@/game/trickster'
 import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
+import { loadBp, gainBpXp } from '@/game/battlepass'
 import { makeItem } from '@/game/data'
 import { grantVehicleSkin } from '@/game/vehicles'
 import { addToStash, loadStash, saveMoney } from '@/game/stash'
@@ -26,6 +27,8 @@ const WAR_EVENT_NAMES: Record<string, WarEventId> = {
   '畅玩月：钢铁洪流再临': 'steel',
   '黑潮挑战': 'heichao',
   '黑潮挑战Ⅱ': 'heichao2',
+  '游刃有余再临': 'blade',
+  '周挑战：区域策援': 'support',
 }
 
 /** 领取大战场活动奖励并实际入账（金币/物资入仓/皮肤） */
@@ -42,6 +45,9 @@ function claimWar(id: string) {
   if (r.vehicleSkin) grantVehicleSkin(r.vehicleSkin)
   if (r.trickTokens) addTrickTokens(r.trickTokens)
   if (r.playTokens) addPlayTokens(r.playTokens)
+  if (r.logi) addLogiVouchers(r.logi) // 物流凭证（游刃有余/区域策援）
+  if (r.cosmetic) grantCosmetic(r.cosmetic) // 收藏外观（动作「鼓掌」等）
+  if (r.bpXp) gainBpXp(loadBp(), r.bpXp) // 通行证经验
   notify()
 }
 
@@ -197,6 +203,114 @@ function GlimmerBlock({ onMsg }: { onMsg: (m: string) => void }) {
                   if (res.skin) grantSkin(loadSkins(), res.skin)
                   notify()
                   onMsg(`✅ ${res.name}：${res.vouchers ? `物流凭证 +${res.vouchers}` : ''}${res.skin ? '，外观「哈夫克卫队」已发放（🎨 皮肤页装备）' : ''}`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 阿萨拉邀约：每日登录领取（11/7-11/16，第 2 天送 UZI 外观） */
+function InviteBlock({ onMsg }: { onMsg: (m: string) => void }) {
+  const ts = loadTrickster()
+  const days = ts.inviteDays.length
+  return (
+    <div className="mt-2 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-2.5 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-cyan-300">💌 已累计登录 {days} 天（每日打开本面板即记）</div>
+      {INVITE_REWARDS.map(r => {
+        const done = ts.inviteClaimed.includes(r.id)
+        const can = !done && days >= r.day
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{Math.min(days, r.day)}/{r.day} 天）→ 物流凭证 ×{r.vouchers}{r.skin ? ' + 外观「亚特兰蒂斯-UZI」' : ''}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimInvite(r.id)
+                  if (!res) return
+                  if (res.skin) grantSkin(loadSkins(), res.skin)
+                  notify()
+                  onMsg(`✅ ${res.name}：${res.vouchers ? `物流凭证 +${res.vouchers}` : ''}${res.skin ? '，外观「亚特兰蒂斯-UZI」已发放（🎨 皮肤页装备）' : ''}`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 洲末周末五连·烽火侧：红运当头 / 洲末有米 / 洲末品枪（11/7-11/9） */
+function ZmBlock({ prefixes, onMsg }: { prefixes: string[]; onMsg: (m: string) => void }) {
+  const ts = loadTrickster()
+  const rs = ZM_REWARDS.filter(r => prefixes.some(px => r.id.startsWith(px)))
+  return (
+    <div className="mt-2 rounded-lg border border-red-500/25 bg-red-500/5 px-2.5 py-2 space-y-1">
+      {rs.map(r => {
+        const done = ts.zmClaimed.includes(r.id)
+        const prog = Math.min(r.progress(ts), r.need)
+        const can = !done && prog >= r.need
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{prog}/{r.need}）→ {r.rewardText}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimZm(r.id)
+                  if (!res) return
+                  if (res.items) {
+                    const stash = loadStash()
+                    addToStash(stash, res.items.map(d => makeItem(d, 1)))
+                    uiState.stash = stash
+                  }
+                  if (res.gold) { uiState.money += res.gold; saveMoney(uiState.money) }
+                  notify()
+                  onMsg(`✅ ${res.name}：${res.rewardText} 已发放`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 洲末周末五连·大战场侧：洲末畅玩 / 洲末上分（11/7-11/9） */
+function ZmWarBlock({ prefixes, onMsg }: { prefixes: string[]; onMsg: (m: string) => void }) {
+  const ws = loadWarEvents()
+  const rs = ZM_WAR_REWARDS.filter(r => prefixes.some(px => r.id.startsWith(px)))
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-2 space-y-1">
+      {rs.map(r => {
+        const done = ws.claimed.includes(r.id)
+        const prog = Math.min(r.progress(ws), r.need)
+        const can = !done && prog >= r.need
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{prog}/{r.need}）→ {r.rewardText}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimZmWar(r.id)
+                  if (!res) return
+                  if (res.gold) { uiState.money += res.gold; saveMoney(uiState.money) }
+                  if (res.bpXp) gainBpXp(loadBp(), res.bpXp)
+                  notify()
+                  onMsg(`✅ ${res.name}：${res.rewardText} 已发放`)
                 }}
                 className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
               >领取</button>
@@ -372,6 +486,15 @@ function EventCard({ ev, now, onMsg }: { ev: OfficialEventInfo; now: number; onM
         {ev.name === '群星行动：绝地反击' && active && <JdBlock onMsg={onMsg} />}
         {ev.name === '群星行动：战线未止' && active && <ZwBlock onMsg={onMsg} />}
         {ev.name === '微光时刻将至' && active && <GlimmerBlock onMsg={onMsg} />}
+        {ev.name === '兰小登返场' && active && (
+          <TokenShop shop={LOGI_SHOP} balance={loadTrickster().logiVouchers} balanceLabel="🪆 物流凭证" onMsg={onMsg} />
+        )}
+        {ev.name === '阿萨拉邀约' && active && <InviteBlock onMsg={onMsg} />}
+        {ev.name === '红运当头' && active && <ZmBlock prefixes={['zm_hy']} onMsg={onMsg} />}
+        {ev.name === '洲末有米' && active && <ZmBlock prefixes={['zm_ym']} onMsg={onMsg} />}
+        {ev.name === '洲末品枪' && active && <ZmBlock prefixes={['zm_pg']} onMsg={onMsg} />}
+        {ev.name === '洲末畅玩' && active && <ZmWarBlock prefixes={['zcw']} onMsg={onMsg} />}
+        {ev.name === '洲末上分' && active && <ZmWarBlock prefixes={['zsf']} onMsg={onMsg} />}
         {ev.name === '黑潮赛季补给' && active && <D0Block onMsg={onMsg} />}
         {ev.name === '极星守望' && active && (() => {
           const bp = loadBossPlay()
@@ -553,6 +676,8 @@ export function EventPanel() {
     const got = claimVoucherLogins()
     if (got > 0) setVoucherMsg(`🎟️ 登录奖励：限时三角券 +${got.toLocaleString()}！可到 🎨 皮肤 页使用`)
     markGlimmerLogin() // 微光时刻将至：打开活动中心即记当日登录
+    markInviteLogin() // 阿萨拉邀约：打开活动中心即记当日登录（11/7-11/16）
+    markZmWarLogin() // 洲末畅玩：周末窗口内记当日大战场登录（11/7-11/9）
     const t = setInterval(force, 1000)
     return () => clearInterval(t)
   }, [ui.eventsOpen])

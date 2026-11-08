@@ -203,6 +203,20 @@ export function MenuScreen() {
           </div>
         )}
 
+        {/* 游刃有余再临：白刃作战（大战场，活动期勾选只配匕首） */}
+        {ui.mode === 'war' && (
+          <div className="flex justify-center max-w-3xl mx-auto mb-5 -mt-2">
+            <button
+              onClick={() => engine.toggleWarBlade()}
+              className={`px-4 py-1.5 rounded-xl border text-xs font-bold transition-all ${ui.warBlade
+                ? 'border-red-400 bg-red-400/10 text-red-200'
+                : 'border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-zinc-500'}`}
+            >
+              🔪 游刃有余·白刃作战：{ui.warBlade ? '已开启（活动期开局仅配匕首）' : '未开启'}
+            </button>
+          </div>
+        )}
+
         {/* 地图选择 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-7">
           {(ui.mode === 'war' ? [

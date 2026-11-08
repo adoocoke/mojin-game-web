@@ -33,13 +33,17 @@ export interface WarEventsSave {
   zwDone: string[]         // 战线未止：已完成任务 id
   d0Games: number          // 黑潮赛季补给：窗口期内累计对局（全模式等价镜像）
   d0Claimed: string[]      // 黑潮赛季补给：已领取档位 id
+  bladeGames: number       // 游刃有余再临：白刃模式完成对局
+  supportCalls: number     // 周挑战·区域策援：呼叫阵地支援次数
+  zmWarLogins: string[]    // 洲末畅玩：周末大战场登录日
+  zmWarGames: number       // 洲末上分：周末大战场完成对局
 }
 
 function def(): WarEventsSave {
   return { games: 0, wins: 0, kills: 0, sniperWins: 0, loginDays: [], claimed: [],
     closeKills: 0, farKills: 0, vehKills: 0, vehDestroyed: 0, adGames: 0, exKills: 0, jdDone: [],
     exKills2: 0, zwGames: 0, zwKills: 0, zwWins: 0, zwFarKills: 0, zwVehKills: 0, zwVehDestroyed: 0,
-    zwDone: [], d0Games: 0, d0Claimed: [] }
+    zwDone: [], d0Games: 0, d0Claimed: [], bladeGames: 0, supportCalls: 0, zmWarLogins: [], zmWarGames: 0 }
 }
 
 export function loadWarEvents(): WarEventsSave {
@@ -71,6 +75,9 @@ export const WAR_EVENT_WINDOWS = {
   heichao2: { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' },    // 黑潮挑战Ⅱ（黑潮爆破，等价镜像）
   zhanxian: { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' },    // 群星行动：战线未止（全面战场）
   heichaoS: { start: '2026-09-27T09:00:00+08:00', end: '2026-11-25T23:59:59+08:00' },    // 黑潮赛季补给（D0 赛季累计，全模式等价镜像）
+  // ===== 2026-11-06 公告批次 =====
+  blade: { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' },       // 游刃有余再临（白刃作战）
+  support: { start: '2026-11-07T00:00:00+08:00', end: '2026-11-14T23:59:59+08:00' },     // 周挑战：区域策援（呼叫阵地支援）
 } as const
 
 export type WarEventId = keyof typeof WAR_EVENT_WINDOWS
@@ -124,6 +131,13 @@ export const WAR_REWARDS: WarReward[] = [
   // 黑潮挑战Ⅱ：爆炸物击杀（官方奖励为糖果代币，等价镜像为捣蛋代币，与捣蛋鬼商店共用）
   { id: 'hc2_8', event: 'heichao2', icon: '💣', name: '黑潮挑战Ⅱ · 爆炸物 8 杀', need: 8, progress: s => s.exKills2, rewardText: '捣蛋代币 ×8' },
   { id: 'hc2_20', event: 'heichao2', icon: '💣', name: '黑潮挑战Ⅱ · 爆炸物 20 杀', need: 20, progress: s => s.exKills2, rewardText: '捣蛋代币 ×16' },
+  // ===== 2026-11-06 公告批次 =====
+  // 游刃有余再临：白刃作战对局（官方奖励物流凭证）
+  { id: 'bl_1', event: 'blade', icon: '⚔️', name: '游刃有余 · 白刃 1 场', need: 1, progress: s => s.bladeGames, rewardText: '物流凭证 ×2' },
+  { id: 'bl_3', event: 'blade', icon: '⚔️', name: '游刃有余 · 白刃 3 场', need: 3, progress: s => s.bladeGames, rewardText: '物流凭证 ×3' },
+  // 周挑战：区域策援——呼叫阵地支援（官方奖励：物流凭证/武器高级经验卡/动作-鼓掌/图灵砖）
+  { id: 'sp_1', event: 'support', icon: '📡', name: '区域策援 · 呼叫支援 1 次', need: 1, progress: s => s.supportCalls, rewardText: '物流凭证 ×2' },
+  { id: 'sp_3', event: 'support', icon: '📡', name: '区域策援 · 呼叫支援 3 次', need: 3, progress: s => s.supportCalls, rewardText: '图灵砖 ×1 + 动作「鼓掌」+ 经验卡（通行证 +300）' },
 ]
 
 /** 大战场每日登录记录（进入大战场页面即记） */
@@ -151,6 +165,7 @@ export function reportWarGame(result: 'win' | 'lose' | 'draw', kills: number, sn
     s.zwKills += kills
     if (result === 'win') s.zwWins++
   }
+  if (zhoumoActive()) s.zmWarGames++ // 洲末上分：周末窗口内大战场对局
   saveWarEvents(s)
 }
 
@@ -166,6 +181,49 @@ export function reportWarKill(kind: WarKillKind) {
   saveWarEvents(s)
 }
 
+/** 游刃有余再临：白刃模式完成一局 */
+export function reportBladeGame() {
+  if (!warEventActive('blade')) return
+  const s = loadWarEvents()
+  s.bladeGames++
+  saveWarEvents(s)
+}
+
+/** 周挑战·区域策援：呼叫一次阵地支援 */
+export function reportSupportCall() {
+  if (!warEventActive('support')) return
+  const s = loadWarEvents()
+  s.supportCalls++
+  saveWarEvents(s)
+}
+
+/** 洲末周末（大战场侧）：登录与对局计数（畅玩/上分共用周末窗口 11/7-11/9） */
+export function markZmWarLogin() {
+  const s = loadWarEvents()
+  const today = new Date().toISOString().slice(0, 10)
+  if (!s.zmWarLogins.includes(today)) {
+    s.zmWarLogins.push(today)
+    saveWarEvents(s)
+  }
+}
+export function reportZmWarGame() {
+  const s = loadWarEvents()
+  s.zmWarGames++
+  saveWarEvents(s)
+}
+
+/** 洲末周末窗口（11/7-11/9）是否激活 */
+export function zhoumoActive(now = Date.now()): boolean {
+  return now >= Date.parse('2026-11-07T00:00:00+08:00') && now <= Date.parse('2026-11-09T23:59:59+08:00')
+}
+
+/** 洲末上分：周六日晚 20:00-22:00 双倍得分窗口（官方：晋升之路双倍；等价镜像为大战场通行证经验 ×2） */
+export function zhoumoDoubleActive(now = Date.now()): boolean {
+  if (!zhoumoActive(now)) return false
+  const h = new Date(now).getHours()
+  return h >= 20 && h < 22
+}
+
 /** 黑潮赛季补给：窗口期内每完成一局（烽火/大战场等价镜像黑潮爆破对局）累计 +1 */
 export function reportD0Game() {
   if (!warEventActive('heichaoS')) return
@@ -175,7 +233,7 @@ export function reportD0Game() {
 }
 
 /** 领取奖励：返回奖励发放描述，未完成/已领返回 null */
-export function claimWarReward(id: string): { items?: string[]; gold?: number; skin?: string; vehicleSkin?: string; trickTokens?: number; playTokens?: number } | null {
+export function claimWarReward(id: string): { items?: string[]; gold?: number; skin?: string; vehicleSkin?: string; trickTokens?: number; playTokens?: number; logi?: number; bpXp?: number; cosmetic?: string } | null {
   const r = WAR_REWARDS.find(w => w.id === id)
   if (!r) return null
   const s = loadWarEvents()
@@ -204,6 +262,10 @@ export function claimWarReward(id: string): { items?: string[]; gold?: number; s
     case 'hc_15': return { trickTokens: 12 }
     case 'hc2_8': return { trickTokens: 8 }
     case 'hc2_20': return { trickTokens: 16 }
+    case 'bl_1': return { logi: 2 }
+    case 'bl_3': return { logi: 3 }
+    case 'sp_1': return { logi: 2 }
+    case 'sp_3': return { items: ['ev_turingbrick'], cosmetic: 'cos_action_clap', bpXp: 300 }
     default: return null
   }
 }
@@ -342,6 +404,41 @@ export function claimD0(id: string): { logi?: number; items?: string[]; skin?: s
     case 'd0_8': giveLogi(3); return { logi: 3, name: r.name, rewardText: r.rewardText }
     case 'd0_15': return { cosmetic: 'cos_badge_heichao', items: ['ev_turingbrick', 'ev_turingbrick'], name: r.name, rewardText: r.rewardText }
     case 'd0_25': giveLogi(4); return { skin: 'sk_m4a1_sanshi', items: ['ev_turingbrick'], logi: 4, name: r.name, rewardText: r.rewardText }
+    default: return null
+  }
+}
+
+// ===================== 洲末周末·大战场侧（2026-11-06 公告批次：洲末畅玩 / 洲末上分） =====================
+// 官方：洲末畅玩——周末 3 天累计登录领武器高级经验卡；洲末上分——参与对局领经验倍增卡/军功倍增卡，
+// 周六日晚 20:00-22:00 晋升之路双倍得分（本游戏等价镜像为大战场通行证经验双倍，见 zhoumoDoubleActive）。
+export interface ZmWarReward {
+  id: string
+  icon: string
+  name: string
+  need: number
+  progress: (s: WarEventsSave) => number
+  rewardText: string
+}
+
+export const ZM_WAR_REWARDS: ZmWarReward[] = [
+  { id: 'zcw_d1', icon: '🎫', name: '洲末畅玩 · 登录 1 天', need: 1, progress: s => s.zmWarLogins.length, rewardText: '武器高级经验卡（通行证 +100）' },
+  { id: 'zcw_d2', icon: '🎫', name: '洲末畅玩 · 登录 2 天', need: 2, progress: s => s.zmWarLogins.length, rewardText: '武器高级经验卡（通行证 +100）' },
+  { id: 'zcw_d3', icon: '🎫', name: '洲末畅玩 · 登录 3 天', need: 3, progress: s => s.zmWarLogins.length, rewardText: '武器高级经验卡（通行证 +100）' },
+  { id: 'zsf_2', icon: '🏅', name: '洲末上分 · 完成 2 场', need: 2, progress: s => s.zmWarGames, rewardText: '军功倍增卡（3,000 金币 + 通行证 +200）' },
+]
+
+export function claimZmWar(id: string): { gold?: number; bpXp?: number; name: string; rewardText: string } | null {
+  if (!zhoumoActive()) return null
+  const r = ZM_WAR_REWARDS.find(z => z.id === id)
+  if (!r) return null
+  const s = loadWarEvents()
+  if (s.claimed.includes(id)) return null
+  if (r.progress(s) < r.need) return null
+  s.claimed.push(id)
+  saveWarEvents(s)
+  switch (id) {
+    case 'zcw_d1': case 'zcw_d2': case 'zcw_d3': return { bpXp: 100, name: r.name, rewardText: r.rewardText }
+    case 'zsf_2': return { gold: 3000, bpXp: 200, name: r.name, rewardText: r.rewardText }
     default: return null
   }
 }

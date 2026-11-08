@@ -71,6 +71,12 @@ const D = (
     <linearGradient id="iaBflyD" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stopColor="#ff6a6a" /><stop offset="0.25" stopColor="#ffb84d" /><stop offset="0.5" stopColor="#7ddb62" /><stop offset="0.75" stopColor="#4db8ff" /><stop offset="1" stopColor="#b06ae8" />
     </linearGradient>
+    <linearGradient id="iaTerra" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stopColor="#e8935c" /><stop offset="0.5" stopColor="#c05e32" /><stop offset="1" stopColor="#7e3a1c" />
+    </linearGradient>
+    <linearGradient id="iaStraw" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stopColor="#f2dd9a" /><stop offset="0.55" stopColor="#d9b45e" /><stop offset="1" stopColor="#a87f2e" />
+    </linearGradient>
     <radialGradient id="iaGlowO" cx="0.5" cy="0.5" r="0.6">
       <stop offset="0" stopColor="#ffd27a" /><stop offset="0.55" stopColor="#f28c1e" /><stop offset="1" stopColor="#8a3c08" />
     </radialGradient>
@@ -1422,6 +1428,59 @@ const ART: Record<string, ReactNode> = {
     ))}
     {/* 高光 */}
     <path d="M18.5 15.5v24" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.28"/>
+  </>),
+  // ===== 2026-11-06 公告批次（手绘藏品风） =====
+  v_landeng: (<>
+    {sh(15, 57, 3, 0.25)}
+    {/* 吉他（斜抱） */}
+    <g transform="rotate(-24 40 44)">
+      <ellipse cx="40" cy="46" rx="9" ry="7.4" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1.2"/>
+      <ellipse cx="40" cy="46" rx="3.2" ry="2.7" fill="#2a1a0c"/>
+      <rect x="40" y="42.4" width="16" height="3" rx="1.4" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1"/>
+      <rect x="53" y="41.6" width="5" height="4.6" rx="1" fill="url(#iaBronze)" stroke="#5e3a1a" strokeWidth="0.8"/>
+      <path d="M42 44.2h12M42 46h12M42 47.8h12" stroke="#d8c9a4" strokeWidth="0.5" opacity="0.8"/>
+    </g>
+    {/* 娃娃身体（陶土裙） */}
+    <path d="M24 40c0-6 3.5-9.5 8-9.5s8 3.5 8 9.5l1.6 12H22.4z" fill="url(#iaTerra)" stroke="#5e2a12" strokeWidth="1.2"/>
+    <path d="M24.5 45h15M25.5 49h13" stroke="#f2dd9a" strokeWidth="1" opacity="0.55"/>
+    {/* 头 */}
+    <circle cx="32" cy="24" r="8.6" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <circle cx="28.6" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <circle cx="35.4" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <path d="M29 27.6c1.8 1.6 4.2 1.6 6 0" stroke="#7e3a1c" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    <circle cx="26.8" cy="26" r="1.6" fill="#e8935c" opacity="0.7"/>
+    <circle cx="37.2" cy="26" r="1.6" fill="#e8935c" opacity="0.7"/>
+    {/* 宽檐草帽 */}
+    <ellipse cx="32" cy="18.6" rx="13.5" ry="4.2" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <path d="M25.5 18.4a6.5 5.2 0 0 1 13 0z" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1"/>
+    <path d="M21 18.2h22" stroke="#3f9e6b" strokeWidth="1.6" opacity="0.9"/>
+    <path d="M24.5 17l1.4-1.4M39.5 17l-1.4-1.4" stroke="#f2dd9a" strokeWidth="1" opacity="0.8"/>
+    {/* 高光 */}
+    <path d="M27 21.5c-1.5 1-2.4 2.4-2.7 4" stroke="#fff6cf" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.75"/>
+  </>),
+  ev_hongyun: (<>
+    {sh(18, 55)}
+    {/* 箱体 */}
+    <rect x="9" y="22" width="46" height="26" rx="3" fill="url(#iaRedSilk)" stroke="#4a0f08" strokeWidth="1.5"/>
+    {/* 盖 */}
+    <path d="M9 25a3 3 0 0 1 3-3h40a3 3 0 0 1 3 3v4H9z" fill="url(#iaBronze)" stroke="#5e3a1a" strokeWidth="1.1"/>
+    {/* 鎏金云纹 */}
+    <path d="M15 34c3-3.4 6.5-3.4 8.5-1s5.5 2.4 8.5 0 6.5-3.4 8.5-1" stroke="url(#iaGoldV)" strokeWidth="1.6" fill="none" opacity="0.95"/>
+    <path d="M15 40.5c3-3.4 6.5-3.4 8.5-1s5.5 2.4 8.5 0 6.5-3.4 8.5-1" stroke="url(#iaGoldV)" strokeWidth="1.6" fill="none" opacity="0.8"/>
+    {/* 中央铜锁 */}
+    <rect x="27" y="26" width="10" height="10" rx="1.8" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1"/>
+    <circle cx="32" cy="31" r="2" fill="#4a3410"/>
+    <rect x="31" y="31" width="2" height="3.6" fill="#4a3410"/>
+    {/* 包角铆钉 */}
+    <circle cx="14" cy="27" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="50" cy="27" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="14" cy="43" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="50" cy="43" r="1.3" fill="url(#iaGoldV)"/>
+    {/* 星闪 */}
+    <path d="M52 12l1.1 2.7 2.7 1.1-2.7 1.1-1.1 2.7-1.1-2.7-2.7-1.1 2.7-1.1z" fill="#fff6cf"/>
+    <path d="M11.5 13.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#ffffff" opacity="0.9"/>
+    {/* 高光 */}
+    <path d="M13 23.5h24" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.3"/>
   </>),
 }
 

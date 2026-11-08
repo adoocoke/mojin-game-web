@@ -22,8 +22,8 @@ import { loadStats, recordCareer, loadAchClaimed, saveAchClaimed, ACHIEVEMENTS }
 import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from './orders'
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
-import { reportWarGame, warEventActive, markWarLogin, reportWarKill, reportD0Game } from './warevents'
-import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, addTrickTokens, COSMETIC_NAMES } from './trickster'
+import { reportWarGame, warEventActive, markWarLogin, reportWarKill, reportD0Game, reportSupportCall, zhoumoDoubleActive } from './warevents'
+import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, addTrickTokens, COSMETIC_NAMES, reportZmRaid, reportZmPgKill } from './trickster'
 import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
 
 /** 战场景内载具实例 */
@@ -471,7 +471,7 @@ export class Game {
   /** 大战场「空地突袭」：B = 呼叫空袭（CD 45s，只伤敌军） */
   private useWarStrike() {
     if (!this.war || uiState.phase !== 'playing') return
-    if (!warEventActive('kongdi')) { this.toast('「空地突袭」活动不在开放期', 'white'); return }
+    if (!warEventActive('kongdi') && !warEventActive('support')) { this.toast('「空地突袭 / 区域策援」活动不在开放期', 'white'); return }
     if (this.warStrikeCd > 0) { this.toast(`空袭冷却中 ${Math.ceil(this.warStrikeCd)}s`, 'white'); return }
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw)
     for (let i = 0; i < 3; i++) {
@@ -485,6 +485,7 @@ export class Game {
       this.artyStrikes.push({ x, z, t: 2.4, ring, friendly: true })
     }
     this.warStrikeCd = 45
+    if (warEventActive('support')) reportSupportCall() // 周挑战·区域策援：呼叫阵地支援累计
     this.toast('✈️ 空地突袭：空袭已呼叫，注意蓝圈落点！', 'cyan')
     sfx.ui()
     notify()
@@ -1093,6 +1094,7 @@ export class Game {
         const gid = this.gunDef.id
         if (['uzi', 'mp5', 'vector', 's12k', 'm870', 'p92', 'deagle', 'knife'].includes(gid)) reportWarKill('close')
         else if (['sks', 'mini14', 'm24', 'awm', 'm700'].includes(gid)) reportWarKill('far')
+        if (gid === 'mini14') reportZmPgKill() // 洲末品枪：Mini14 击杀累计（11/7-11/9）
       }
     }
     // 赛季主题任务：爆炸物击杀
@@ -1791,6 +1793,7 @@ export class Game {
       if (evLoot.has('luckybag') && Math.random() < 0.1) autoPlace(c.grid, makeItem('ev_luckybag', 1))
       if (evLoot.has('mandelbrick') && Math.random() < 0.04) autoPlace(c.grid, makeItem('ev_mandelbrick', 1))
       if (evLoot.has('huaxiaodie') && c.title === '鸟窝' && Math.random() < 0.3) autoPlace(c.grid, makeItem('v_butterfly', 1)) // 花小蝶返场：鸟窝概率掉落
+      if (trickActive('landeng') && (c.title === '高级旅行箱' || c.title === '收纳盒') && Math.random() < 0.12) autoPlace(c.grid, makeItem('v_landeng', 1)) // 兰小登返场：野外物资箱概率掉落
       // 官方活动「极星守望」：容器概率产出可组装收集品碎片（德小兰 / 灰鲭鲨）
       if (evLoot.has('jixing') && Math.random() < 0.05) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'ev_jx_doll' : 'ev_jx_shark', 1))
       // 官方活动「哈夫克军工配件」：武器箱小概率产出 M700 专属 HVK 配件（对应官方：大武器箱小概率产出）
@@ -1883,7 +1886,7 @@ export class Game {
       if (!uiState.stash) return
       const { n, value } = sellAllValuables(uiState.stash)
       if (n === 0) { this.toast('仓库里没有变卖物', 'white'); return }
-      const mult = currentEvent().event?.id === 'goldrush' ? 2 : 1
+      const mult = currentEvent().event?.id === 'goldrush' ? 2 : trickActive('flash') ? 1.25 : 1 // 官方「限时闪购」：出售价 +25%（11/7-11/12）
       uiState.money += value * mult
       saveMoney(uiState.money)
       sfx.sell()
@@ -2011,8 +2014,8 @@ export class Game {
       if (!uiState.stash) return
       const gained = sellFromStash(uiState.stash, uid)
       if (gained == null) return
-      // 活动「金市上涨」：双倍金币
-      const mult = currentEvent().event?.id === 'goldrush' ? 2 : 1
+      // 活动「金市上涨」：双倍金币；官方「限时闪购」：+25%
+      const mult = currentEvent().event?.id === 'goldrush' ? 2 : trickActive('flash') ? 1.25 : 1
       uiState.money += gained * mult
       saveMoney(uiState.money)
       sfx.sell()
@@ -2043,6 +2046,24 @@ export class Game {
             uiState.money += gold
             saveMoney(uiState.money)
             msg = `🧧 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
+          }
+        }
+      } else if (def.openable === 'hongyun') {
+        // 红运补给包：金币 4,000-12,000 或随机物资（官方「红运当头」对局奖励，11/7-11/9）
+        if (Math.random() < 0.6) {
+          const gold = 4000 + Math.floor(Math.random() * 8001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🧰 红运补给包开出 ${gold.toLocaleString()} 金币！`
+        } else {
+          const it = rollLootItem(LOOT_POOL, 1.3)
+          if (autoPlace(uiState.stash, it)) {
+            msg = `🧰 红运补给包开出「${ITEMS[it.defId].name}」！`
+          } else {
+            const gold = itemValue(defOf(it), it.rarity) * it.count
+            uiState.money += gold
+            saveMoney(uiState.money)
+            msg = `🧰 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
           }
         }
       } else if (def.openable === 'warpack') {
@@ -2326,6 +2347,11 @@ export class Game {
     engine.toggleWarSniper = () => {
       uiState.warSniper = !uiState.warSniper
       try { localStorage.setItem('mojin_war_sniper', uiState.warSniper ? '1' : '0') } catch { /* 忽略 */ }
+      sfx.ui(); notify()
+    }
+    engine.toggleWarBlade = () => {
+      uiState.warBlade = !uiState.warBlade
+      try { localStorage.setItem('mojin_war_blade', uiState.warBlade ? '1' : '0') } catch { /* 忽略 */ }
       notify()
     }
     // 武器配件：安装 / 卸下
@@ -2737,7 +2763,11 @@ export class Game {
       this.spawnWarVehicles()
     }
     // 大战场：纯枪法模式，新手无枪则系统配发一把步枪
-    if (this.war && this.gunDef.melee && !this.ownedGun
+    if (this.war && uiState.warBlade && warEventActive('blade') && this.gunDef.melee && !this.ownedGun
+      && !this.backpack.placed.some(p => defOf(p.item).kind === 'weapon' && !!defOf(p.item).gunId)) {
+      // 官方活动「游刃有余再临」：白刃作战——开局只配匕首（11/7-11/12）
+      this.toast('🔪 白刃作战：本局仅配发匕首，近身决胜负！', 'cyan')
+    } else if (this.war && this.gunDef.melee && !this.ownedGun
       && !this.backpack.placed.some(p => defOf(p.item).kind === 'weapon' && !!defOf(p.item).gunId)) {
       autoPlace(this.backpack, makeItem(uiState.warSniper ? 'w_m700' : 'w_m4a1', 1))
       autoPlace(this.backpack, makeItem('a_ammo', 3))
@@ -4163,6 +4193,12 @@ export class Game {
     // 官方大战场专项活动战报（群星行动·贯穿封锁 / 战场畅玩月 / 逐命十字等）
     reportWarGame(result, kills, uiState.warSniper, this.warMode)
     reportD0Game() // 黑潮赛季补给：对局累计
+    // 官方活动「洲末上分」：大战场对局通行证经验（周末 20:00-22:00 双倍，11/7-11/9）
+    {
+      const bp = loadBp()
+      const lvres = gainBpXp(bp, zhoumoDoubleActive() ? 100 : 50)
+      if (lvres.after > lvres.before) this.toast(`🎫 通行证升级 Lv.${lvres.before} → Lv.${lvres.after}！（洲末上分）`, 'cyan')
+    }
     const modeName = this.warMode === 'ad' ? '攻防战' : '团队死斗'
     const title = result === 'win' ? `🏆 ${modeName} · 我方胜利` : result === 'lose' ? `💀 ${modeName} · 战败` : `⚔️ ${modeName} · 平局`
     const lines: string[] = []
@@ -4333,6 +4369,17 @@ export class Game {
             this.toast(`🦋 花小蝶 ×${bf} 兑换物流凭证 +${bf}（余额 ${total}，活动中心可兑换奖励）`, 'cyan')
           }
         }
+        // 官方活动「兰小登返场」：带出的每只兰小登兑换 1 张物流凭证（11/7-11/12）
+        if (trickActive('landeng')) {
+          let ld = 0
+          for (const g of [this.backpack, this.safebox]) for (const p of g.placed) if (p.item.defId === 'v_landeng') ld += p.item.count
+          if (ld > 0) {
+            const total = addLogiVouchers(ld)
+            this.toast(`🪆 兰小登 ×${ld} 兑换物流凭证 +${ld}（余额 ${total}，活动中心可兑换奖励）`, 'cyan')
+          }
+        }
+        // 官方活动「红运当头」：完成 1 场烽火对局累计任务进度（11/7-11/9）
+        reportZmRaid()
         // 官方活动「空投夺宝」：炫彩花小蝶每只兑换 3 张物流凭证（稀有变种）
         {
           let dz = 0

@@ -18,6 +18,12 @@ export const TRICK_WINDOWS = {
   glimmer:   { start: '2026-10-30T00:00:00+08:00', end: '2026-11-08T23:59:59+08:00' }, // 微光时刻将至（登录任务）
   sprint:    { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 赛季冲刺（排位双倍/BP 经验加码）
   airdrop:   { start: '2026-10-30T00:00:00+08:00', end: '2026-11-04T23:59:59+08:00' }, // 空投夺宝（烽火地带）
+  // ===== 2026-11-06 公告批次 =====
+  sprint2:   { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' }, // 赛季冲刺第二弹（排位双倍/BP 无上限）
+  invite:    { start: '2026-11-07T00:00:00+08:00', end: '2026-11-16T23:59:59+08:00' }, // 阿萨拉邀约（登录任务）
+  landeng:   { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' }, // 兰小登返场（烽火地带）
+  flash:     { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' }, // 限时闪购（烽火地带）
+  zhoumo:    { start: '2026-11-07T00:00:00+08:00', end: '2026-11-09T23:59:59+08:00' }, // 洲末周末五连（红运当头/有米/畅玩/上分/品枪）
 } as const
 
 export type TrickWindowId = keyof typeof TRICK_WINDOWS
@@ -38,10 +44,15 @@ export interface TricksterSave {
   shopClaimed: string[] // 已兑换的限购商品 id
   glimmerDays: string[]    // 微光时刻将至：累计登录日（YYYY-MM-DD）
   glimmerClaimed: string[] // 微光时刻将至：已领取的奖励 id
+  inviteDays: string[]     // 阿萨拉邀约：累计登录日
+  inviteClaimed: string[]  // 阿萨拉邀约：已领取的奖励 id
+  zmRaids: number          // 洲末周末：窗口内完成烽火对局
+  zmPgKills: number        // 洲末品枪：窗口内 mini14 击杀（全模式）
+  zmClaimed: string[]      // 洲末周末：已领取的奖励 id
 }
 
 function def(): TricksterSave {
-  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [], glimmerDays: [], glimmerClaimed: [] }
+  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [], glimmerDays: [], glimmerClaimed: [], inviteDays: [], inviteClaimed: [], zmRaids: 0, zmPgKills: 0, zmClaimed: [] }
 }
 
 export function loadTrickster(): TricksterSave {
@@ -84,6 +95,7 @@ export const COSMETIC_NAMES: Record<string, string> = {
   cos_avatar_trick: '头像「捣蛋夜」',
   cos_spray_gaga: '喷漆「嘎嘎吓人」',
   cos_badge_heichao: '纪念徽章「黑潮 D0」',
+  cos_action_clap: '动作「鼓掌」',
 }
 
 // ===================== 捣蛋鬼商店（捣蛋代币兑换） =====================
@@ -152,8 +164,12 @@ export const LOGI_SHOP: TrickShopItem[] = [
   { id: 'lg_brick', icon: '🧱', name: '猩红曼德尔砖 ×1', cost: 5, kind: 'item', payload: 'ev_mandelbrick', repeat: true, desc: '破译保底红色物资' },
 ]
 
+export function logiShopActive(now = Date.now()): boolean {
+  return trickActive('butterfly', now) || trickActive('landeng', now) || trickActive('invite', now)
+}
+
 export function redeemLogi(id: string): { kind: TrickShopItem['kind']; payload: string | number; name: string } | null {
-  if (!trickActive('butterfly')) return null
+  if (!logiShopActive()) return null
   const item = LOGI_SHOP.find(t => t.id === id)
   if (!item) return null
   const s = loadTrickster()
@@ -188,7 +204,7 @@ export const RAVEN_TOKENS: Record<RavenOutcome, number> = { surprise: 6, equal: 
 /** 通行证经验倍率：通行证冲刺窗口 ×1.5；赛季冲刺窗口（官方：排位赛和晋升之路获胜双倍积分、通行证周经验无上限）
  *  等价镜像为行动档案（通行证）经验 ×2。两窗口重叠取较高倍率。 */
 export function bpRushMul(now = Date.now()): number {
-  if (trickActive('sprint', now)) return 2
+  if (trickActive('sprint', now) || trickActive('sprint2', now)) return 2
   return trickActive('bprush', now) ? 1.5 : 1
 }
 
@@ -233,4 +249,102 @@ export function claimGlimmer(id: string): { vouchers?: number; skin?: string; na
   if (r.vouchers) s.logiVouchers += r.vouchers
   saveTrickster(s)
   return { vouchers: r.vouchers, skin: r.skin, name: r.name }
+}
+
+// ===================== 阿萨拉邀约（2026-11-06 公告批次，登录任务） =====================
+// 官方规则：接受来自阿萨拉的邀请（全新赛季即将来临），奖励物流凭证、亚特兰蒂斯-UZI冲锋枪。
+export interface InviteReward {
+  id: string
+  day: number
+  icon: string
+  name: string
+  vouchers?: number
+  skin?: string
+}
+
+export const INVITE_REWARDS: InviteReward[] = [
+  { id: 'iv_d1', day: 1, icon: '🎟️', name: '阿萨拉邀约 · 第 1 天', vouchers: 2 },
+  { id: 'iv_d2', day: 2, icon: '🌊', name: '阿萨拉邀约 · 第 2 天', vouchers: 2, skin: 'sk_uzi_atlantis' },
+]
+
+export function markInviteLogin() {
+  if (!trickActive('invite')) return
+  const s = loadTrickster()
+  const today = new Date().toISOString().slice(0, 10)
+  if (!s.inviteDays.includes(today)) {
+    s.inviteDays.push(today)
+    saveTrickster(s)
+  }
+}
+
+export function claimInvite(id: string): { vouchers?: number; skin?: string; name: string } | null {
+  if (!trickActive('invite')) return null
+  const r = INVITE_REWARDS.find(g => g.id === id)
+  if (!r) return null
+  const s = loadTrickster()
+  if (s.inviteClaimed.includes(id)) return null
+  if (s.inviteDays.length < r.day) return null
+  s.inviteClaimed.push(id)
+  if (r.vouchers) s.logiVouchers += r.vouchers
+  saveTrickster(s)
+  return { vouchers: r.vouchers, skin: r.skin, name: r.name }
+}
+
+// ===================== 洲末周末五连·烽火侧（2026-11-06 公告批次） =====================
+// 官方：红运当头（登录领仿制钥匙补给自选包、参与对局领工艺藏品进阶红运当头补给包）、
+// 洲末有米（累计登录领标准/精锐制式装备券）、洲末品枪（本周品鉴 M14——本游戏无 M14，等价镜像为 Mini14）。
+export interface ZmReward {
+  id: string
+  icon: string
+  name: string
+  need: number
+  progress: (s: TricksterSave) => number
+  rewardText: string
+}
+
+export const ZM_REWARDS: ZmReward[] = [
+  { id: 'zm_hy_login', icon: '🗝️', name: '红运当头 · 周末登录', need: 1, progress: s => Math.min(s.inviteDays.length + 1, 1), rewardText: '仿制钥匙补给自选包 ×1（随机房卡）' },
+  { id: 'zm_hy_raid', icon: '🧰', name: '红运当头 · 完成 1 局烽火', need: 1, progress: s => s.zmRaids, rewardText: '工艺藏品进阶红运当头补给包 ×1' },
+  { id: 'zm_ym_d1', icon: '🥋', name: '洲末有米 · 累计登录 1 天', need: 1, progress: s => s.inviteDays.length, rewardText: '标准制式装备包（战术防弹衣+战术头盔）' },
+  { id: 'zm_ym_d2', icon: '🪖', name: '洲末有米 · 累计登录 2 天', need: 2, progress: s => s.inviteDays.length, rewardText: '精锐制式装备包（重型防弹衣+重装头盔）' },
+  { id: 'zm_pg', icon: '🔭', name: '洲末品枪 · Mini14 击杀 5', need: 5, progress: s => s.zmPgKills, rewardText: 'Mini14 射手步枪 ×1 + 5,000 金币' },
+]
+
+/** 窗口内完成烽火对局计数（红运当头参与任务） */
+export function reportZmRaid() {
+  if (!trickActive('zhoumo')) return
+  const s = loadTrickster()
+  s.zmRaids++
+  saveTrickster(s)
+}
+
+/** 窗口内 Mini14 击杀计数（洲末品枪，全模式） */
+export function reportZmPgKill() {
+  if (!trickActive('zhoumo')) return
+  const s = loadTrickster()
+  s.zmPgKills++
+  saveTrickster(s)
+}
+
+/** 领取洲末周末（烽火侧）奖励；返回发放内容（由调用方入账），失败返回 null */
+export function claimZm(id: string): { items?: string[]; gold?: number; name: string; rewardText: string } | null {
+  if (!trickActive('zhoumo')) return null
+  const r = ZM_REWARDS.find(z => z.id === id)
+  if (!r) return null
+  const s = loadTrickster()
+  if (s.zmClaimed.includes(id)) return null
+  if (r.progress(s) < r.need) return null
+  s.zmClaimed.push(id)
+  saveTrickster(s)
+  switch (id) {
+    case 'zm_hy_login': {
+      const cards = ['k_w_shed', 'k_d_oasis', 'k_t_dorm', 'k_w_cave', 'k_d_crypt']
+      return { items: [cards[Math.floor(Math.random() * cards.length)]], name: r.name, rewardText: r.rewardText }
+    }
+    case 'zm_hy_raid': return { items: ['ev_hongyun'], name: r.name, rewardText: r.rewardText }
+    case 'zm_ym_d1': return { items: ['armor2', 'helmet2'], name: r.name, rewardText: r.rewardText }
+    case 'zm_ym_d2': return { items: ['armor3', 'helmet3'], name: r.name, rewardText: r.rewardText }
+    case 'zm_pg': return { items: ['w_mini14'], gold: 5000, name: r.name, rewardText: r.rewardText }
+    default: return null
+  }
 }

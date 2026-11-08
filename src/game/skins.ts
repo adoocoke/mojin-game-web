@@ -67,6 +67,11 @@ export const SKINS: SkinDef[] = [
     desc: '影之刃零联动传说近战：玄铁刀身，刃锋半褪时赤芒流转（对应官方：黑伤捆绑包；等价镜像为战术匕首涂装，限时金币上架，配色原创）' },
   { id: 'sk_thunderbreath', name: '雷霆之息', icon: '⚡', rarity: 'cyan', gun: 'any', main: 0x1a2a4a, accent: 0x6a7a92, emissive: 0x4ab8ff, emissiveIntensity: 0.38, price: 15000,
     desc: '「银翼·雷霆之息」窗口期上架：雷云蓝枪身缠绕电弧光纹（对应官方：干员研究外观 银翼-雷霆之息；本游戏无干员外观系统，等价镜像为全武器通用涂装，配色原创）' },
+  // ---------- 2026-11-06 公告批次 ----------
+  { id: 'sk_uzi_atlantis', name: '亚特兰蒂斯', icon: '🌊', rarity: 'purple', gun: 'uzi', main: 0x14355a, accent: 0x2e8ac8, emissive: 0x5ac8f0, emissiveIntensity: 0.3,
+    desc: '「阿萨拉邀约」嘉奖：深海蓝枪身泛潮汐光纹（对应官方：亚特兰蒂斯-UZI冲锋枪，配色原创）' },
+  { id: 'sk_rose_death', name: '死神玫瑰', icon: '🥀', rarity: 'red', gun: 'any', main: 0x1c1216, accent: 0x8a1a2a, emissive: 0xd8b24a, emissiveIntensity: 0.28, price: 4800,
+    desc: '「死神玫瑰捆绑包」限时上架：暗金雕花缠枯玫瑰（对应官方：死神玫瑰-腾龙/ASVal/S12K 系列，2400 三角券；本游戏等价镜像为全武器通用涂装，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

@@ -5,7 +5,7 @@
 const KEY = 'mojin_vouchers_v1'
 
 export const VOUCHER_START = '2026-09-26T00:00:00+08:00'
-export const VOUCHER_END = '2026-10-17T23:59:59+08:00' // 券有效期随周年庆主窗口（9/21~10/17）结束清零
+export const VOUCHER_END = '2026-11-12T23:59:59+08:00' // 对齐官方 11/6 公告：限时三角券 11/12 24点失效清零
 export const VOUCHER_RAID_END = '2026-10-15T23:59:59+08:00' // 券获取任务（每日撤离）9/26~10/15
 export const VOUCHER_LOGIN1 = 500   // 9/26 起登录即领
 export const VOUCHER_LOGIN2 = 1000  // 10/1 起登录再领

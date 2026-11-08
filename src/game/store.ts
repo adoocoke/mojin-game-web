@@ -115,6 +115,7 @@ export interface UIState {
   ravenLamp: { idx: number; left: number } | null  // 当前交互的路灯（剩余蜡烛）
   vehicle: { name: string; icon: string; hp: number; maxHp: number; weapon: string } | null  // 正在驾驶的载具
   warSniper: boolean        // 逐命十字：大战场狙击对抗规则勾选
+  warBlade: boolean         // 游刃有余再临：白刃作战勾选（只配匕首）
 }
 
 export const uiState: UIState = {
@@ -166,6 +167,7 @@ export const uiState: UIState = {
   ravenOpen: false, ravenLamp: null,
   vehicle: null,
   warSniper: localStorage.getItem('mojin_war_sniper') === '1',
+  warBlade: localStorage.getItem('mojin_war_blade') === '1',
 }
 
 type Listener = () => void
@@ -229,6 +231,7 @@ export interface EngineAPI {
   ravenSubmit: (uid: string) => string | null
   closeRaven: () => void
   toggleWarSniper: () => void
+  toggleWarBlade: () => void
   mobileSwapWeapon: () => void
   selectMap: (id: MapId) => void
   selectWarMap: (id: MapId) => void
@@ -292,7 +295,7 @@ export const engine: EngineAPI = {
   toggleInventory: () => {}, restart: () => {},
   toMenu: () => {}, closeResult: () => {}, openStash: () => {}, closeStash: () => {}, stashMove: () => {}, stashClear: () => {}, sellStashItem: () => {}, sortStash: () => {}, sellAllValuables: () => {}, claimBossReward: () => {}, toggleQuestHud: () => {},
   mobileMove: () => {}, mobileLook: () => {}, mobileFire: () => {},
-  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {}, startBossPlay: () => {}, openHotpot: () => {}, closeHotpot: () => {}, ravenSubmit: () => null, closeRaven: () => {}, toggleWarSniper: () => {},
+  mobileAdsToggle: () => {}, mobileReload: () => {}, mobileInteract: () => {}, mobileSwapWeapon: () => {}, playHarp: () => {}, startBossPlay: () => {}, openHotpot: () => {}, closeHotpot: () => {}, ravenSubmit: () => null, closeRaven: () => {}, toggleWarSniper: () => {}, toggleWarBlade: () => {},
   selectMap: (id) => {
     if (uiState.phase !== 'menu') return
     localStorage.setItem('mojin_map', id)
