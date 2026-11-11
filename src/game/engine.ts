@@ -14,7 +14,7 @@ import { skinDef, loadSkins, grantSkin } from './skins'
 import { loadSeason, recordRaid, safeLv, SAFE_DIMS, SAFE_CELLS, phaseUnlocked, QUESTS } from './quests'
 import { SCOUT_SPOTS } from './story'
 import { findLevel, chapterOf, loadCampaign, saveCampaign, clearReward, type CampaignLevel } from './campaign'
-import { loadOpXp, saveOpXp, opLevel, effActive, xpForRaid } from './oplevel'
+import { loadOpXp, saveOpXp, opLevel, effSkill, xpForRaid } from './oplevel'
 import { MAP_MISSIONS } from './missions'
 import { vsClient, type VsSession, type RemoteState } from './net'
 import { loadBp, gainBpXp, claimBp as bpClaim, claimable, BP_MAX_LV } from './battlepass'
@@ -195,12 +195,24 @@ export class Game {
 
   // 干员技能
   private opMods: Required<OpMods> = { speed: 1, reload: 1, search: 1, extract: 1, med: 1, maxHp: 0, reduce: 0, luck: 0, seeRange: 1 }
-  private skillCdT = 0   // 技能冷却剩余秒数
+  private skillCdT = 0   // （旧）单技能冷却——保留给扮演德穆兰
+  private cds: Record<'v' | 'g' | 'x', number> = { v: 0, g: 0, x: 0 } // V/G/X 三技能冷却（对齐三角洲按键体系）
+  private dash: { dx: number; dz: number; speed: number; left: number; stunR: number; stunT: number; aoeDmg: number; aoeR: number; frontReduce: number } | null = null // 位移冲刺（战术滑铲/盾式破障器）
+  private shots: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; fuse: number; eff: { type: string; dmg?: number; r?: number; t?: number; stun?: number; heal?: number; dps?: number } }[] = [] // 技能投射物（榴弹/手雷/箭/飞刀/治疗弹）
+  private fields: { x: number; z: number; r: number; t: number; dps: number; tick: number; mesh: THREE.Mesh }[] = [] // 电击箭电场
+  private overdriveT = 0   // 动力外骨骼剩余
+  private overdriveMul = 0.35 // 外骨骼移速加成
+  private hunterT = 0      // 猎手时刻剩余
+  private shieldT = 0      // 防爆盾剩余
+  private shieldReduce = 0 // 防爆盾正面减伤比例
+  private armorPower = 0.6 // 重装堡垒减伤比例（armorT 为剩余秒数）
+  private skillHotT = 0    // 技能持续回血剩余（决死号令/战地急救）
+  private skillHotRate = 0 // 每秒回血量
   private invisT = 0     // 光学迷彩剩余
   // ===== 战术装备（P3 #22）：T 键使用，每局限 1 次 =====
   private droneT = 0     // 侦察无人机剩余
   private tacBrought = false // 本局战术装备已从仓库带入
-  private smokes: { x: number; z: number; r: number; t: number; mesh: THREE.Mesh }[] = []
+  private smokes: { x: number; z: number; r: number; t: number; mesh: THREE.Mesh; heal?: number }[] = []
   private mines: { x: number; z: number; floorY: number; mesh: THREE.Mesh }[] = []
   private armorT = 0     // 能量护甲剩余
   private revealT = 0    // 侦察脉冲剩余
@@ -385,9 +397,10 @@ export class Game {
       if (k === 'r') this.startReload()
       if (k === 'f') this.tryInteract()
       if (k === 'h') this.playHarmonica()
-      if (k === 'q') this.useSkill()
+      if (k === 'q' || k === 'v') this.castSkill('v') // 三角洲键位：V = 战术技（Q 兼容）
+      if (k === 'x') this.castSkill('x') // X = 大招
       if (k === 't') this.useTactical()
-      if (k === 'g') this.useBpTank()
+      if (k === 'g') { if (this.bossPlay) this.useBpTank(); else this.castSkill('g') } // G = 伤害技（扮演德穆兰时为遥控战车）
       if (k === 'b') this.useWarStrike()
       if (k === 'l') { engine.toggleQuestHud(); return }
       if (k === '1') this.equipKnife()
@@ -610,9 +623,109 @@ export class Game {
   }
 
   private useSkill() {
+    // 兼容入口：等同 V 战术技
+    this.castSkill('v')
+  }
+
+  /** 发射技能投射物（抛物线 + 落地/到时触发） */
+  private launchShot(eff: { type: string; dmg?: number; r?: number; t?: number; stun?: number; heal?: number; dps?: number },
+    opts: { speed?: number; up?: number; color?: number; size?: number; fuse?: number; spread?: number }) {
+    const dir = new THREE.Vector3()
+    this.camera.getWorldDirection(dir)
+    if (opts.spread) {
+      dir.x += (Math.random() - 0.5) * opts.spread
+      dir.y += (Math.random() - 0.5) * opts.spread * 0.5
+      dir.normalize()
+    }
+    const color = opts.color ?? 0xffaa33
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(opts.size ?? 0.22, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, emissive: color, emissiveIntensity: 1.8 }))
+    mesh.position.copy(this.pos).add(dir.clone().multiplyScalar(1.2))
+    this.world.scene.add(mesh)
+    const sp = opts.speed ?? 18
+    this.shots.push({ mesh, vx: dir.x * sp, vy: dir.y * sp + (opts.up ?? 3.5), vz: dir.z * sp, fuse: opts.fuse ?? 0, eff })
+  }
+
+  /** 技能烟雾（heal>0 时为治疗雾，泛绿色） */
+  private spawnSkillSmoke(x: number, z: number, r: number, t: number, heal: number) {
+    const sy = this.groundHeightAt(x, z, this.pos.y - EYE)
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12),
+      new THREE.MeshBasicMaterial({ color: heal > 0 ? 0x7ce8a8 : 0xb8bcc2, transparent: true, opacity: 0.55, depthWrite: false }))
+    mesh.position.set(x, sy + r * 0.42, z)
+    this.world.scene.add(mesh)
+    this.smokes.push({ x, z, r, t, mesh, heal })
+  }
+
+  /** 范围伤害 + 可选眩晕（技能 AoE 统一入口），返回命中数 */
+  private aoeHit(x: number, z: number, r: number, dmg: number, stunT = 0) {
+    let hit = 0
+    for (const e of this.enemies.enemies) {
+      if (e.dead) continue
+      if (Math.hypot(e.group.position.x - x, e.group.position.z - z) <= r) {
+        if (stunT > 0) e.stunT = Math.max(e.stunT, stunT)
+        const killed = this.enemies.damage(e, dmg * (e.markedT > 0 ? 1 + this.markBonus : 1))
+        hit++
+        if (killed) this.onEnemyKilled(e, 'explosive'); else this.checkBossFrenzy(e)
+      }
+    }
+    return hit
+  }
+
+  /** 投射物落地/到时触发效果 */
+  private triggerShot(s: { mesh: THREE.Mesh; eff: { type: string; dmg?: number; r?: number; t?: number; stun?: number; heal?: number; dps?: number } }) {
+    const p = s.mesh.position
+    const eff = s.eff
+    switch (eff.type) {
+      case 'explode': {
+        try { sfx.boom() } catch { /* 忽略 */ }
+        const hit = this.aoeHit(p.x, p.z, eff.r ?? 4, (eff.dmg ?? 80) * (this.theme.mods.explosiveMul ?? 1), eff.stun ?? 0)
+        this.toast(hit > 0 ? `💥 爆炸命中 ${hit} 个敌人！` : '💥 爆炸落空', hit > 0 ? 'cyan' : 'white')
+        this.recoilT = 1
+        break
+      }
+      case 'smoke':
+        this.spawnSkillSmoke(p.x, p.z, eff.r ?? 5, eff.t ?? 8, eff.heal ?? 0)
+        this.toast(eff.heal ? '🌫️ 疗愈烟幕展开：烟中持续回血' : '🌫️ 烟幕展开：封锁视线', 'cyan')
+        break
+      case 'recon': {
+        this.revealT = Math.max(this.revealT, eff.t ?? 6)
+        let n = 0
+        for (const e of this.enemies.enemies) {
+          if (e.dead) continue
+          if (Math.hypot(e.group.position.x - p.x, e.group.position.z - p.z) <= (eff.r ?? 45)) { e.markedT = Math.max(e.markedT, eff.t ?? 6); n++ }
+        }
+        this.toast(`🏹 侦察箭脉冲：敌人位置已标记（M），${n} 个目标被锁定`, 'cyan')
+        break
+      }
+      case 'field': {
+        const ring = new THREE.Mesh(new THREE.RingGeometry((eff.r ?? 3) - 0.3, eff.r ?? 3, 24),
+          new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.7, side: THREE.DoubleSide }))
+        ring.rotation.x = -Math.PI / 2
+        ring.position.set(p.x, this.groundHeightAt(p.x, p.z, p.y) + 0.12, p.z)
+        this.world.scene.add(ring)
+        this.fields.push({ x: p.x, z: p.z, r: eff.r ?? 3, t: eff.t ?? 5, dps: eff.dps ?? 14, tick: 0, mesh: ring })
+        this.toast('⚡ 电场展开：范围内敌人持续受创', 'cyan')
+        break
+      }
+      case 'blind': {
+        let n = 0
+        for (const e of this.enemies.enemies) {
+          if (e.dead) continue
+          if (Math.hypot(e.group.position.x - p.x, e.group.position.z - p.z) <= (eff.r ?? 4)) { e.stunT = Math.max(e.stunT, eff.t ?? 3); n++ }
+        }
+        this.toast(n > 0 ? `🔪 命中！${n} 个敌人瘫痪` : '🔪 落点没有敌人', n > 0 ? 'cyan' : 'white')
+        break
+      }
+    }
+  }
+
+  /** 干员技能：V 战术技 / G 伤害技 / X 大招（对齐三角洲行动键位手感） */
+  private castSkill(slot: 'v' | 'g' | 'x') {
     if (uiState.phase !== 'playing' || this.hp <= 0) return
     if (this.bossPlay) {
-      // 扮演德穆兰：Q = 威胁显像（20 秒全图标敌 + 行动加速，CD 40s）
+      // 扮演德穆兰：V/Q = 威胁显像（G 为遥控战车、T 为爆破车，不在此处理）
+      if (slot !== 'v') return
       if (this.skillCdT > 0) { this.toast(`威胁显像冷却中 ${Math.ceil(this.skillCdT)}s`, 'white'); return }
       this.skillCdT = 40
       uiState.skillCd = 40
@@ -623,66 +736,181 @@ export class Game {
       return
     }
     const op = this.currentOp()
-    const a = effActive(op, this.opLv())
-    if (this.skillCdT > 0) { this.toast(`技能冷却中 ${Math.ceil(this.skillCdT)}s`, 'white'); return }
-    this.skillCdT = a.cd
-    uiState.skillCd = a.cd
-    uiState.skillActive = a.kind
-    switch (a.kind) {
-      case 'stun': {
+    const a = effSkill(op, slot, this.opLv())
+    if (this.cds[slot] > 0) { this.toast(`${a.icon} ${a.name} 冷却中 ${Math.ceil(this.cds[slot])}s`, 'white'); return }
+    this.cds[slot] = a.cd
+    uiState.skillCd = this.cds.v
+    uiState.skillCdG = this.cds.g
+    uiState.skillCdX = this.cds.x
+    uiState.skillActive = a.mech
+    const fwd = { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) }
+    const keyName = slot === 'v' ? 'V' : slot === 'g' ? 'G' : 'X'
+    switch (a.mech) {
+      case 'dash': {
+        // 位移冲刺：count>0 为持盾冲锋（正面减伤 80%，停止时范围重击+击倒），否则为战术滑铲
+        const dist = a.power ?? 8
+        const isShieldRush = (a.count ?? 0) > 0
+        this.dash = {
+          dx: fwd.x, dz: fwd.z, speed: dist / 0.45, left: dist,
+          stunR: a.radius ?? 2.5, stunT: a.dur ?? 2.5,
+          aoeDmg: a.count ?? 0, aoeR: 5, frontReduce: isShieldRush ? 0.8 : 0,
+        }
+        this.toast(isShieldRush ? '🛡️ 盾式破障器：冲锋！撞到一切都会停下来重击' : '🛹 战术滑铲：外骨骼全速推进！', 'cyan')
+        break
+      }
+      case 'overdrive':
+        this.overdriveT = a.dur ?? 6
+        this.overdriveMul = a.power ?? 0.35
+        this.toast(`🦿 动力外骨骼超载：${a.dur ?? 6} 秒移速爆发，击杀回血续时`, 'cyan')
+        break
+      case 'triShot':
+        for (let i = 0; i < (a.count ?? 3); i++) {
+          this.launchShot({ type: 'explode', dmg: a.power ?? 45, r: a.radius ?? 3 },
+            { speed: 19 + i * 2.5, up: 3 + i * 0.8, color: 0xff7a3c, spread: 0.06 })
+        }
+        this.toast(`💥 三联装手炮：${a.count ?? 3} 枚榴弹出膛！`, 'cyan')
+        break
+      case 'healDart':
+        this.launchShot({ type: 'smoke', r: a.radius ?? 4, t: a.dur ?? 6, heal: a.power ?? 10 }, { speed: 16, color: 0x7ce8a8, size: 0.18 })
+        this.toast('🎯 激素弹发射：落点将生成治疗雾', 'cyan')
+        break
+      case 'healSmoke':
+        this.launchShot({ type: 'smoke', r: a.radius ?? 6, t: a.dur ?? 10, heal: a.power ?? 4 }, { speed: 14, color: 0x9adfbc })
+        break
+      case 'heal': {
+        if (this.hp >= uiState.maxHp) {
+          this.toast('生命值已满', 'white')
+          this.cds[slot] = 5
+          uiState.skillCd = this.cds.v; uiState.skillCdG = this.cds.g; uiState.skillCdX = this.cds.x
+          break
+        }
+        this.hp = Math.min(uiState.maxHp, this.hp + (a.power ?? 55))
+        uiState.hp = this.hp
+        this.skillHotT = 5
+        this.skillHotRate = 5
+        this.toast(`❤️ 战地急救 +${a.power ?? 55} HP，持续恢复中`, 'green')
+        break
+      }
+      case 'reconArrow':
+        this.launchShot({ type: 'recon', t: a.dur ?? 6, r: a.radius ?? 45 }, { speed: 26, up: 2, color: 0x67e8f9, size: 0.15 })
+        this.toast('🏹 侦察箭射出：落点将触发脉冲扫描', 'cyan')
+        break
+      case 'shockArrow':
+        this.launchShot({ type: 'field', r: a.radius ?? 3, t: a.dur ?? 5, dps: a.power ?? 14 }, { speed: 24, up: 2, color: 0xfacc15, size: 0.15 })
+        this.toast('⚡ 电击箭射出：落点将展开电场', 'cyan')
+        break
+      case 'reveal':
+        this.revealT = a.dur ?? 12
+        this.toast('📡 广域骇入启动，敌人位置已标记在地图上（M）', 'cyan')
+        break
+      case 'shield':
+        this.shieldT = a.dur ?? 6
+        this.shieldReduce = a.power ?? 0.7
+        this.toast(`🛡️ 防爆盾举起：${a.dur ?? 6} 秒正面减伤 ${Math.round((a.power ?? 0.7) * 100)}%`, 'cyan')
+        break
+      case 'shieldBash': {
         let n = 0
         for (const e of this.enemies.enemies) {
           if (e.dead) continue
-          if (e.group.position.distanceTo(this.pos) <= a.power) { e.stunT = a.dur ?? 4; n++ }
+          const dx = e.group.position.x - this.pos.x, dz = e.group.position.z - this.pos.z
+          const dist = Math.hypot(dx, dz)
+          if (dist <= (a.radius ?? 3.5) && (dx * fwd.x + dz * fwd.z) / (dist || 1) > 0.5) {
+            e.stunT = Math.max(e.stunT, a.dur ?? 1.5)
+            e.group.position.x += (dx / (dist || 1)) * 3
+            e.group.position.z += (dz / (dist || 1)) * 3
+            const killed = this.enemies.damage(e, (a.power ?? 60) * (e.markedT > 0 ? 1 + this.markBonus : 1))
+            n++
+            if (killed) this.onEnemyKilled(e); else this.checkBossFrenzy(e)
+          }
         }
-        this.toast(n > 0 ? `💥 震撼弹！眩晕了 ${n} 个敌人` : '💥 震撼弹！范围内没有敌人', 'cyan')
+        this.recoilT = 1
+        this.toast(n > 0 ? `💢 震荡盾击命中 ${n} 个敌人！` : '💢 盾击挥空', n > 0 ? 'cyan' : 'white')
         break
       }
-      case 'heal': {
-        if (this.hp >= uiState.maxHp) { this.toast('生命值已满', 'white'); this.skillCdT = 5; uiState.skillCd = 5; break }
-        this.hp = Math.min(uiState.maxHp, this.hp + a.power)
-        uiState.hp = this.hp
-        this.toast(`❤️ 急救针 +${a.power} HP`, 'green')
-        break
-      }
-      case 'reveal':
-        this.revealT = a.dur ?? 10
-        this.toast('📡 侦察脉冲启动，敌人位置已标记在地图上（M）', 'cyan')
-        break
       case 'armor':
         this.armorT = a.dur ?? 8
-        this.toast(`🛡️ 能量护甲启动，减伤 ${Math.round(a.power * 100)}%`, 'cyan')
+        this.armorPower = a.power ?? 0.6
+        this.toast(`🏰 重装堡垒启动，${a.dur ?? 8} 秒减伤 ${Math.round((a.power ?? 0.6) * 100)}%`, 'cyan')
         break
-      case 'invis':
-        this.invisT = a.dur ?? 7
-        this.toast('👻 光学迷彩启动，敌人看不到你了', 'cyan')
+      case 'blindKnife':
+        this.launchShot({ type: 'blind', r: a.radius ?? 4, t: a.dur ?? 3 }, { speed: 24, up: 2, color: 0xa78bfa, size: 0.14 })
+        this.toast('🔪 飞刀掷出！', 'cyan')
         break
-      case 'charge': {
-        // 向前掷出炸药包，dur 秒后爆炸
-        const dir = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw))
-        const mesh = new THREE.Mesh(
-          new THREE.SphereGeometry(0.28, 10, 8),
-          new THREE.MeshStandardMaterial({ color: 0x2a1505, emissive: 0xff5a3c, emissiveIntensity: 2.2 }))
-        mesh.position.copy(this.pos).add(dir.clone().multiplyScalar(3.5))
-        mesh.position.y = this.pos.y - EYE + 0.4
-        this.world.scene.add(mesh)
-        this.charge = { mesh, t: a.dur ?? 1.5, dmg: a.power }
-        this.toast('🧨 炸药包已掷出！', 'red')
+      case 'jam': {
+        let n = 0
+        for (const e of this.enemies.enemies) {
+          if (e.dead) continue
+          if (e.group.position.distanceTo(this.pos) <= (a.radius ?? 20)) { e.markedT = Math.max(e.markedT, a.dur ?? 6); n++ }
+        }
+        this.markBonus = Math.max(this.markBonus, a.power ?? 0.25)
+        this.toast(n > 0 ? `📵 信号扰乱：${n} 个敌人被标记（受伤 +${Math.round((a.power ?? 0.25) * 100)}%）` : '📵 范围内没有敌人', n > 0 ? 'cyan' : 'white')
         break
       }
+      case 'invis':
+        this.invisT = a.dur ?? 8
+        this.toast('👻 光学迷彩启动，敌人看不到你了', 'cyan')
+        break
+      case 'magnetBomb':
+        this.launchShot({ type: 'explode', dmg: a.power ?? 100, r: a.radius ?? 5 }, { speed: 15, fuse: 1.5, color: 0xff5a3c })
+        this.toast('🧲 磁吸炸弹掷出：自动吸附最近目标', 'cyan')
+        break
+      case 'grenade':
+        this.launchShot({ type: 'explode', dmg: a.power ?? 85, r: a.radius ?? 4, stun: a.dur ?? 2 }, { speed: 17, fuse: 2, color: 0xffb03c })
+        this.toast('🧨 高爆手雷掷出！', 'cyan')
+        break
+      case 'multiCharge':
+        for (let i = 0; i < (a.count ?? 3); i++) {
+          this.launchShot({ type: 'explode', dmg: a.power ?? 90, r: a.radius ?? 5 },
+            { speed: 13 + i * 2, up: 4 + i, fuse: 1.2 + i * 0.4, color: 0xff5a3c, spread: 0.1 })
+        }
+        this.toast(`☄️ 连环爆破：${a.count ?? 3} 个炸药包掷出！`, 'red')
+        break
+      case 'charge':
+        this.launchShot({ type: 'explode', dmg: a.power ?? 90, r: a.radius ?? 5 }, { speed: 13, fuse: 1.5, color: 0xff5a3c })
+        break
+      case 'ringSmoke': {
+        const n = 8, rr = a.radius ?? 5.5
+        for (let i = 0; i < n; i++) {
+          const ang = (Math.PI * 2 * i) / n
+          this.spawnSkillSmoke(this.pos.x + Math.cos(ang) * rr, this.pos.z + Math.sin(ang) * rr, 2.4, a.dur ?? 10, 0)
+        }
+        this.toast('🌀 环形烟幕展开：你在烟芯，外部视野全遮蔽', 'cyan')
+        break
+      }
+      case 'smoke':
+        this.launchShot({ type: 'smoke', r: a.radius ?? 6, t: a.dur ?? 10, heal: 0 }, { speed: 14, color: 0xb8bcc2 })
+        break
       case 'mark': {
         let n = 0
         for (const e of this.enemies.enemies) {
           if (e.dead) continue
-          if (e.group.position.distanceTo(this.pos) <= 30) { e.markedT = a.dur ?? 8; n++ }
+          if (e.group.position.distanceTo(this.pos) <= (a.radius ?? 30)) { e.markedT = Math.max(e.markedT, a.dur ?? 8); n++ }
         }
-        this.markBonus = a.power
-        this.toast(n > 0 ? `🔴 死亡标记！${n} 个敌人受伤 +${Math.round(a.power * 100)}%` : '🔴 范围内没有敌人', 'cyan')
+        this.markBonus = Math.max(this.markBonus, a.power ?? 0.35)
+        this.toast(n > 0 ? `🔴 死亡标记！${n} 个敌人受伤 +${Math.round((a.power ?? 0.35) * 100)}%` : '🔴 范围内没有敌人', n > 0 ? 'cyan' : 'white')
         break
       }
       case 'rally':
-        this.rallyT = a.dur ?? 10
-        this.toast('📣 战术号令！移速/换弹/射速全面提升', 'cyan')
+        this.rallyT = a.dur ?? 8
+        this.toast('💉 神经振奋剂注入：移速/换弹/射速全面提升', 'cyan')
+        break
+      case 'stim': {
+        this.skillHotT = a.dur ?? 12
+        this.skillHotRate = 3
+        for (const e of this.enemies.enemies) if (!e.dead) e.markedT = Math.max(e.markedT, a.dur ?? 12)
+        this.markBonus = Math.max(this.markBonus, a.power ?? 0.2)
+        this.toast('📣 决死号令！全场敌人受伤加深，自身持续恢复', 'cyan')
+        break
+      }
+      case 'hunter': {
+        this.hunterT = a.dur ?? 12
+        for (const e of this.enemies.enemies) if (!e.dead) e.markedT = Math.max(e.markedT, a.dur ?? 12)
+        this.markBonus = Math.max(this.markBonus, a.power ?? 0.25)
+        this.toast('🏹 猎手时刻：全场锁定，击杀回血', 'cyan')
+        break
+      }
+      default:
+        this.toast(`[${keyName}] ${a.name} 尚未实装`, 'white')
         break
     }
     try { sfx.hit() } catch { /* 忽略 */ }
@@ -1085,6 +1313,9 @@ export class Game {
 
   private onEnemyKilled(e: Enemy, cause?: 'explosive') {
     this.kills++
+    // 动力外骨骼：击杀回血并续时；猎手时刻：击杀回血
+    if (this.overdriveT > 0) { this.overdriveT += 2; this.hp = Math.min(uiState.maxHp, this.hp + 15); uiState.hp = this.hp }
+    if (this.hunterT > 0) { this.hp = Math.min(uiState.maxHp, this.hp + 10); uiState.hp = this.hp }
     // 官方 10/22 公告活动：爆炸物击杀计入「黑潮挑战」（全模式等价镜像）
     if (cause === 'explosive' && warEventActive('heichao')) reportWarKill('explosive')
     // 大战场：狂欢加码（近/远程）+ 钢铁洪流（载具击杀）进度
@@ -2339,6 +2570,8 @@ export class Game {
     engine.mobileAdsToggle = () => { if (!this.gunDef.melee) this.ads = !this.ads }
     engine.mobileReload = () => this.startReload()
     engine.useSkill = () => this.useSkill()
+    engine.useSkillG = () => this.castSkill('g')
+    engine.useSkillX = () => this.castSkill('x')
     engine.startBossPlay = () => this.startBossPlay()
     engine.openHotpot = () => { uiState.hotpotOpen = true; notify() }
     engine.closeHotpot = () => { uiState.hotpotOpen = false; notify() }
@@ -2599,6 +2832,16 @@ export class Game {
     this.refreshOpMods()
     this.hp = uiState.maxHp
     this.skillCdT = 0
+    this.cds = { v: 0, g: 0, x: 0 }
+    this.dash = null
+    for (const s of this.shots) this.world.scene.remove(s.mesh)
+    this.shots = []
+    for (const f of this.fields) this.world.scene.remove(f.mesh)
+    this.fields = []
+    this.overdriveT = 0
+    this.hunterT = 0
+    this.shieldT = 0
+    this.skillHotT = 0
     this.invisT = 0
     this.droneT = 0
     this.smokes = []
@@ -2611,6 +2854,8 @@ export class Game {
     this.armorT = 0
     this.revealT = 0
     uiState.skillCd = 0
+    uiState.skillCdG = 0
+    uiState.skillCdX = 0
     uiState.skillActive = ''
     uiState.revealEnemies = []
     this.kills = 0
@@ -4706,7 +4951,7 @@ export class Game {
         }
         const canSprint = this.weightTier < 3
         const sprintNow = sprint && canSprint
-        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) * this.drinkMul('speed') * (this.drunkT > 0 ? 0.85 : 1) * (this.respawnT > 0 ? 0 : 1) // 赛季主题 / 特调饮品 / 醉酒 / 阵亡冻结
+        const speed = (sprintNow ? (this.weightTier === 2 ? 7 : 8.5) : 5.2) * (this.ads ? 0.5 : 1) * this.opMods.speed * slowMul * (this.rallyT > 0 ? 1.2 : 1) * (this.overdriveT > 0 ? 1 + this.overdriveMul : 1) * (this.shieldT > 0 ? 0.75 : 1) * this.weightSpeedMul() * (this.theme.mods.speedMul ?? 1) * this.drinkMul('speed') * (this.drunkT > 0 ? 0.85 : 1) * (this.respawnT > 0 ? 0 : 1) // 赛季主题 / 特调饮品 / 醉酒 / 阵亡冻结
         const f = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw))
         const r = new THREE.Vector3(-f.z, 0, f.x)
         const move = new THREE.Vector3()
@@ -4959,11 +5204,99 @@ export class Game {
       // 联机同步
       this.vsTick(dt)
 
-      // 干员技能计时器
+      // 干员技能计时器（V/G/X 三槽 + 旧德穆兰单槽）
+      for (const slot of ['v', 'g', 'x'] as const) {
+        if (this.cds[slot] > 0) this.cds[slot] = Math.max(0, this.cds[slot] - rawDt)
+      }
+      uiState.skillCd = this.cds.v
+      uiState.skillCdG = this.cds.g
+      uiState.skillCdX = this.cds.x
+      if (this.cds.v === 0 && this.cds.g === 0 && this.cds.x === 0) uiState.skillActive = ''
       if (this.skillCdT > 0) {
         this.skillCdT = Math.max(0, this.skillCdT - rawDt)
-        uiState.skillCd = this.skillCdT
-        if (this.skillCdT === 0) uiState.skillActive = ''
+        if (this.bossPlay) uiState.skillCd = this.skillCdT
+      }
+      // 技能 buff 衰减
+      if (this.overdriveT > 0) this.overdriveT = Math.max(0, this.overdriveT - rawDt)
+      if (this.hunterT > 0) this.hunterT = Math.max(0, this.hunterT - rawDt)
+      if (this.shieldT > 0) this.shieldT = Math.max(0, this.shieldT - rawDt)
+      // 技能持续回血（战地急救/决死号令）
+      if (this.skillHotT > 0) {
+        this.skillHotT = Math.max(0, this.skillHotT - rawDt)
+        if (this.hp > 0) { this.hp = Math.min(uiState.maxHp, this.hp + this.skillHotRate * rawDt); uiState.hp = this.hp }
+      }
+      // 位移冲刺（战术滑铲/盾式破障器）：高速推进 + 撞晕路径 + 撞击范围重击
+      if (this.dash) {
+        const d = this.dash
+        const step = d.speed * rawDt
+        const nx = this.pos.x + d.dx * step, nz = this.pos.z + d.dz * step
+        let stopped = false
+        if (this.playerCollide(nx, nz)) stopped = true
+        else {
+          this.pos.x = nx; this.pos.z = nz
+          this.pos.y = this.groundHeightAt(nx, nz, this.pos.y - EYE) + EYE
+        }
+        for (const e of this.enemies.enemies) {
+          if (e.dead) continue
+          if (e.group.position.distanceTo(this.pos) <= d.stunR) {
+            e.stunT = Math.max(e.stunT, d.stunT)
+            if (d.aoeDmg > 0) stopped = true // 盾冲撞人即停，接重击
+          }
+        }
+        d.left -= step
+        if (stopped || d.left <= 0) {
+          if (d.aoeDmg > 0) {
+            try { sfx.boom() } catch { /* 忽略 */ }
+            const hit = this.aoeHit(this.pos.x, this.pos.z, d.aoeR, d.aoeDmg, d.stunT)
+            this.toast(hit > 0 ? `🛡️ 破障重击！击倒 ${hit} 个敌人` : '🛡️ 冲锋结束', hit > 0 ? 'cyan' : 'white')
+            this.recoilT = 1
+          }
+          this.dash = null
+        }
+      }
+      // 技能投射物：抛物线飞行 → 落地/到时触发（磁吸炸弹追踪最近敌人）
+      for (let i = this.shots.length - 1; i >= 0; i--) {
+        const s = this.shots[i]
+        s.vy -= 14 * rawDt
+        s.mesh.position.x += s.vx * rawDt
+        s.mesh.position.y += s.vy * rawDt
+        s.mesh.position.z += s.vz * rawDt
+        let boom = false
+        if (s.fuse > 0) { s.fuse -= rawDt; if (s.fuse <= 0) boom = true }
+        if (s.fuse > 0 && s.eff.type === 'explode' && s.eff.dmg && s.eff.r && s.eff.r >= 5) {
+          // 磁吸炸弹：8m 内最近敌人吸附
+          let best: import('./enemies').Enemy | null = null, bd = 8
+          for (const e of this.enemies.enemies) {
+            if (e.dead) continue
+            const dd = e.group.position.distanceTo(s.mesh.position)
+            if (dd < bd) { bd = dd; best = e }
+          }
+          if (best) {
+            const bp = best.group.position
+            s.mesh.position.set(bp.x, bp.y + 0.5, bp.z)
+            s.vx = s.vy = s.vz = 0
+          }
+        }
+        const gy = this.groundHeightAt(s.mesh.position.x, s.mesh.position.z, s.mesh.position.y)
+        if (s.mesh.position.y <= gy + 0.15) boom = true
+        if (boom) {
+          this.triggerShot(s)
+          this.world.scene.remove(s.mesh)
+          this.shots.splice(i, 1)
+        }
+      }
+      // 电击箭电场：每 0.5s 范围伤害 + 打断
+      for (let i = this.fields.length - 1; i >= 0; i--) {
+        const f = this.fields[i]
+        f.t -= rawDt
+        f.tick += rawDt
+        const mat = f.mesh.material as THREE.MeshBasicMaterial
+        mat.opacity = 0.35 + Math.sin(performance.now() / 90) * 0.3
+        if (f.tick >= 0.5) {
+          f.tick = 0
+          this.aoeHit(f.x, f.z, f.r, f.dps * 0.5, 0.3)
+        }
+        if (f.t <= 0) { this.world.scene.remove(f.mesh); this.fields.splice(i, 1) }
       }
       if (this.invisT > 0) this.invisT = Math.max(0, this.invisT - rawDt)
       if (this.bpCarCd > 0) this.bpCarCd = Math.max(0, this.bpCarCd - rawDt)
@@ -5029,7 +5362,10 @@ export class Game {
         sm.t -= rawDt
         const mat = sm.mesh.material as THREE.MeshBasicMaterial
         mat.opacity = Math.min(0.55, sm.t * 0.3)
-        if (Math.hypot(this.pos.x - sm.x, this.pos.z - sm.z) < sm.r) smokeHidden = true
+        if (Math.hypot(this.pos.x - sm.x, this.pos.z - sm.z) < sm.r) {
+          smokeHidden = true
+          if (sm.heal && this.hp > 0) { this.hp = Math.min(uiState.maxHp, this.hp + sm.heal * rawDt); uiState.hp = this.hp } // 疗愈烟幕/激素雾回血
+        }
         if (sm.t <= 0) { this.world.scene.remove(sm.mesh); this.smokes.splice(i, 1) }
       }
       // 绊雷：敌人踩中 → 爆炸 + 全图标点
@@ -5359,7 +5695,16 @@ export class Game {
       if (uiState.creator) return
       // 干员减伤：被动「重型装甲」+ 主动「能量护甲」
       let mul = 1 - this.opMods.reduce
-      if (this.armorT > 0) mul *= 1 - effActive(this.currentOp(), this.opLv()).power
+      if (this.armorT > 0) mul *= 1 - this.armorPower // 重装堡垒：全向减伤
+      // 防爆盾 / 盾式破障器冲锋：正面 150° 扇形减伤
+      const frontReduce = Math.max(this.shieldT > 0 ? this.shieldReduce : 0, this.dash?.frontReduce ?? 0)
+      if (frontReduce > 0) {
+        const ax = _e.group.position.x - this.pos.x, az = _e.group.position.z - this.pos.z
+        const facing = Math.atan2(-Math.sin(this.yaw), -Math.cos(this.yaw))
+        let diff = Math.abs(Math.atan2(ax, az) - facing)
+        if (diff > Math.PI) diff = 2 * Math.PI - diff
+        if (diff < 1.3) mul *= 1 - frontReduce
+      }
       let real = dmg * mul
       // 护甲/头盔减伤：敌人穿透（普通 1 / 重甲与 Boss 3）vs 护甲等级
       const pen = (_e.boss || _e.kind === 'heavy') ? 3 : 1

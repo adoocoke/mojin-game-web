@@ -49,7 +49,9 @@ export interface UIState {
   loadoutOpen: boolean    // 战前配装
   carryDefs: string[]     // 选择带入对局的仓库物品 defId
   operator: string        // 当前选择的干员 id
-  skillCd: number         // 技能剩余冷却（秒），0 可用
+  skillCd: number         // V 技能剩余冷却（秒），0 可用
+  skillCdG: number        // G 技能剩余冷却
+  skillCdX: number        // X 技能剩余冷却
   skillActive: string     // 激活中的技能 kind（'' 无）
   revealEnemies: { x: number; z: number }[]  // 侦察脉冲：地图上显示的敌人位置
   questOpen: boolean      // 赛季任务面板
@@ -137,7 +139,7 @@ export const uiState: UIState = {
   marketOpen: false, loadoutOpen: false,
   carryDefs: JSON.parse(localStorage.getItem('mojin_loadout') || '[]') as string[],
   operator: localStorage.getItem('mojin_operator') || 'assault',
-  skillCd: 0, skillActive: '', revealEnemies: [],
+  skillCd: 0, skillCdG: 0, skillCdX: 0, skillActive: '', revealEnemies: [],
   questOpen: false, passOpen: false, achOpen: false, skinOpen: false, eventsOpen: false, mixOpen: false, reportOpen: false,
   mode: 'raid' as const,
   warMode: (localStorage.getItem('mojin_war_mode') as 'tdm' | 'ad') || 'tdm',
@@ -250,6 +252,8 @@ export interface EngineAPI {
   toggleCarry: (defId: string) => void
   selectOperator: (id: string) => void
   useSkill: () => void
+  useSkillG: () => void
+  useSkillX: () => void
   openQuests: () => void
   closeQuests: () => void
   openVs: () => void
@@ -342,7 +346,7 @@ export const engine: EngineAPI = {
     uiState.operator = id
     notify()
   },
-  useSkill: () => {},
+  useSkill: () => {}, useSkillG: () => {}, useSkillX: () => {},
   selectGear: (kind, defId) => {
     uiState.gearDefs[kind] = defId
     localStorage.setItem('mojin_gear', JSON.stringify(uiState.gearDefs))

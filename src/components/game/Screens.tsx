@@ -302,8 +302,10 @@ export function MenuScreen() {
                       <div className="text-[10px] text-zinc-500">{op.title}</div>
                     </div>
                   </div>
-                  <div className={`mt-1.5 text-[10px] leading-snug rounded px-1 py-0.5 ${active ? 'bg-cyan-400/15 text-cyan-200' : 'bg-zinc-800/80 text-zinc-400'}`}>
-                    Q·{op.active.icon}{op.active.name}
+                  <div className={`mt-1.5 space-y-0.5 text-[10px] leading-snug rounded px-1 py-0.5 ${active ? 'bg-cyan-400/15 text-cyan-200' : 'bg-zinc-800/80 text-zinc-400'}`}>
+                    <div>V·{op.skills.v.icon}{op.skills.v.name}</div>
+                    <div>G·{op.skills.g.icon}{op.skills.g.name}</div>
+                    <div>X·{op.skills.x.icon}{op.skills.x.name}</div>
                   </div>
                   <div className="mt-0.5 space-y-0.5">
                     {op.passives.map(p => (
@@ -338,11 +340,12 @@ export function MenuScreen() {
             const lv = opLevel(ui.opXp[op.id] ?? 0)
             return (
               <div className="mt-2 text-[11px] text-zinc-400 flex justify-center gap-4 flex-wrap">
-                <span>
-                  {op.active.icon} <span className="text-cyan-300 font-bold">{op.active.name}</span>
-                  <span className="text-violet-300 font-bold"> Lv.{lv}</span>（Q）：{effDesc(op, lv)}
-                  {lv < MAX_OP_LV && <span className="text-zinc-600">｜下一级：{effDesc(op, lv + 1)}</span>}
-                </span>
+                {(['v', 'g', 'x'] as const).map(slot => (
+                  <span key={slot}>
+                    {op.skills[slot].icon} <span className="text-cyan-300 font-bold">{op.skills[slot].name}</span>
+                    <span className="text-violet-300 font-bold"> Lv.{lv}</span>（{slot.toUpperCase()}）：{effDesc(op, slot, lv)}
+                  </span>
+                ))}
                 {op.passives.map(p => (
                   <span key={p.name}>{p.icon} <span className="text-zinc-300 font-bold">{p.name}</span>：{p.desc}</span>
                 ))}

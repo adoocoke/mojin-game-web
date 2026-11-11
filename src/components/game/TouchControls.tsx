@@ -212,18 +212,29 @@ export function TouchControls() {
         onClick={() => engine.toggleMap()}
       >🗺️</button>
 
-      {/* 技能按钮 */}
-      <button
-        className={`${btn} absolute top-48 right-4 w-12 h-12 text-xl ${ui.skillCd <= 0 ? 'border-cyan-300/70 bg-cyan-400/20' : ''}`}
-        onClick={() => engine.useSkill()}
-      >
-        {(OPERATORS.find(o => o.id === ui.operator) ?? OPERATORS[0]).active.icon}
-        {ui.skillCd > 0 && (
-          <span className="absolute -bottom-1 -right-1 text-[10px] font-mono bg-black/70 rounded px-1 text-zinc-300">
-            {Math.ceil(ui.skillCd)}
-          </span>
-        )}
-      </button>
+      {/* 技能按钮（V 战术 / G 伤害 / X 大招） */}
+      {(() => {
+        const op = OPERATORS.find(o => o.id === ui.operator) ?? OPERATORS[0]
+        const slots = [
+          { top: 'top-48', skill: op.skills.v, cd: ui.skillCd, fire: () => engine.useSkill() },
+          { top: 'top-[15rem]', skill: op.skills.g, cd: ui.skillCdG, fire: () => engine.useSkillG() },
+          { top: 'top-[19rem]', skill: op.skills.x, cd: ui.skillCdX, fire: () => engine.useSkillX() },
+        ]
+        return slots.map((s, i) => (
+          <button
+            key={i}
+            className={`${btn} absolute ${s.top} right-4 w-12 h-12 text-xl ${s.cd <= 0 ? 'border-cyan-300/70 bg-cyan-400/20' : ''}`}
+            onClick={s.fire}
+          >
+            {s.skill.icon}
+            {s.cd > 0 && (
+              <span className="absolute -bottom-1 -right-1 text-[10px] font-mono bg-black/70 rounded px-1 text-zinc-300">
+                {Math.ceil(s.cd)}
+              </span>
+            )}
+          </button>
+        ))
+      })()}
     </div>
   )
 }

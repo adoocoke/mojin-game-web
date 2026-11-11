@@ -445,7 +445,7 @@ export function saveBossDrops(d: Record<string, boolean>) {
   try { localStorage.setItem(BOSS_KEY, JSON.stringify(d)) } catch { /* 忽略 */ }
 }
 
-// ===================== 干员系统（开局前选择，每个干员 1 主动技 + 2 被动技） =====================
+// ===================== 干员系统（V/G/X 三主动技能 + 2 被动，对齐三角洲行动干员技能手感：V 战术技 / G 伤害技 / X 大招） =====================
 export interface OpMods {
   speed?: number    // 移速倍率
   reload?: number   // 换弹时间倍率
@@ -457,67 +457,120 @@ export interface OpMods {
   luck?: number     // 容器爆率加成
   seeRange?: number // 敌人发现距离倍率（越小越隐蔽）
 }
+/** 技能机制类型（engine.ts castSkill 分发实现） */
+export type SkillMech =
+  | 'dash'        // 位移冲刺：向前猛冲，撞晕路径敌人（power=距离米，radius=撞晕半径，dur=眩晕秒；count>0 则持盾冲锋，撞击范围 count 伤害+击倒，正面减伤 80%）
+  | 'overdrive'   // 动力外骨骼：短时移速爆发，击杀回血续时（dur 秒，power=移速加成）
+  | 'triShot'     // 三联装手炮：连发 count 枚榴弹（power=单发伤害，radius=爆炸半径）
+  | 'healDart'    // 激素手枪：治疗弹落点生成治疗雾（radius 米 dur 秒，每秒回 power）
+  | 'healSmoke'   // 疗愈烟幕：投掷治疗烟雾（烟+圈内每秒回 power）
+  | 'heal'        // 战地急救：立即回血 power，随后 5 秒持续恢复
+  | 'reconArrow'  // 侦察箭：箭落点脉冲扫描，敌人标记在小地图（dur 秒，radius 内敌人受伤加深 power）
+  | 'shockArrow'  // 电击箭：落点电场持续伤害+打断（radius 米 dur 秒，每秒 power 伤害）
+  | 'reveal'      // 广域骇入：全图敌人标记 dur 秒
+  | 'shield'      // 防爆盾：举盾 dur 秒，正面受伤减 power，移速 -25%
+  | 'shieldBash'  // 震荡盾击：正前方 radius 米 power 伤害 + 击退眩晕 dur 秒
+  | 'armor'       // 重装堡垒：dur 秒全向减伤 power
+  | 'blindKnife'  // 数据飞刀/致眩箭：投掷命中 radius 米敌人眩晕 dur 秒
+  | 'jam'         // 信号扰乱：radius 米敌人受伤 +power（标记 dur 秒）
+  | 'invis'       // 光学迷彩：隐身 dur 秒
+  | 'magnetBomb'  // 磁吸炸弹：吸附最近敌人或落点，1.5s 后爆炸 power 伤害 radius 米
+  | 'grenade'     // 高爆手雷：投掷 2s 爆炸 power 伤害 radius 米 + 震慑眩晕 dur 秒
+  | 'multiCharge' // 连环爆破：连掷 count 个炸药包（power 伤害 radius 米）
+  | 'charge'      // 遥控炸药：单发炸药包
+  | 'ringSmoke'   // 环形烟幕：自身周围环形烟墙（中空），dur 秒
+  | 'smoke'       // 压制烟雾：投掷烟幕 radius 米 dur 秒
+  | 'mark'        // 死亡标记：radius 米敌人受伤 +power，dur 秒
+  | 'rally'       // 神经振奋剂：dur 秒移速/换弹/射速强化
+  | 'stim'        // 决死号令：dur 秒全场敌人受伤加深 + 持续回血
+  | 'hunter'      // 猎手时刻：dur 秒全场敌人受伤 +power，击杀回血
+export interface SkillDef { icon: string; name: string; desc: string; cd: number; mech: SkillMech; power?: number; dur?: number; radius?: number; count?: number }
 export interface OperatorDef {
   id: string
   name: string
   icon: string
   title: string
   desc: string
-  active: { icon: string; name: string; desc: string; cd: number; kind: 'stun' | 'heal' | 'reveal' | 'armor' | 'invis' | 'charge' | 'mark' | 'rally'; power: number; dur?: number }
-  /** 每升 1 级的技能成长（cd 负值=减冷却，power/dur 为增量） */
+  /** V 战术技 / G 伤害技 / X 大招（对齐三角洲行动按键体系） */
+  skills: Record<'v' | 'g' | 'x', SkillDef>
+  /** 每升 1 级的技能成长（cd 负值=减冷却，对三技能统一生效） */
   growth?: { cd?: number; power?: number; dur?: number }
   passives: { icon: string; name: string; desc: string; mods: OpMods }[]
 }
 export const OPERATORS: OperatorDef[] = [
   {
-    id: 'assault', name: '雷枪', icon: '🛡️', title: '突击手', desc: '正面突破的专家，越是交火越兴奋。',
-    active: { icon: '💥', name: '震撼弹', desc: '眩晕 20 米内所有敌人 4 秒', cd: 40, kind: 'stun', power: 20, dur: 4 },
-    growth: { cd: -3, power: 2, dur: 0.4 },
+    id: 'assault', name: '雷枪', icon: '🛡️', title: '突击手', desc: '正面突破的专家，越是交火越兴奋。（原型：三角洲·红狼）',
+    skills: {
+      v: { icon: '🦿', name: '动力外骨骼', desc: '外骨骼超载：6 秒内移速 +35%，期间击杀敌人回复 15 生命并延长 2 秒', cd: 40, mech: 'overdrive', power: 0.35, dur: 6 },
+      g: { icon: '💥', name: '三联装手炮', desc: '食指拉环连发 3 枚爆炸榴弹，每枚 45 伤害（3 米）', cd: 35, mech: 'triShot', power: 45, radius: 3, count: 3 },
+      x: { icon: '🛹', name: '战术滑铲', desc: '外骨骼驱动向前猛冲 9 米，撞晕路径 2.5 米内敌人 2.5 秒', cd: 30, mech: 'dash', power: 9, radius: 2.5, dur: 2.5 },
+    },
+    growth: { cd: -2, power: 2, dur: 0.3 },
     passives: [
       { icon: '⚡', name: '快速装填', desc: '换弹速度提升 30%', mods: { reload: 0.7 } },
       { icon: '🏃', name: '战场机动', desc: '移动速度提升 12%', mods: { speed: 1.12 } },
     ],
   },
   {
-    id: 'medic', name: '白鸽', icon: '💉', title: '战地医师', desc: '只要她还站着，队伍就不会倒下。',
-    active: { icon: '❤️', name: '急救针', desc: '立即恢复 50 点生命', cd: 45, kind: 'heal', power: 50 },
-    growth: { cd: -3, power: 10 },
+    id: 'medic', name: '白鸽', icon: '💉', title: '战地医师', desc: '只要她还站着，队伍就不会倒下。（原型：三角洲·蜂医）',
+    skills: {
+      v: { icon: '🎯', name: '激素手枪', desc: '发射治疗弹，落点生成 4 米治疗雾 6 秒，雾中每秒回复 10 生命', cd: 30, mech: 'healDart', power: 10, radius: 4, dur: 6 },
+      g: { icon: '🌫️', name: '疗愈烟幕', desc: '投掷治疗烟雾：6 米烟幕 10 秒遮蔽视线，烟中每秒回复 4 生命', cd: 40, mech: 'healSmoke', power: 4, radius: 6, dur: 10 },
+      x: { icon: '❤️', name: '战地急救', desc: '立即恢复 55 生命，随后 5 秒每秒再恢复 5 生命', cd: 45, mech: 'heal', power: 55 },
+    },
+    growth: { cd: -2, power: 3, dur: 0.4 },
     passives: [
       { icon: '🧪', name: '药理精通', desc: '医疗物资效果提升 40%', mods: { med: 1.4 } },
       { icon: '💪', name: '坚韧体魄', desc: '生命上限 +25', mods: { maxHp: 25 } },
     ],
   },
   {
-    id: 'recon', name: '夜莺', icon: '🦅', title: '侦察兵', desc: '战场对她来说没有迷雾。',
-    active: { icon: '📡', name: '侦察脉冲', desc: '10 秒内地图（M）上显示所有敌人位置', cd: 50, kind: 'reveal', power: 0, dur: 10 },
-    growth: { cd: -4, dur: 1.5 },
+    id: 'recon', name: '夜莺', icon: '🦅', title: '侦察兵', desc: '战场对她来说没有迷雾。（原型：三角洲·露娜）',
+    skills: {
+      v: { icon: '🏹', name: '侦察箭', desc: '射出侦察箭，落点脉冲扫描：6 秒内敌人全部标记在小地图（M），45 米内敌人被打上死亡标记', cd: 35, mech: 'reconArrow', power: 0.15, radius: 45, dur: 6 },
+      g: { icon: '⚡', name: '电击箭', desc: '射出电击箭，落点 3 米电场 5 秒：每秒 14 伤害并持续打断敌人', cd: 40, mech: 'shockArrow', power: 14, radius: 3, dur: 5 },
+      x: { icon: '📡', name: '广域骇入', desc: '12 秒内小地图（M）显示所有敌人位置', cd: 60, mech: 'reveal', dur: 12 },
+    },
+    growth: { cd: -3, power: 1, dur: 0.8 },
     passives: [
       { icon: '🔍', name: '敏锐搜索', desc: '搜索容器速度提升 40%', mods: { search: 1.4 } },
       { icon: '🍀', name: '幸运星', desc: '所有容器爆率小幅提升', mods: { luck: 0.2 } },
     ],
   },
   {
-    id: 'engineer', name: '铁壁', icon: '🔧', title: '工程兵', desc: '把防御工事穿在身上的人。',
-    active: { icon: '🛡️', name: '能量护甲', desc: '8 秒内受到伤害降低 60%', cd: 50, kind: 'armor', power: 0.6, dur: 8 },
-    growth: { cd: -4, power: 0.05, dur: 0.5 },
+    id: 'engineer', name: '铁壁', icon: '🔧', title: '工程兵', desc: '把防御工事穿在身上的人。（原型：三角洲·深蓝）',
+    skills: {
+      v: { icon: '🛡️', name: '防爆盾', desc: '举起防爆盾 6 秒：正面伤害减免 70%，移速 -25%', cd: 35, mech: 'shield', power: 0.7, dur: 6 },
+      g: { icon: '💢', name: '震荡盾击', desc: '盾面向前猛击：正前方 3.5 米内敌人 60 伤害并击退眩晕 1.5 秒', cd: 30, mech: 'shieldBash', power: 60, radius: 3.5, dur: 1.5 },
+      x: { icon: '🏰', name: '重装堡垒', desc: '8 秒内全身减伤 60%，免疫眩晕', cd: 55, mech: 'armor', power: 0.6, dur: 8 },
+    },
+    growth: { cd: -3, power: 0.03, dur: 0.5 },
     passives: [
       { icon: '🦾', name: '重型装甲', desc: '受到伤害降低 15%', mods: { reduce: 0.15 } },
       { icon: '🎒', name: '负重训练', desc: '生命上限 +15', mods: { maxHp: 15 } },
     ],
   },
   {
-    id: 'ghost', name: '幽灵', icon: '🥷', title: '潜伏者', desc: '她来无影去无踪，只留下被搜空的容器。',
-    active: { icon: '👻', name: '光学迷彩', desc: '7 秒内隐身，敌人无法发现你', cd: 50, kind: 'invis', power: 0, dur: 7 },
-    growth: { cd: -4, dur: 1 },
+    id: 'ghost', name: '幽灵', icon: '🥷', title: '潜伏者', desc: '她来无影去无踪，只留下被搜空的容器。（原型：三角洲·骇爪）',
+    skills: {
+      v: { icon: '🔪', name: '数据飞刀', desc: '掷出数据飞刀，命中区域 4 米内敌人被骇入瘫痪 3 秒', cd: 30, mech: 'blindKnife', radius: 4, dur: 3 },
+      g: { icon: '📵', name: '信号扰乱', desc: '干扰 20 米内敌人电子设备：6 秒内被打上死亡标记（受伤 +25%）', cd: 40, mech: 'jam', power: 0.25, radius: 20, dur: 6 },
+      x: { icon: '👻', name: '光学迷彩', desc: '8 秒内隐身，敌人无法发现你', cd: 50, mech: 'invis', dur: 8 },
+    },
+    growth: { cd: -3, dur: 0.8 },
     passives: [
       { icon: '🤫', name: '消音步伐', desc: '敌人发现你的距离缩短 30%', mods: { seeRange: 0.7 } },
       { icon: '🚁', name: '撤离专家', desc: '撤离速度提升 50%', mods: { extract: 1.5 } },
     ],
   },
   {
-    id: 'blaster', name: '雷管', icon: '💣', title: '爆破手', desc: '他信奉的真理只有一个：没有什么墙是一包炸药解决不了的。',
-    active: { icon: '🧨', name: '遥控炸药', desc: '向前掷出炸药包，1.5 秒后爆炸，重创 8 米内所有敌人', cd: 45, kind: 'charge', power: 120, dur: 1.5 },
-    growth: { cd: -3, power: 15 },
+    id: 'blaster', name: '雷管', icon: '💣', title: '爆破手', desc: '他信奉的真理只有一个：没有什么墙是一包炸药解决不了的。（原型：三角洲·威龙）',
+    skills: {
+      v: { icon: '🧲', name: '磁吸炸弹', desc: '掷出磁吸炸弹：吸附 8 米内最近的敌人或落点，1.5 秒后爆炸 100 伤害（5 米）', cd: 35, mech: 'magnetBomb', power: 100, radius: 5 },
+      g: { icon: '🧨', name: '高爆手雷', desc: '快速投掷高爆手雷，脱手 2 秒后爆炸：85 伤害（4 米）并震慑眩晕 2 秒', cd: 40, mech: 'grenade', power: 85, radius: 4, dur: 2 },
+      x: { icon: '☄️', name: '连环爆破', desc: '连续掷出 3 个炸药包，每个 90 伤害（5 米）', cd: 60, mech: 'multiCharge', power: 90, radius: 5, count: 3 },
+    },
+    growth: { cd: -2, power: 6 },
     passives: [
       { icon: '🦺', name: '防爆服', desc: '受到伤害降低 10%', mods: { reduce: 0.1 } },
       { icon: '⚡', name: '熟练双手', desc: '换弹速度提升 15%', mods: { reload: 0.85 } },
@@ -525,30 +578,42 @@ export const OPERATORS: OperatorDef[] = [
   },
   {
     id: 'marksman', name: '鹰眼', icon: '🎯', title: '神射手', desc: '被她盯上的人，连影子都会出卖自己。',
-    active: { icon: '🔴', name: '死亡标记', desc: '标记 30 米内所有敌人 8 秒，被标记者受伤 +35%', cd: 45, kind: 'mark', power: 0.35, dur: 8 },
-    growth: { cd: -3, power: 0.04, dur: 0.5 },
+    skills: {
+      v: { icon: '🔴', name: '死亡标记', desc: '标记 30 米内所有敌人 8 秒，被标记者受伤 +35%', cd: 40, mech: 'mark', power: 0.35, radius: 30, dur: 8 },
+      g: { icon: '💫', name: '致眩箭', desc: '射出致眩箭，落点 3 米内敌人眩晕 2 秒', cd: 35, mech: 'blindKnife', radius: 3, dur: 2 },
+      x: { icon: '🏹', name: '猎手时刻', desc: '12 秒内锁定全场：所有敌人受伤 +25%，每次击杀回复 10 生命', cd: 55, mech: 'hunter', power: 0.25, dur: 12 },
+    },
+    growth: { cd: -3, power: 0.03, dur: 0.5 },
     passives: [
       { icon: '🔭', name: '鹰眼视觉', desc: '敌人发现你的距离缩短 20%', mods: { seeRange: 0.8 } },
       { icon: '🎯', name: '稳手', desc: '换弹速度提升 10%', mods: { reload: 0.9 } },
     ],
   },
   {
-    id: 'commander', name: '战吼', icon: '🎖️', title: '指挥官', desc: '他的声音就是战场上最可靠的火力支援。',
-    active: { icon: '📣', name: '战术号令', desc: '10 秒内移速 +20%、换弹 +30%、射速 +15%', cd: 50, kind: 'rally', power: 0.2, dur: 10 },
+    id: 'commander', name: '战吼', icon: '🎖️', title: '指挥官', desc: '他的声音就是战场上最可靠的火力支援。（原型：三角洲·蛊）',
+    skills: {
+      v: { icon: '💉', name: '神经振奋剂', desc: '8 秒内移速 +20%、换弹 +30%、射速 +15%', cd: 40, mech: 'rally', power: 0.2, dur: 8 },
+      g: { icon: '🌁', name: '压制烟雾', desc: '投掷 6 米烟幕 10 秒，封锁敌人视野与枪线', cd: 35, mech: 'smoke', radius: 6, dur: 10 },
+      x: { icon: '📣', name: '决死号令', desc: '12 秒内全场敌人受伤 +20%，自身每秒回复 3 生命', cd: 60, mech: 'stim', power: 0.2, dur: 12 },
+    },
     growth: { cd: -3, dur: 1 },
     passives: [
       { icon: '💪', name: '鼓舞士气', desc: '生命上限 +10', mods: { maxHp: 10 } },
       { icon: '🧭', name: '战场嗅觉', desc: '搜索容器速度提升 20%', mods: { search: 1.2 } },
     ],
   },
-  // —— 官方 S12「微光」同步干员：野火（突击型；官方技能：环形烟幕 / 高爆手雷 / 盾式破障器 + 被动愈战愈勇，本游戏按 1 主动 + 2 被动等价镜像，数值原创） ——
+  // —— 官方 S12「微光」同步干员：野火（突击型；官方技能：环形烟幕 / 高爆手雷 / 盾式破障器 + 被动愈战愈勇，本游戏按 V/G/X 等价镜像，数值原创） ——
   {
-    id: 'wildfire', name: '野火', icon: '🔥', title: '破障突击', desc: '纵是棋子，亦燃微光。她冲锋的路上，没有撞不开的门。',
-    active: { icon: '🛡️', name: '盾式破障器', desc: '持盾向前猛冲，震慑并击倒 12 米内的敌人 3 秒（对应官方：冲撞重击造成范围伤害与击倒）', cd: 45, kind: 'stun', power: 12, dur: 3 },
-    growth: { cd: -3, power: 1.2, dur: 0.3 },
+    id: 'wildfire', name: '野火', icon: '🔥', title: '破障突击', desc: '纵是棋子，亦燃微光。她冲锋的路上，没有撞不开的门。（对应官方：野火）',
+    skills: {
+      v: { icon: '🌀', name: '环形烟幕', desc: '肩载发射器向自身周围发射多枚烟雾弹，展开中空环形烟墙 10 秒：外部看不进来，你看得出去（对应官方：环形烟幕短按模式）', cd: 45, mech: 'ringSmoke', radius: 5.5, dur: 10 },
+      g: { icon: '🧨', name: '高爆手雷', desc: '脱手 2.5 秒后爆炸：90 伤害（4.5 米）并震慑眩晕 2 秒（对应官方：延迟引爆高爆手雷）', cd: 45, mech: 'grenade', power: 90, radius: 4.5, dur: 2 },
+      x: { icon: '🛡️', name: '盾式破障器', desc: '展开破障盾向前冲锋 12 米：正面受伤减免 80%，撞击后挥盾重击 5 米内 70 伤害并击倒 3 秒（对应官方：冲撞重击造成范围伤害与击倒）', cd: 90, mech: 'dash', power: 12, radius: 2.2, dur: 3, count: 70 },
+    },
+    growth: { cd: -3, power: 3, dur: 0.3 },
     passives: [
       { icon: '🔥', name: '愈战愈勇', desc: '战意燃烧：移速 +8%、换弹速度 +15%（对应官方：击倒敌人或低血量时短暂提升移速与换弹速度）', mods: { speed: 1.08, reload: 0.85 } },
-      { icon: '💨', name: '环形烟幕', desc: '烟幕随行：敌人发现你的距离缩短 15%（对应官方：肩载烟幕发射器展开环形烟幕掩护）', mods: { seeRange: 0.85 } },
+      { icon: '💨', name: '烟幕随行', desc: '敌人发现你的距离缩短 15%（对应官方：肩载烟幕发射器展开环形烟幕掩护）', mods: { seeRange: 0.85 } },
     ],
   },
 ]

@@ -326,26 +326,34 @@ export function HUD() {
         </div>
       )}
 
-      {/* 左下偏中：干员技能 */}
+      {/* 左下偏中：干员技能（V 战术 / G 伤害 / X 大招，对齐三角洲键位） */}
       {(() => {
         const op = OPERATORS.find(o => o.id === ui.operator) ?? OPERATORS[0]
-        const ready = ui.skillCd <= 0
-        const active = ui.skillActive !== '' && ui.skillCd > 0
+        const slots = [
+          { key: 'V', skill: op.skills.v, cd: ui.skillCd },
+          { key: 'G', skill: op.skills.g, cd: ui.skillCdG },
+          { key: 'X', skill: op.skills.x, cd: ui.skillCdX },
+        ]
         return (
-          <div className="absolute bottom-6 left-[17.5rem] hidden sm:block">
-            <div className={`rounded-lg px-3 py-2 border text-center min-w-[6.5rem] ${ready
-              ? 'bg-cyan-400/15 border-cyan-400/60 shadow-[0_0_14px_rgba(34,211,238,0.3)]'
-              : 'bg-black/45 border-white/10'}`}>
-              <div className="text-xl leading-none">{op.active.icon}</div>
-              <div className={`text-[11px] font-bold mt-0.5 ${ready ? 'text-cyan-300' : 'text-zinc-400'}`}>
-                {op.active.name}
-              </div>
-              <div className="text-[10px] font-mono mt-0.5">
-                {ready
-                  ? <span className="text-cyan-200 font-bold">Q 就绪</span>
-                  : <span className="text-zinc-500">{active ? '生效中 · ' : ''}{Math.ceil(ui.skillCd)}s</span>}
-              </div>
-            </div>
+          <div className="absolute bottom-6 left-[17.5rem] hidden sm:flex gap-1.5">
+            {slots.map(s => {
+              const ready = s.cd <= 0
+              return (
+                <div key={s.key} className={`rounded-lg px-2.5 py-2 border text-center min-w-[4.6rem] ${ready
+                  ? 'bg-cyan-400/15 border-cyan-400/60 shadow-[0_0_14px_rgba(34,211,238,0.3)]'
+                  : 'bg-black/45 border-white/10'}`}>
+                  <div className="text-xl leading-none">{s.skill.icon}</div>
+                  <div className={`text-[10px] font-bold mt-0.5 truncate max-w-[4.6rem] ${ready ? 'text-cyan-300' : 'text-zinc-400'}`}>
+                    {s.skill.name}
+                  </div>
+                  <div className="text-[10px] font-mono mt-0.5">
+                    {ready
+                      ? <span className="text-cyan-200 font-bold">{s.key} 就绪</span>
+                      : <span className="text-zinc-500">{Math.ceil(s.cd)}s</span>}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )
       })()}
