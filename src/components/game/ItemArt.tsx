@@ -1482,6 +1482,105 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M13 23.5h24" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.3"/>
   </>),
+  // ===== 官方 11/12 公告「大红砖返场」批次（原创绘制） =====
+  ev_bigredbrick: (<>
+    {sh(18, 56)}
+    {/* 红晕底光 */}
+    <circle cx="32" cy="33" r="22" fill="#ff5a4a" opacity="0.12"/>
+    {/* 砖体：赤红晶钢 */}
+    <rect x="9" y="17" width="46" height="32" rx="3" fill="url(#iaGemR)" stroke="#4a0a10" strokeWidth="1.6"/>
+    {/* 顶部斜切棱面 */}
+    <path d="M9 20a3 3 0 0 1 3-3h40a3 3 0 0 1 3 3v4H9z" fill="#ff8a7a" opacity="0.35"/>
+    {/* 鎏金电路走线 */}
+    <path d="M26 31h-9M26 37h-9M38 31h9M38 37h9M17 31v-5h-4M17 37v5h-4M47 31v-5h4M47 37v5h4" stroke="url(#iaGoldV)" strokeWidth="1.2" fill="none" opacity="0.95"/>
+    <circle cx="13" cy="26" r="1.5" fill="url(#iaGoldV)"/>
+    <circle cx="13" cy="42" r="1.5" fill="url(#iaGoldV)"/>
+    <circle cx="51" cy="26" r="1.5" fill="url(#iaGoldV)"/>
+    <circle cx="51" cy="42" r="1.5" fill="url(#iaGoldV)"/>
+    {/* 核心赤晶：四面切角宝石 */}
+    <path d="M32 25l6 4.5v7L32 41l-6-4.5v-7z" fill="url(#iaGemR)" stroke="#ffd0c8" strokeWidth="1"/>
+    <path d="M32 25v16M26 29.5l12 7M38 29.5l-12 7" stroke="#ffb3ab" strokeWidth="0.7" opacity="0.8"/>
+    <circle cx="32" cy="33" r="1.8" fill="#fff0ee"/>
+    {/* 包角铆钉 */}
+    <circle cx="13.5" cy="21.5" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="50.5" cy="21.5" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="13.5" cy="44.5" r="1.3" fill="url(#iaGoldV)"/>
+    <circle cx="50.5" cy="44.5" r="1.3" fill="url(#iaGoldV)"/>
+    {/* 星闪 */}
+    <path d="M52 9l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8-2.8-1.1 2.8-1.1z" fill="#fff6cf"/>
+    <path d="M11 11l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#ffd9d4"/>
+    {/* 高光 */}
+    <path d="M13 19.5h26" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" opacity="0.4"/>
+  </>),
+  v_egg_dazzle: (<>
+    {sh(13, 57, 3, 0.24)}
+    {/* 虹彩晕环 */}
+    <circle cx="32" cy="36" r="19" fill="#ffd27a" opacity="0.12"/>
+    {/* 蛋体：虹彩釉面 */}
+    <path d="M32 14c7.5 0 12.5 8.6 12.5 17.4 0 8.3-5 13.6-12.5 13.6S19.5 39.7 19.5 31.4C19.5 22.6 24.5 14 32 14z" fill="url(#iaBflyD)" stroke="#6b4a12" strokeWidth="1.3"/>
+    {/* 釉光渐变覆层（体积感） */}
+    <path d="M32 14c7.5 0 12.5 8.6 12.5 17.4 0 8.3-5 13.6-12.5 13.6S19.5 39.7 19.5 31.4C19.5 22.6 24.5 14 32 14z" fill="url(#iaGoldR)" opacity="0.18"/>
+    {/* 麦穗纹（鎏金錾刻） */}
+    <path d="M32 24v13" stroke="#f8e29a" strokeWidth="1.2" strokeLinecap="round"/>
+    <path d="M32 26.5l-4-2.6M32 26.5l4-2.6M32 30.5l-4.4-2.8M32 30.5l4.4-2.8M32 34.5l-4.6-3M32 34.5l4.6-3" stroke="#f8e29a" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 底托小金座 */}
+    <path d="M25 44.5h14l1.6 4.4H23.4z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1"/>
+    {/* 星闪 */}
+    <path d="M46 13l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#ffffff"/>
+    <path d="M18.5 20l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill="#fff6cf"/>
+    {/* 镜面高光 */}
+    <path d="M26.5 20c-2.4 2.2-3.8 5-4.2 8.4" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.8"/>
+  </>),
+  v_circle_dazzle: (<>
+    {sh(15, 57, 3, 0.24)}
+    {/* 虹彩晕环 */}
+    <circle cx="32" cy="33" r="20" fill="#9ad8ff" opacity="0.12"/>
+    {/* 环体：虹彩玉璧 */}
+    <path d="M32 13a19 19 0 1 1 0 38 19 19 0 0 1 0-38zm0 9.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19z" fill="url(#iaBflyD)" stroke="#3a2a5e" strokeWidth="1.3" fillRule="evenodd"/>
+    {/* 内圈鎏金 */}
+    <circle cx="32" cy="32" r="9.5" fill="none" stroke="url(#iaGoldV)" strokeWidth="1.6"/>
+    {/* 外圈刻纹 */}
+    <circle cx="32" cy="32" r="16.5" fill="none" stroke="#ffffff" strokeWidth="0.7" strokeDasharray="2.4 2.2" opacity="0.55"/>
+    {/* 环心悬浮赤晶 */}
+    <path d="M32 27.5l4 4.5-4 4.5-4-4.5z" fill="url(#iaGemR)" stroke="#ffd0c8" strokeWidth="0.8"/>
+    {/* 星闪 */}
+    <path d="M49 12l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#ffffff"/>
+    <path d="M15 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" fill="#e8f6ff"/>
+    {/* 镜面高光 */}
+    <path d="M20.5 20.5c2.6-3 6-4.8 9.8-5.2" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.85"/>
+  </>),
+  v_landeng_dazzle: (<>
+    {sh(15, 57, 3, 0.25)}
+    {/* 虹彩晕环 */}
+    <circle cx="32" cy="35" r="21" fill="#ffb3e2" opacity="0.14"/>
+    {/* 吉他（斜抱，虹彩漆面） */}
+    <g transform="rotate(-24 40 44)">
+      <ellipse cx="40" cy="46" rx="9" ry="7.4" fill="url(#iaBflyD)" stroke="#3d2712" strokeWidth="1.2"/>
+      <ellipse cx="40" cy="46" rx="3.2" ry="2.7" fill="#2a1a0c"/>
+      <rect x="40" y="42.4" width="16" height="3" rx="1.4" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1"/>
+      <rect x="53" y="41.6" width="5" height="4.6" rx="1" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+      <path d="M42 44.2h12M42 46h12M42 47.8h12" stroke="#f8e29a" strokeWidth="0.5" opacity="0.9"/>
+    </g>
+    {/* 娃娃身体（虹彩陶裙） */}
+    <path d="M24 40c0-6 3.5-9.5 8-9.5s8 3.5 8 9.5l1.6 12H22.4z" fill="url(#iaBflyD)" stroke="#4a2a5e" strokeWidth="1.2"/>
+    <path d="M24.5 45h15M25.5 49h13" stroke="#fff6cf" strokeWidth="1" opacity="0.7"/>
+    {/* 头 */}
+    <circle cx="32" cy="24" r="8.6" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <circle cx="28.6" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <circle cx="35.4" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <path d="M29 27.6c1.8 1.6 4.2 1.6 6 0" stroke="#7e3a1c" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    <circle cx="26.8" cy="26" r="1.6" fill="#ff9fb0" opacity="0.8"/>
+    <circle cx="37.2" cy="26" r="1.6" fill="#ff9fb0" opacity="0.8"/>
+    {/* 宽檐草帽（虹彩帽带） */}
+    <ellipse cx="32" cy="18.6" rx="13.5" ry="4.2" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <path d="M25.5 18.4a6.5 5.2 0 0 1 13 0z" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1"/>
+    <path d="M21 18.2h22" stroke="url(#iaBflyD)" strokeWidth="1.8" opacity="0.95"/>
+    {/* 星闪 */}
+    <path d="M50 10l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#ffffff"/>
+    <path d="M13 12l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#ffd9f0"/>
+    {/* 高光 */}
+    <path d="M27 21.5c-1.5 1-2.4 2.4-2.7 4" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.85"/>
+  </>),
 }
 
 interface ItemArtProps {

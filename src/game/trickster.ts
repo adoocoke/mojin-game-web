@@ -24,6 +24,8 @@ export const TRICK_WINDOWS = {
   landeng:   { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' }, // 兰小登返场（烽火地带）
   flash:     { start: '2026-11-07T00:00:00+08:00', end: '2026-11-12T23:59:59+08:00' }, // 限时闪购（烽火地带）
   zhoumo:    { start: '2026-11-07T00:00:00+08:00', end: '2026-11-09T23:59:59+08:00' }, // 洲末周末五连（红运当头/有米/畅玩/上分/品枪）
+  // ===== 2026-11-12 公告批次 =====
+  worldcup:  { start: '2026-11-12T00:00:00+08:00', end: '2026-11-29T23:59:59+08:00' }, // 烽火世界杯·竞猜助威（11/27-29 斯德哥尔摩）
 } as const
 
 export type TrickWindowId = keyof typeof TRICK_WINDOWS
@@ -49,10 +51,13 @@ export interface TricksterSave {
   zmRaids: number          // 洲末周末：窗口内完成烽火对局
   zmPgKills: number        // 洲末品枪：窗口内 mini14 击杀（全模式）
   zmClaimed: string[]      // 洲末周末：已领取的奖励 id
+  wcDays: string[]         // 烽火世界杯：累计登录日
+  wcClaimed: string[]      // 烽火世界杯：已领取的奖励 id
+  wcTeam: string | null    // 烽火世界杯：已锁定助威的冠军预测战队 id（锁定后不可改）
 }
 
 function def(): TricksterSave {
-  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [], glimmerDays: [], glimmerClaimed: [], inviteDays: [], inviteClaimed: [], zmRaids: 0, zmPgKills: 0, zmClaimed: [] }
+  return { tokens: 0, playTokens: 0, logiVouchers: 0, butterflies: 0, ravenTotal: 0, cosmetics: [], shopClaimed: [], glimmerDays: [], glimmerClaimed: [], inviteDays: [], inviteClaimed: [], zmRaids: 0, zmPgKills: 0, zmClaimed: [], wcDays: [], wcClaimed: [], wcTeam: null }
 }
 
 export function loadTrickster(): TricksterSave {
@@ -96,6 +101,7 @@ export const COSMETIC_NAMES: Record<string, string> = {
   cos_spray_gaga: '喷漆「嘎嘎吓人」',
   cos_badge_heichao: '纪念徽章「黑潮 D0」',
   cos_action_clap: '动作「鼓掌」',
+  cos_spray_worldcup: '喷漆「烽火助威」',
 }
 
 // ===================== 捣蛋鬼商店（捣蛋代币兑换） =====================
@@ -347,4 +353,77 @@ export function claimZm(id: string): { items?: string[]; gold?: number; name: st
     case 'zm_pg': return { items: ['w_mini14'], gold: 5000, name: r.name, rewardText: r.rewardText }
     default: return null
   }
+}
+
+// ===================== 烽火世界杯·竞猜助威（2026-11-12 公告批次，登录任务 + 冠军预测） =====================
+// 官方：2026 瑞典烽火世界杯 11/27-29 落地斯德哥尔摩 DreamHack，全球六大赛区 12 支战队参赛，
+// 赛事中心与竞猜活动陆续开启。本游戏等价镜像：累计登录领物流凭证 + 锁定冠军预测领助威喷漆；
+// 冠军归属 11/29 揭晓后由后续同步结算（事实信息：12 支参赛战队名单；玩法与奖励数值原创）。
+export interface WcTeam { id: string; name: string; region: string }
+export const WORLDCUP_TEAMS: WcTeam[] = [
+  { id: 'tes',  name: 'TES',      region: '中国大陆' },
+  { id: 'rsg',  name: 'RSG',      region: '中国大陆' },
+  { id: 'ibg',  name: 'IBG',      region: '中国大陆' },
+  { id: 'all',  name: 'Alliance', region: 'EMEA' },
+  { id: 'fnc',  name: 'Fnatic',   region: 'EMEA' },
+  { id: 'ssg',  name: 'SSG',      region: '美洲' },
+  { id: 'godl', name: 'GODL',     region: '美洲' },
+  { id: 'fl',   name: 'FL',       region: '日本' },
+  { id: 'ns',   name: 'NS',       region: '韩国' },
+  { id: 'rx',   name: 'RX',       region: '泛太平洋' },
+  { id: 'mkk',  name: 'MKK',      region: '泛太平洋' },
+  { id: 'onic', name: 'ONIC',     region: '泛太平洋' },
+]
+
+export interface WcReward {
+  id: string
+  day: number
+  icon: string
+  name: string
+  vouchers: number
+}
+
+export const WC_REWARDS: WcReward[] = [
+  { id: 'wc_d1', day: 1, icon: '🎟️', name: '世界杯助威 · 第 1 天', vouchers: 2 },
+  { id: 'wc_d2', day: 2, icon: '🎟️', name: '世界杯助威 · 第 2 天', vouchers: 2 },
+  { id: 'wc_d3', day: 3, icon: '🎟️', name: '世界杯助威 · 第 3 天', vouchers: 3 },
+  { id: 'wc_d5', day: 5, icon: '🎟️', name: '世界杯助威 · 第 5 天', vouchers: 4 },
+]
+
+/** 记录今日登录（窗口期内每日一次） */
+export function markWcLogin() {
+  if (!trickActive('worldcup')) return
+  const s = loadTrickster()
+  const today = new Date().toISOString().slice(0, 10)
+  if (!s.wcDays.includes(today)) {
+    s.wcDays.push(today)
+    saveTrickster(s)
+  }
+}
+
+/** 领取世界杯登录奖励（物流凭证直接入账）；失败返回 null */
+export function claimWc(id: string): { vouchers: number; name: string } | null {
+  if (!trickActive('worldcup')) return null
+  const r = WC_REWARDS.find(w => w.id === id)
+  if (!r) return null
+  const s = loadTrickster()
+  if (s.wcClaimed.includes(id)) return null
+  if (s.wcDays.length < r.day) return null
+  s.wcClaimed.push(id)
+  s.logiVouchers += r.vouchers
+  saveTrickster(s)
+  return { vouchers: r.vouchers, name: r.name }
+}
+
+/** 锁定冠军预测战队（一次性，锁定后不可更改）；成功发放助威喷漆，返回结果文案 */
+export function predictWcTeam(teamId: string): { ok: boolean; msg: string } {
+  if (!trickActive('worldcup')) return { ok: false, msg: '竞猜不在活动窗口内' }
+  const t = WORLDCUP_TEAMS.find(w => w.id === teamId)
+  if (!t) return { ok: false, msg: '未知战队' }
+  const s = loadTrickster()
+  if (s.wcTeam) return { ok: false, msg: '已锁定助威战队，不可更改' }
+  s.wcTeam = teamId
+  if (!s.cosmetics.includes('cos_spray_worldcup')) s.cosmetics.push('cos_spray_worldcup')
+  saveTrickster(s)
+  return { ok: true, msg: `已锁定助威「${t.name}」（${t.region}赛区）！喷漆「烽火助威」已入收藏，冠军 11/29 揭晓后结算` }
 }

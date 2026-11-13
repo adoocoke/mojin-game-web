@@ -65,6 +65,8 @@ export const SKINS: SkinDef[] = [
     desc: '「影之刃零联动」登录嘉奖：玄青枪身缀七点银星，如夜空列宿（对应官方：G3战斗步枪-七星；本游戏无 G3，等价镜像为全武器通用涂装，配色原创）' },
   { id: 'sk_knife_heishang', name: '黑伤', icon: '⚔️', rarity: 'red', gun: 'knife', main: 0x121216, accent: 0x3a0d12, emissive: 0xd81f2e, emissiveIntensity: 0.4, price: 52000,
     desc: '影之刃零联动传说近战：玄铁刀身，刃锋半褪时赤芒流转（对应官方：黑伤捆绑包；等价镜像为战术匕首涂装，限时金币上架，配色原创）' },
+  { id: 'sk_baimang', name: '白蟒赤练', icon: '🐍', rarity: 'red', gun: 'any', main: 0xe8e2d4, accent: 0x8a1a24, emissive: 0xd84a3a, emissiveIntensity: 0.28, price: 38000,
+    desc: '影之刃零联动传说武器外观：月白蟒鳞枪身缠赤练朱纹（对应官方：白蟒赤练捆绑包 11/13 上架，K437/P90/QJB201；本游戏无对应枪型，等价镜像为全武器通用涂装，限时金币上架，配色原创）' },
   { id: 'sk_thunderbreath', name: '雷霆之息', icon: '⚡', rarity: 'cyan', gun: 'any', main: 0x1a2a4a, accent: 0x6a7a92, emissive: 0x4ab8ff, emissiveIntensity: 0.38, price: 15000,
     desc: '「银翼·雷霆之息」窗口期上架：雷云蓝枪身缠绕电弧光纹（对应官方：干员研究外观 银翼-雷霆之息；本游戏无干员外观系统，等价镜像为全武器通用涂装，配色原创）' },
   // ---------- 2026-11-06 公告批次 ----------

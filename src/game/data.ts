@@ -234,6 +234,11 @@ export const ITEMS: Record<string, ItemDef> = {
   ev_hotpot_bundle: { id: 'ev_hotpot_bundle', name: '猛火强攻捆绑包', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 20000, icon: '🍲', openable: 'hotpotbundle' },
   v_idtag:        { id: 'v_idtag',        name: '干员身份牌',   kind: 'valuable', rarity: 'green',  w: 1, h: 1, baseValue: 500,   icon: '🪪', stack: 5 },
   ev_mandelbrick: { id: 'ev_mandelbrick', name: '猩红曼德尔砖', kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 20000, icon: '🧱', openable: 'mandelbrick' },
+  // ===== 官方 11/12 公告活动道具：大红砖返场（破译保底出红，概率出往季炫彩超稀藏；与曼德尔砖独立刷新） =====
+  ev_bigredbrick: { id: 'ev_bigredbrick', name: '大红砖',       kind: 'valuable', rarity: 'red',    w: 2, h: 1, baseValue: 30000, icon: '🧱', openable: 'bigredbrick' },
+  v_egg_dazzle:     { id: 'v_egg_dazzle',     name: '炫彩麦小蛋', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 16000, icon: '🥚', stack: 3 },
+  v_circle_dazzle:  { id: 'v_circle_dazzle',  name: '炫彩克小圈', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 16000, icon: '🍩', stack: 3 },
+  v_landeng_dazzle: { id: 'v_landeng_dazzle', name: '炫彩兰小登', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 18000, icon: '🪆', stack: 3 },
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
   ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },

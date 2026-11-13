@@ -6,7 +6,7 @@ import { claimVoucherLogins, loadVouchers, voucherEventActive, VOUCHER_TASK_CAP 
 import { loadFishing, loadHarp, harpStageText, FISH_TASK_KILLS } from '@/game/fishing'
 import { loadBossPlay, regenQuota, dossierDoneCount, DOSSIER_TASKS, CARD_MAX, QUOTA_MAX } from '@/game/bossplay'
 import { WAR_REWARDS, claimWarReward, loadWarEvents, JD_TASKS, JD_BOX_NEED, jdStageUnlocked, claimJdTask, ZW_TASKS, ZW_BOX_NEED, zwStageUnlocked, claimZwTask, D0_REWARDS, claimD0, ZM_WAR_REWARDS, claimZmWar, markZmWarLogin, type WarEventId } from '@/game/warevents'
-import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, addLogiVouchers, GLIMMER_REWARDS, markGlimmerLogin, claimGlimmer, INVITE_REWARDS, markInviteLogin, claimInvite, ZM_REWARDS, claimZm, type TrickShopItem } from '@/game/trickster'
+import { TRICK_SHOP, PLAY_SHOP, LOGI_SHOP, redeemTrick, redeemPlay, redeemLogi, loadTrickster, grantCosmetic, addPlayTokens, addTrickTokens, addLogiVouchers, GLIMMER_REWARDS, markGlimmerLogin, claimGlimmer, INVITE_REWARDS, markInviteLogin, claimInvite, ZM_REWARDS, claimZm, WC_REWARDS, WORLDCUP_TEAMS, markWcLogin, claimWc, predictWcTeam, type TrickShopItem } from '@/game/trickster'
 import { loadHotpot, HOTPOT_BUNDLE_NEED, HOTPOT_DAILY_CAP } from '@/game/hotpot'
 import { loadBp, gainBpXp } from '@/game/battlepass'
 import { makeItem } from '@/game/data'
@@ -244,6 +244,62 @@ function InviteBlock({ onMsg }: { onMsg: (m: string) => void }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/** 烽火世界杯·竞猜助威：累计登录领物流凭证 + 锁定冠军预测（11/12-11/29） */
+function WorldcupBlock({ onMsg }: { onMsg: (m: string) => void }) {
+  const ts = loadTrickster()
+  const days = ts.wcDays.length
+  const picked = ts.wcTeam ? WORLDCUP_TEAMS.find(t => t.id === ts.wcTeam) : null
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-2 space-y-1">
+      <div className="text-[10px] font-bold text-amber-300">🏆 已累计登录 {days} 天（每日打开本面板即记）· 12 支战队决战斯德哥尔摩（11/27-29）</div>
+      {WC_REWARDS.map(r => {
+        const done = ts.wcClaimed.includes(r.id)
+        const can = !done && days >= r.day
+        return (
+          <div key={r.id} className="flex items-center gap-2 text-[10px] pl-1">
+            <span className={done ? 'text-emerald-300' : 'text-zinc-400'}>{done ? '✅' : '⬜'}</span>
+            <span className="flex-1 text-zinc-300">{r.icon} {r.name}（{Math.min(days, r.day)}/{r.day} 天）→ 物流凭证 ×{r.vouchers}</span>
+            {can && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = claimWc(r.id)
+                  if (!res) return
+                  notify()
+                  onMsg(`✅ ${res.name}：物流凭证 +${res.vouchers}`)
+                }}
+                className="shrink-0 rounded px-1.5 py-0.5 border border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold animate-pulse"
+              >领取</button>
+            )}
+          </div>
+        )
+      })}
+      <div className="pt-1 border-t border-amber-500/15">
+        <div className="text-[10px] font-bold text-amber-200 pl-1 pb-1">
+          {picked ? `🎯 已锁定助威：${picked.name}（${picked.region}赛区）——冠军 11/29 揭晓后结算` : '🎯 冠军竞猜：pick 你心中的冠军战队（锁定后不可更改，参与即领喷漆「烽火助威」）'}
+        </div>
+        {!picked && (
+          <div className="flex flex-wrap gap-1 pl-1">
+            {WORLDCUP_TEAMS.map(t => (
+              <button
+                key={t.id}
+                onClick={e => {
+                  e.stopPropagation()
+                  const res = predictWcTeam(t.id)
+                  notify()
+                  onMsg(res.ok ? `✅ ${res.msg}` : `⚠️ ${res.msg}`)
+                }}
+                className="rounded px-1.5 py-0.5 text-[10px] border border-amber-500/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/25"
+                title={`${t.region}赛区`}
+              >{t.name}</button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -490,6 +546,7 @@ function EventCard({ ev, now, onMsg }: { ev: OfficialEventInfo; now: number; onM
           <TokenShop shop={LOGI_SHOP} balance={loadTrickster().logiVouchers} balanceLabel="🪆 物流凭证" onMsg={onMsg} />
         )}
         {ev.name === '阿萨拉邀约' && active && <InviteBlock onMsg={onMsg} />}
+        {ev.name === '烽火世界杯·竞猜助威' && active && <WorldcupBlock onMsg={onMsg} />}
         {ev.name === '红运当头' && active && <ZmBlock prefixes={['zm_hy']} onMsg={onMsg} />}
         {ev.name === '洲末有米' && active && <ZmBlock prefixes={['zm_ym']} onMsg={onMsg} />}
         {ev.name === '洲末品枪' && active && <ZmBlock prefixes={['zm_pg']} onMsg={onMsg} />}
@@ -678,6 +735,7 @@ export function EventPanel() {
     markGlimmerLogin() // 微光时刻将至：打开活动中心即记当日登录
     markInviteLogin() // 阿萨拉邀约：打开活动中心即记当日登录（11/7-11/16）
     markZmWarLogin() // 洲末畅玩：周末窗口内记当日大战场登录（11/7-11/9）
+    markWcLogin() // 烽火世界杯·竞猜助威：打开活动中心即记当日登录（11/12-11/29）
     const t = setInterval(force, 1000)
     return () => clearInterval(t)
   }, [ui.eventsOpen])

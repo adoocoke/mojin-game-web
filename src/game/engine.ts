@@ -23,7 +23,7 @@ import { placeOrder, cancelOrder, claimOrder, arriveOrders, orderPrice } from '.
 import { FISH_TASK_KILLS, PAGE_NEED, PURGE_NEED, RAID_CATCH_CAP, RADAR_ZONE, rollFish, loadFishing, saveFishing, loadHarp, saveHarp } from './fishing'
 import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CARD_PRICE, TAGS_NEED, EXTRACT_UNLOCK_SEC } from './bossplay'
 import { reportWarGame, warEventActive, markWarLogin, reportWarKill, reportD0Game, reportSupportCall, zhoumoDoubleActive } from './warevents'
-import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, addTrickTokens, COSMETIC_NAMES, reportZmRaid, reportZmPgKill } from './trickster'
+import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, markWcLogin, addTrickTokens, COSMETIC_NAMES, reportZmRaid, reportZmPgKill } from './trickster'
 import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
 
 /** 战场景内载具实例 */
@@ -2023,6 +2023,8 @@ export class Game {
       if (evLoot.has('drinkMat') && Math.random() < 0.15) autoPlace(c.grid, makeItem(DRINK_MATS[Math.floor(Math.random() * DRINK_MATS.length)], 1))
       if (evLoot.has('luckybag') && Math.random() < 0.1) autoPlace(c.grid, makeItem('ev_luckybag', 1))
       if (evLoot.has('mandelbrick') && Math.random() < 0.04) autoPlace(c.grid, makeItem('ev_mandelbrick', 1))
+      // 官方活动「大红砖返场」：全图容器概率刷出大红砖（与曼德尔砖独立刷新、互不冲突）
+      if (evLoot.has('bigredbrick') && Math.random() < 0.05) autoPlace(c.grid, makeItem('ev_bigredbrick', 1))
       if (evLoot.has('huaxiaodie') && c.title === '鸟窝' && Math.random() < 0.3) autoPlace(c.grid, makeItem('v_butterfly', 1)) // 花小蝶返场：鸟窝概率掉落
       if (trickActive('landeng') && (c.title === '高级旅行箱' || c.title === '收纳盒') && Math.random() < 0.12) autoPlace(c.grid, makeItem('v_landeng', 1)) // 兰小登返场：野外物资箱概率掉落
       // 官方活动「极星守望」：容器概率产出可组装收集品碎片（德小兰 / 灰鲭鲨）
@@ -2351,6 +2353,24 @@ export class Game {
           uiState.money += gold
           saveMoney(uiState.money)
           msg = `🎁 行动补给箱开出赛季军功卡，兑换 +${gold.toLocaleString()} 金币！`
+        }
+      } else if (def.openable === 'bigredbrick') {
+        // 大红砖：破译开启，保底红色物资；30% 概率升级为往季炫彩超稀藏（对应官方：保底出红、概率摸中炫彩麦小蛋/炫彩克小圈/炫彩兰小登）
+        const DAZZLE = ['v_egg_dazzle', 'v_circle_dazzle', 'v_landeng_dazzle']
+        const dazzle = Math.random() < 0.3
+        const pickId = dazzle
+          ? DAZZLE[Math.floor(Math.random() * DAZZLE.length)]
+          : (() => {
+              const reds = Object.values(ITEMS).filter(d => d.rarity === 'red' && d.kind === 'valuable' && !d.openable && !DAZZLE.includes(d.id))
+              return reds[Math.floor(Math.random() * reds.length)].id
+            })()
+        const pickDef = ITEMS[pickId]
+        if (autoPlace(uiState.stash, makeItem(pickId, 1))) {
+          msg = dazzle ? `🧱 大红砖破译完成：炫彩超稀藏「${pickDef.name}」！` : `🧱 大红砖破译完成：「${pickDef.name}」！`
+        } else {
+          uiState.money += pickDef.baseValue
+          saveMoney(uiState.money)
+          msg = `🧱 破译出「${pickDef.name}」，仓库已满折现 +${pickDef.baseValue.toLocaleString()} 金币`
         }
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资
@@ -3001,6 +3021,7 @@ export class Game {
     this.setupRavenLamps()
     this.setupAirdropTreasure()
     markGlimmerLogin() // 微光时刻将至：开局即记当日登录
+    markWcLogin() // 烽火世界杯·竞猜助威：开局即记当日登录（11/12-11/29）
     if (this.war) {
       markWarLogin()
       this.buildCapturePoints()
