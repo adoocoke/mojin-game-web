@@ -239,6 +239,10 @@ export const ITEMS: Record<string, ItemDef> = {
   v_egg_dazzle:     { id: 'v_egg_dazzle',     name: '炫彩麦小蛋', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 16000, icon: '🥚', stack: 3 },
   v_circle_dazzle:  { id: 'v_circle_dazzle',  name: '炫彩克小圈', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 16000, icon: '🍩', stack: 3 },
   v_landeng_dazzle: { id: 'v_landeng_dazzle', name: '炫彩兰小登', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 18000, icon: '🪆', stack: 3 },
+  // ===== 官方 11/12「本周活动」补录：烽火寻宝（高级旅行箱概率出佐小娅 / 全图容器低概率出隐藏款炫彩佐小娅 / 航空箱概率出荣耀WIN2手机藏品） =====
+  v_zuoxiaoya:        { id: 'v_zuoxiaoya',        name: '佐小娅',         kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 3600,  icon: '🎎', stack: 3 },
+  v_zuoxiaoya_dazzle: { id: 'v_zuoxiaoya_dazzle', name: '炫彩佐小娅',     kind: 'valuable', rarity: 'red',    w: 1, h: 1, baseValue: 18000, icon: '🎎', stack: 3 },
+  v_honor_win2:       { id: 'v_honor_win2',       name: '荣耀WIN2手机',   kind: 'valuable', rarity: 'red',    w: 1, h: 1, baseValue: 12800, icon: '📱' },
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
   ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },

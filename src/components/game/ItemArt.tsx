@@ -1581,6 +1581,87 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M27 21.5c-1.5 1-2.4 2.4-2.7 4" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.85"/>
   </>),
+  // ===== 官方 11/12「本周活动」补录：烽火寻宝（佐小娅 / 炫彩佐小娅 / 荣耀WIN2手机，原创绘制） =====
+  v_zuoxiaoya: (<>
+    {sh(15, 57, 3, 0.25)}
+    {/* 身体：青白医护斗篷 */}
+    <path d="M24 40c0-6 3.5-9.5 8-9.5s8 3.5 8 9.5l1.6 12H22.4z" fill="url(#iaSteel)" stroke="#2a3d4a" strokeWidth="1.2"/>
+    <path d="M24.5 45h15M25.5 49h13" stroke="#9ad8c8" strokeWidth="1" opacity="0.6"/>
+    {/* 胸前十字徽章 */}
+    <circle cx="32" cy="41" r="3.4" fill="url(#iaGemR)" stroke="#4a0a10" strokeWidth="0.9"/>
+    <path d="M32 39.2v3.6M30.2 41h3.6" stroke="#fff" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 医疗挎包 */}
+    <rect x="40" y="44" width="8.6" height="7.4" rx="1.6" fill="url(#iaLeather)" stroke="#3d2712" strokeWidth="1"/>
+    <path d="M44.3 46v3.4M42.6 47.7h3.4" stroke="#fff6cf" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 头 */}
+    <circle cx="32" cy="24" r="8.6" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <circle cx="28.6" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <circle cx="35.4" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <path d="M29 27.6c1.8 1.6 4.2 1.6 6 0" stroke="#7e3a1c" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    {/* 白色兜帽 */}
+    <path d="M22.4 26.5c-1.2-8 3-14.5 9.6-14.5s10.8 6 9.6 14.5c-1.2-3.4-4.2-5.2-9.6-5.2s-8.4 1.8-9.6 5.2z" fill="url(#iaPearl)" stroke="#8fa2b8" strokeWidth="1.1"/>
+    {/* 帽徽：青色菱形 */}
+    <path d="M32 13.4l2.2 2.6-2.2 2.6-2.2-2.6z" fill="url(#iaGemC)" stroke="#0e4a44" strokeWidth="0.7"/>
+    {/* 高光 */}
+    <path d="M26.5 17.5c-1.4 1.2-2.2 2.6-2.5 4.2" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.8"/>
+  </>),
+  v_zuoxiaoya_dazzle: (<>
+    {sh(15, 57, 3, 0.25)}
+    {/* 虹彩晕环 */}
+    <circle cx="32" cy="35" r="21" fill="#9ad8ff" opacity="0.14"/>
+    {/* 身体：虹彩医护斗篷 */}
+    <path d="M24 40c0-6 3.5-9.5 8-9.5s8 3.5 8 9.5l1.6 12H22.4z" fill="url(#iaBflyD)" stroke="#3a2a5e" strokeWidth="1.2"/>
+    <path d="M24.5 45h15M25.5 49h13" stroke="#fff6cf" strokeWidth="1" opacity="0.7"/>
+    {/* 胸前十字徽章（虹彩底座） */}
+    <circle cx="32" cy="41" r="3.4" fill="url(#iaGemR)" stroke="#ffd0c8" strokeWidth="0.9"/>
+    <path d="M32 39.2v3.6M30.2 41h3.6" stroke="#fff" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 医疗挎包（鎏金） */}
+    <rect x="40" y="44" width="8.6" height="7.4" rx="1.6" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1"/>
+    <path d="M44.3 46v3.4M42.6 47.7h3.4" stroke="#4a3410" strokeWidth="1.1" strokeLinecap="round"/>
+    {/* 头 */}
+    <circle cx="32" cy="24" r="8.6" fill="url(#iaStraw)" stroke="#8a6526" strokeWidth="1.1"/>
+    <circle cx="28.6" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <circle cx="35.4" cy="23.4" r="1.5" fill="#2a1a0c"/>
+    <path d="M29 27.6c1.8 1.6 4.2 1.6 6 0" stroke="#7e3a1c" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    {/* 白色兜帽（虹彩滚边） */}
+    <path d="M22.4 26.5c-1.2-8 3-14.5 9.6-14.5s10.8 6 9.6 14.5c-1.2-3.4-4.2-5.2-9.6-5.2s-8.4 1.8-9.6 5.2z" fill="url(#iaPearl)" stroke="url(#iaBflyD)" strokeWidth="1.4"/>
+    {/* 帽徽：虹彩菱形 */}
+    <path d="M32 13.4l2.2 2.6-2.2 2.6-2.2-2.6z" fill="url(#iaBflyD)" stroke="#fff" strokeWidth="0.7"/>
+    {/* 星闪 */}
+    <path d="M50 10l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#ffffff"/>
+    <path d="M13 12l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#ffd9f0"/>
+    {/* 高光 */}
+    <path d="M26.5 17.5c-1.4 1.2-2.2 2.6-2.5 4.2" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.85"/>
+  </>),
+  v_honor_win2: (<>
+    {sh(16, 56, 3, 0.25)}
+    {/* 机身（斜放战术手机） */}
+    <g transform="rotate(-14 32 34)">
+      <rect x="21" y="12" width="22" height="42" rx="4" fill="url(#iaObsidian)" stroke="#10151c" strokeWidth="1.5"/>
+      {/* 防撞护角 */}
+      <path d="M21 16a4 4 0 0 1 4-4h4v5h-8z" fill="url(#iaSteel)"/>
+      <path d="M43 12h-4v5h8v-1a4 4 0 0 0-4-4z" fill="url(#iaSteel)" transform="translate(-4 0)"/>
+      {/* 屏幕 */}
+      <rect x="24" y="17" width="16" height="30" rx="2" fill="url(#iaGemB)" stroke="#0e2531" strokeWidth="1"/>
+      {/* 屏幕地图：定位钉 + 航线 */}
+      <path d="M26 40l5-4 4 3 4-6" stroke="#9ad8ff" strokeWidth="1" fill="none" opacity="0.85"/>
+      <path d="M32 24c-2 0-3.4 1.5-3.4 3.3 0 2.4 3.4 5.7 3.4 5.7s3.4-3.3 3.4-5.7c0-1.8-1.4-3.3-3.4-3.3z" fill="url(#iaGlowO)" stroke="#7d3a10" strokeWidth="0.7"/>
+      <circle cx="32" cy="27.2" r="1.2" fill="#fff6cf"/>
+      {/* 顶部听筒与信号灯 */}
+      <rect x="28.5" y="14" width="7" height="1.4" rx="0.7" fill="#2a3d4a"/>
+      <circle cx="39.5" cy="14.7" r="1" fill="url(#iaGlowO)"/>
+      {/* 侧边橙色按键 */}
+      <rect x="43" y="24" width="1.8" height="6" rx="0.9" fill="url(#iaGlowO)"/>
+      {/* 背刻 W2 铭文 */}
+      <text x="32" y="51.6" textAnchor="middle" fontSize="4.4" fontWeight="bold" fill="#8fa2b8" fontFamily="monospace">W2</text>
+    </g>
+    {/* 信号波纹 */}
+    <path d="M47 12a9 9 0 0 1 4.5 7.5M50 8.5a13.5 13.5 0 0 1 6.5 11" stroke="#9ad8ff" strokeWidth="1.1" fill="none" strokeLinecap="round" opacity="0.8"/>
+    {/* 星闪 */}
+    <path d="M12 12l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#ffffff" opacity="0.9"/>
+    {/* 高光 */}
+    <path d="M24 15.5c-1.6 2-2.5 4.4-2.7 7" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.6"/>
+  </>),
 }
 
 interface ItemArtProps {

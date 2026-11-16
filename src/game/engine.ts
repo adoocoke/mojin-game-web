@@ -2037,6 +2037,12 @@ export class Game {
       if (evLoot.has('faction') && this.world.mapId === 'desert' && Math.random() < 0.015) autoPlace(c.grid, makeItem(Math.random() < 0.5 ? 'v_charm_asara' : 'v_charm_havk', 1))
       // 官方活动「图灵砖·微光换新」：S12 新版图灵砖全图小概率产出（旧版图灵砖停产，存货仍可开启）
       if (evLoot.has('turing2') && Math.random() < 0.03) autoPlace(c.grid, makeItem('ev_turingbrick2', 1))
+      // 官方活动「烽火寻宝」：高级旅行箱/收纳盒概率出「佐小娅」，全图容器低概率出隐藏款「炫彩佐小娅」，航空箱概率出「荣耀WIN2」手机藏品
+      if (evLoot.has('xbyhunt')) {
+        if ((c.title === '高级旅行箱' || c.title === '收纳盒') && Math.random() < 0.12) autoPlace(c.grid, makeItem('v_zuoxiaoya', 1))
+        if (Math.random() < 0.006) autoPlace(c.grid, makeItem('v_zuoxiaoya_dazzle', 1))
+        if (c.title === '航空箱' && Math.random() < 0.06) autoPlace(c.grid, makeItem('v_honor_win2', 1))
+      }
     }
     // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
     if (c.tag === 'airdrop' && trickActive('airdrop')) {
