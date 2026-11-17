@@ -2043,6 +2043,11 @@ export class Game {
         if (Math.random() < 0.006) autoPlace(c.grid, makeItem('v_zuoxiaoya_dazzle', 1))
         if (c.title === '航空箱' && Math.random() < 0.06) autoPlace(c.grid, makeItem('v_honor_win2', 1))
       }
+      // 官方活动「烽火世界杯·赛事中心」：全图容器概率掉落「赛事补给包」，低概率掉落收藏代币「精锐制式装备券」（对应官方：赛事中心任务/助威奖励含补给包与装备券）
+      if (evLoot.has('dfi2026')) {
+        if (Math.random() < 0.05) autoPlace(c.grid, makeItem('ev_dfi_pack', 1))
+        if (Math.random() < 0.02) autoPlace(c.grid, makeItem('v_dfi_ticket', 1))
+      }
     }
     // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
     if (c.tag === 'airdrop' && trickActive('airdrop')) {
@@ -2377,6 +2382,33 @@ export class Game {
           uiState.money += pickDef.baseValue
           saveMoney(uiState.money)
           msg = `🧱 破译出「${pickDef.name}」，仓库已满折现 +${pickDef.baseValue.toLocaleString()} 金币`
+        }
+      } else if (def.openable === 'dfipack') {
+        // 赛事补给包：精锐制式装备券 / 金币 / 随机物资（对应官方：赛事补给包含精锐制式装备券等奖励）
+        const roll = Math.random()
+        if (roll < 0.3) {
+          if (autoPlace(uiState.stash, makeItem('v_dfi_ticket', 1))) {
+            msg = '🎖️ 赛事补给包开出「精锐制式装备券」×1！'
+          } else {
+            uiState.money += 4200
+            saveMoney(uiState.money)
+            msg = '🎖️ 开出「精锐制式装备券」，仓库已满折现 +4,200 金币'
+          }
+        } else if (roll < 0.7) {
+          const gold = 5000 + Math.floor(Math.random() * 7001)
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🎖️ 赛事补给包开出 ${gold.toLocaleString()} 金币！`
+        } else {
+          const it = rollLootItem(LOOT_POOL, 1.4)
+          if (autoPlace(uiState.stash, it)) {
+            msg = `🎖️ 赛事补给包开出「${ITEMS[it.defId].name}」！`
+          } else {
+            const gold = itemValue(defOf(it), it.rarity) * it.count
+            uiState.money += gold
+            saveMoney(uiState.money)
+            msg = `🎖️ 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
+          }
         }
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资

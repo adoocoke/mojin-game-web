@@ -1662,6 +1662,49 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M24 15.5c-1.6 2-2.5 4.4-2.7 7" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.6"/>
   </>),
+  // ===== 官方 11/16 公告：烽火世界杯·赛事中心（赛事补给包 / 精锐制式装备券，原创绘制） =====
+  ev_dfi_pack: (<>
+    {sh(17, 56, 3.2, 0.28)}
+    {/* 包体：斜放战术软包 */}
+    <g transform="rotate(-8 32 34)">
+      <rect x="16" y="22" width="32" height="26" rx="5" fill="url(#iaLapis)" stroke="#122c46" strokeWidth="1.4"/>
+      {/* 包盖折边 */}
+      <path d="M16 30a5 5 0 0 1 5-5h22a5 5 0 0 1 5 5v3H16z" fill="url(#iaSteel)" stroke="#122c46" strokeWidth="1.1"/>
+      {/* 纵向织带 */}
+      <rect x="22.5" y="22" width="4" height="26" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+      <rect x="37.5" y="22" width="4" height="26" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+      {/* 中央奖章：桂冠星 */}
+      <circle cx="32" cy="38" r="6.4" fill="url(#iaGoldR)" stroke="#6e4a0e" strokeWidth="1.1"/>
+      <path d="M32 33.6l1.3 2.7 3 .4-2.2 2.1.5 3-2.6-1.5-2.6 1.5.5-3-2.2-2.1 3-.4z" fill="#fff6cf" stroke="#8a5f10" strokeWidth="0.6"/>
+      {/* 包角铆钉 */}
+      <circle cx="19.5" cy="26" r="1.1" fill="url(#iaSilver)"/>
+      <circle cx="44.5" cy="26" r="1.1" fill="url(#iaSilver)"/>
+    </g>
+    {/* 星闪 */}
+    <path d="M50 12l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
+    {/* 高光 */}
+    <path d="M20 25.5c2-1.8 4.6-2.8 7.4-3" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.65"/>
+  </>),
+  v_dfi_ticket: (<>
+    {sh(14, 55, 2.6, 0.25)}
+    {/* 券体：打孔票根（斜放） */}
+    <g transform="rotate(-12 32 32)">
+      <path d="M18 22h28v7a2.6 2.6 0 0 0 0 6v7H18v-7a2.6 2.6 0 0 0 0-6z" fill="url(#iaPaper)" stroke="#8a713a" strokeWidth="1.2"/>
+      {/* 金边内框 */}
+      <path d="M21 25h22v14H21z" fill="none" stroke="url(#iaGoldV)" strokeWidth="1.3"/>
+      {/* 撕裂虚线 */}
+      <path d="M38.5 22.5v19" stroke="#8a713a" strokeWidth="0.9" strokeDasharray="1.6 1.8"/>
+      {/* 左侧徽章：盾形星 */}
+      <path d="M29.5 26.8c2.2.8 3.6.8 5 .4v4.6c0 2.6-2.2 4.2-5 5.4-2.8-1.2-5-2.8-5-5.4v-4.6c1.4.4 2.8.4 5-.4z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.9"/>
+      <path d="M29.5 28.8l1.1 2.2 2.4.3-1.8 1.7.4 2.4-2.1-1.2-2.1 1.2.4-2.4-1.8-1.7 2.4-.3z" fill="#fff6cf"/>
+      {/* 右侧券文 */}
+      <rect x="40.4" y="27.2" width="4.4" height="1.4" rx="0.7" fill="#8a713a"/>
+      <rect x="40.4" y="30.2" width="3.2" height="1.2" rx="0.6" fill="#b09a5e"/>
+      <rect x="40.4" y="33" width="4" height="1.2" rx="0.6" fill="#b09a5e"/>
+    </g>
+    {/* 高光 */}
+    <path d="M21.5 24.6c1.8-1.2 4-1.9 6.2-2" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+  </>),
 }
 
 interface ItemArtProps {

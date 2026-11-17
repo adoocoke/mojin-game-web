@@ -55,7 +55,7 @@ export interface OfficialEvent {
   end: string
   skin?: string       // 「登录领皮肤」类活动：窗口期内首次开局发放该皮肤（skins.ts 中的皮肤 id）
   vehicleSkin?: string // 「登录领载具涂装」类活动：窗口期内首次开局发放载具涂装（vehicles.ts 中的涂装 id）
-  lootTag?: 'drinkMat' | 'luckybag' | 'mandelbrick' | 'bigredbrick' | 'jixing' | 'hvk' | 'huaxiaodie' | 'yzbl' | 'faction' | 'turing2' | 'xbyhunt'  // 局内道具掉落注入（窗口期内所有此类活动同时生效）
+  lootTag?: 'drinkMat' | 'luckybag' | 'mandelbrick' | 'bigredbrick' | 'jixing' | 'hvk' | 'huaxiaodie' | 'yzbl' | 'faction' | 'turing2' | 'xbyhunt' | 'dfi2026'  // 局内道具掉落注入（窗口期内所有此类活动同时生效）
 }
 
 const OFFICIAL_EVENTS: OfficialEvent[] = [
@@ -237,6 +237,9 @@ const OFFICIAL_EVENTS: OfficialEvent[] = [
     desc: '洲洲军火库 11/13 起限时全周开放：累计登录领精锐制式装备券、标准制式装备券，「甄选加码」并行（对应官方 11/12 本周活动帖；本游戏等价镜像：档期记录，窗口期甄选加码活动卡并行生效）' },
   { id: 'official', icon: '🏁', name: '黑潮爆破季末冲分', start: '2026-11-13T00:00:00+08:00', end: '2026-11-26T23:59:59+08:00',
     desc: '黑潮爆破季末冲分开启：青铜至钻石段位分三期、每期可获 2 次竞技爆破双倍加分机会；11/26 0:30 停止竞技爆破匹配，当日 2:00 上赛季结算、段位重置并开启新赛季（对应官方 11/12 本周活动帖；本游戏无黑潮爆破模式，等价镜像：档期记录，双倍加分卡并行生效）' },
+  // —— 2026-11-17 同步批次：官方 11/16 公告（瑞典烽火世界杯赛事活动一图详解，端内赛事中心活动当日开启） ——
+  { id: 'official', icon: '🎖️', name: '烽火世界杯·赛事中心', start: '2026-11-16T00:00:00+08:00', end: '2026-11-29T23:59:59+08:00', lootTag: 'dfi2026',
+    desc: '端内赛事中心活动 11/16 开启：参与赛事任务与助威，领取赛事补给包、精锐制式装备券等奖励；赛事限定传说武器外观、局内应援动作、IBG/TES 战队定制道具陆续解锁（对应官方 11/16 公告：2026 瑞典烽火世界杯 11/27-29 斯德哥尔摩 DreamHack；本游戏等价镜像：窗口期全图容器概率掉落「赛事补给包」（带出到仓库开启）与收藏代币「精锐制式装备券」）' },
   // —— 已结束活动存档（官方档期 10/10-10/15，本游戏无独立弹药品类，仅记录） ——
   { id: 'official', icon: '💥', name: '赛季限定弹药', start: '2026-10-10T00:00:00+08:00', end: '2026-10-15T23:59:59+08:00',
     desc: '官方限时上架 7.62×51 LS / 5.7×28 HT 赛季弹药（已于 10/15 结束；本游戏弹药为通用等级制，故仅作档期记录）' },
