@@ -1663,6 +1663,35 @@ const ART: Record<string, ReactNode> = {
     <path d="M24 15.5c-1.6 2-2.5 4.4-2.7 7" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.6"/>
   </>),
   // ===== 官方 11/16 公告：烽火世界杯·赛事中心（赛事补给包 / 精锐制式装备券，原创绘制） =====
+  ev_randwpn_pack: (<>
+    {sh(16, 56, 3.2, 0.28)}
+    {/* 箱体：斜放军规武器箱 */}
+    <g transform="rotate(-6 32 36)">
+      <rect x="13" y="24" width="38" height="24" rx="4" fill="url(#iaIron)" stroke="#141a20" strokeWidth="1.4"/>
+      {/* 箱盖 */}
+      <path d="M13 30a4 4 0 0 1 4-4h30a4 4 0 0 1 4 4v2.5H13z" fill="url(#iaSteel)" stroke="#141a20" strokeWidth="1.1"/>
+      {/* 警示斜纹带 */}
+      <path d="M15 44h34v2.6H15z" fill="url(#iaGoldV)" opacity="0.92"/>
+      <path d="M18 44l4 2.6h-4zm9 0l4 2.6h-4zm9 0l4 2.6h-4zm9 0l4 2.6h-4z" fill="#141a20" opacity="0.85"/>
+      {/* 中央锁扣 */}
+      <rect x="29" y="23" width="6" height="7" rx="1.6" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.9"/>
+      <circle cx="32" cy="26.5" r="1.4" fill="#7d5410"/>
+      {/* 正面枪械剪影 */}
+      <g fill="#0c1117" opacity="0.92">
+        <rect x="21" y="34.6" width="23" height="3" rx="1.3"/>
+        <path d="M21 34.6l-4.4 3.6 2 1.9 4.4-2.4z"/>
+        <path d="M31 37.6l2 4.4 3-.6-1.6-3.8z"/>
+        <rect x="25" y="32.4" width="6.6" height="2.2" rx="1"/>
+      </g>
+      {/* 包角铆钉 */}
+      <circle cx="16.5" cy="27.5" r="1.1" fill="url(#iaSilver)"/>
+      <circle cx="47.5" cy="27.5" r="1.1" fill="url(#iaSilver)"/>
+    </g>
+    {/* 星闪 */}
+    <path d="M50 12l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
+    {/* 高光 */}
+    <path d="M18 25.5c2-1.6 4.4-2.5 7-2.8" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.6"/>
+  </>),
   ev_dfi_pack: (<>
     {sh(17, 56, 3.2, 0.28)}
     {/* 包体：斜放战术软包 */}

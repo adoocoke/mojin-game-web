@@ -74,6 +74,9 @@ export const SKINS: SkinDef[] = [
     desc: '「阿萨拉邀约」嘉奖：深海蓝枪身泛潮汐光纹（对应官方：亚特兰蒂斯-UZI冲锋枪，配色原创）' },
   { id: 'sk_rose_death', name: '死神玫瑰', icon: '🥀', rarity: 'red', gun: 'any', main: 0x1c1216, accent: 0x8a1a2a, emissive: 0xd8b24a, emissiveIntensity: 0.28, price: 4800,
     desc: '「死神玫瑰捆绑包」限时上架：暗金雕花缠枯玫瑰（对应官方：死神玫瑰-腾龙/ASVal/S12K 系列，2400 三角券；本游戏等价镜像为全武器通用涂装，配色原创）' },
+  // ---------- 2026-11-19 公告批次 ----------
+  { id: 'sk_jiyefenghuo', name: '极夜烽火', icon: '🌌', rarity: 'red', gun: 'any', main: 0x0d1830, accent: 0x2a4a7a, emissive: 0x4ae8d8, emissiveIntensity: 0.34, price: 4800,
+    desc: '「极夜烽火—2026烽火世界杯捆绑包」限时上架：极夜深蓝枪身映极光青焰、余烬橙纹收边（对应官方：AWM/AS Val/QCQ171 极夜烽火武器外观+系列挂饰/头像/军牌/喷漆，11/20-12/19 商城 2400 三角券；本游戏等价镜像为全武器通用涂装，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

@@ -102,6 +102,7 @@ export const COSMETIC_NAMES: Record<string, string> = {
   cos_badge_heichao: '纪念徽章「黑潮 D0」',
   cos_action_clap: '动作「鼓掌」',
   cos_spray_worldcup: '喷漆「烽火助威」',
+  cos_spray_dfwc: '喷漆「烽火世界杯」',
 }
 
 // ===================== 捣蛋鬼商店（捣蛋代币兑换） =====================
@@ -398,6 +399,11 @@ export function markWcLogin() {
   if (!s.wcDays.includes(today)) {
     s.wcDays.push(today)
     saveTrickster(s)
+  }
+  // 「烽火世界杯·登录助威」（官方 11/19 公告，11/20-11/26）：窗口期登录即领喷漆「烽火世界杯」收藏
+  const now = Date.now()
+  if (now >= Date.parse('2026-11-20T00:00:00+08:00') && now <= Date.parse('2026-11-26T23:59:59+08:00')) {
+    grantCosmetic('cos_spray_dfwc')
   }
 }
 

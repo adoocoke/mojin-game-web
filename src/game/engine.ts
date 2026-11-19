@@ -484,7 +484,7 @@ export class Game {
   /** 大战场「空地突袭」：B = 呼叫空袭（CD 45s，只伤敌军） */
   private useWarStrike() {
     if (!this.war || uiState.phase !== 'playing') return
-    if (!warEventActive('kongdi') && !warEventActive('support')) { this.toast('「空地突袭 / 区域策援」活动不在开放期', 'white'); return }
+    if (!warEventActive('kongdi') && !warEventActive('support') && !warEventActive('wenya')) { this.toast('「空地突袭 / 区域策援 / 温压弹」活动不在开放期', 'white'); return }
     if (this.warStrikeCd > 0) { this.toast(`空袭冷却中 ${Math.ceil(this.warStrikeCd)}s`, 'white'); return }
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw)
     for (let i = 0; i < 3; i++) {
@@ -2045,9 +2045,13 @@ export class Game {
       }
       // 官方活动「烽火世界杯·赛事中心」：全图容器概率掉落「赛事补给包」，低概率掉落收藏代币「精锐制式装备券」（对应官方：赛事中心任务/助威奖励含补给包与装备券）
       if (evLoot.has('dfi2026')) {
-        if (Math.random() < 0.05) autoPlace(c.grid, makeItem('ev_dfi_pack', 1))
-        if (Math.random() < 0.02) autoPlace(c.grid, makeItem('v_dfi_ticket', 1))
+        // 「烽火世界杯·登录助威」（官方 11/19 公告，11/20-11/26）：窗口期掉落加码
+        const wcBoost = Date.now() >= Date.parse('2026-11-20T00:00:00+08:00') && Date.now() <= Date.parse('2026-11-26T23:59:59+08:00')
+        if (Math.random() < (wcBoost ? 0.09 : 0.05)) autoPlace(c.grid, makeItem('ev_dfi_pack', 1))
+        if (Math.random() < (wcBoost ? 0.035 : 0.02)) autoPlace(c.grid, makeItem('v_dfi_ticket', 1))
       }
+      // 官方活动「甄选加码·升级」（11/19 公告，11/20-11/26）：武器箱概率产出「随机武器补给包」（对应官方：新增随机武器补给包，可开出 40 种不同改装风格的枪械）
+      if (evLoot.has('zhenxuan') && c.title === '武器箱' && Math.random() < 0.22) autoPlace(c.grid, makeItem('ev_randwpn_pack', 1))
     }
     // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
     if (c.tag === 'airdrop' && trickActive('airdrop')) {
@@ -2409,6 +2413,18 @@ export class Game {
             saveMoney(uiState.money)
             msg = `🎖️ 开出「${ITEMS[it.defId].name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
           }
+        }
+      } else if (def.openable === 'randwpn') {
+        // 随机武器补给包：随机开出一把整枪（对应官方：甄选加码新增随机武器补给包，可开出 40 种不同改装风格的枪械；本游戏等价镜像为随机整枪）
+        const GUNS = Object.values(ITEMS).filter(d => d.kind === 'weapon')
+        const pick = GUNS[Math.floor(Math.random() * GUNS.length)]
+        if (autoPlace(uiState.stash, makeItem(pick.id, 1))) {
+          msg = `🧰 随机武器补给包开出整枪「${pick.name}」！`
+        } else {
+          const gold = pick.baseValue * 3
+          uiState.money += gold
+          saveMoney(uiState.money)
+          msg = `🧰 开出「${pick.name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
         }
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资

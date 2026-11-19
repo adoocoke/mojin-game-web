@@ -246,6 +246,8 @@ export const ITEMS: Record<string, ItemDef> = {
   // ===== 官方 11/16 公告活动道具：烽火世界杯·赛事中心（赛事补给包带出到仓库开启 / 精锐制式装备券为收藏代币） =====
   ev_dfi_pack:  { id: 'ev_dfi_pack',  name: '赛事补给包',     kind: 'valuable', rarity: 'purple', w: 2, h: 1, baseValue: 7000, icon: '🏅', stack: 2, openable: 'dfipack' },
   v_dfi_ticket: { id: 'v_dfi_ticket', name: '精锐制式装备券', kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 4200, icon: '🎟️', stack: 5 },
+  // 官方 2026-11-19 公告：甄选加码升级新增「随机武器补给包」（可开出 40 种不同改装风格的枪械；本游戏等价镜像为随机整枪）
+  ev_randwpn_pack: { id: 'ev_randwpn_pack', name: '随机武器补给包', kind: 'valuable', rarity: 'purple', w: 2, h: 1, baseValue: 9000, icon: '🧰', stack: 2, openable: 'randwpn' },
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
   ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },
