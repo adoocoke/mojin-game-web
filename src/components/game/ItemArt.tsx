@@ -1734,6 +1734,288 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M21.5 24.6c1.8-1.2 4-1.9 6.2-2" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
   </>),
+  // ===== 摸金乐园 · 官方大红图鉴（原创手绘，材质渐变 + 镜面高光 + 软阴影） =====
+  v_lp_african: (<>
+    {sh(15, 56, 3.1, 0.3)}
+    {/* 心形红宝石：左右弧面 + 尖底刻面 */}
+    <path d="M32 52C24 44 15 37 15 27c0-7 5-12 11-12 3.5 0 5.5 1.6 6 3.8.5-2.2 2.5-3.8 6-3.8 6 0 11 5 11 12 0 10-9 17-17 21z" fill="url(#iaGemR)" stroke="#5d0b18" strokeWidth="1.5"/>
+    <path d="M32 18L24 29l8 23 8-23z" fill="#ff8a96" opacity="0.28"/>
+    <path d="M18 28c1.6-5.4 5.4-8.7 10.5-9.2" stroke="#fff0f2" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.75"/>
+    <path d="M24 29h16M28 42l8 0" stroke="#7f1222" strokeWidth="1" opacity="0.55"/>
+    <circle cx="25" cy="23" r="2" fill="#ffffff" opacity="0.85"/>
+  </>),
+  v_lp_gazelle: (<>
+    {sh(17, 56, 3.2, 0.28)}
+    {/* 黄金瞪羚侧面像：躯干、长颈、弯角 */}
+    <path d="M17 42c5-8 15-11 24-7 5 2.2 8 5.6 9 10l-5 2c-2-4-5-6.6-10-7.6-6.5-1.3-12 .8-15 5z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1.2"/>
+    <path d="M39 35c1.5-7 4.5-13 9-17l2 2c-3.8 4.2-6 9.4-7 15z" fill="url(#iaGoldR)" stroke="#7d5410" strokeWidth="1"/>
+    <path d="M46 18c4.5-5 8-6 11-5.5-2.2 2-4.7 4.2-6.7 7M43 19c2-5 4.5-8 8-10-.3 3-1.4 6-3.5 9" fill="none" stroke="url(#iaBronze)" strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="49" cy="22" r="1.1" fill="#1b1208"/>
+    <path d="M25 46l-2 8M39 45l3 9" stroke="url(#iaGoldV)" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M20 39c5-3.5 12-4.5 18-2.5" stroke="#fff3c2" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.75"/>
+  </>),
+  v_lp_musket: (<>
+    {sh(20, 55, 3, 0.26)}
+    {/* 滑膛枪展品：胡桃木枪托 + 长枪管 + 展示架 */}
+    <path d="M10 43c7 1 12-1 16-6l25-24 3 3-24 25c-4 5-10 7-20 5z" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1.2"/>
+    <path d="M27 36L53 10l3 2-25 27z" fill="url(#iaSteel)" stroke="#252a31" strokeWidth="1"/>
+    <path d="M45 17l7-7M49 21l7-7" stroke="#d5dde5" strokeWidth="1.1" opacity="0.75"/>
+    <path d="M29 37c2 2 5 2 7 0" fill="none" stroke="url(#iaGoldV)" strokeWidth="1.6"/>
+    <path d="M18 49h28M24 45v8M44 25v29" stroke="url(#iaIron)" strokeWidth="2.2" strokeLinecap="round"/>
+    <circle cx="28" cy="39" r="2.2" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+  </>),
+  v_lp_bust: (<>
+    {sh(16, 56, 3.4, 0.32)}
+    {/* 古典半身像：象牙石材质 + 卷发与肩座 */}
+    <path d="M25 21c0-7 4-11 8-11s8 4 8 11c0 5-2 9-5 11l1 5h-10l1-5c-3-2-3-6-3-11z" fill="url(#iaIvory)" stroke="#8f8878" strokeWidth="1.2"/>
+    <path d="M23 18c-3 1-4 4-3 7M43 18c3 1 4 4 3 7M27 12c2-3 8-3 10 0" fill="none" stroke="#9d9687" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M25 38h14l6 10H19z" fill="url(#iaPorce)" stroke="#8f8878" strokeWidth="1.2"/>
+    <rect x="18" y="47" width="28" height="6" rx="1.4" fill="url(#iaSteel)" stroke="#454b52" strokeWidth="1"/>
+    <path d="M27 22c2-1 4-1 6 0M28 28c2 1.5 5 1.5 7 0" stroke="#6f695e" strokeWidth="1" strokeLinecap="round" fill="none"/>
+    <path d="M25 15c2-3 6-4.5 10-3" stroke="#ffffff" strokeWidth="1.7" strokeLinecap="round" fill="none" opacity="0.65"/>
+  </>),
+  v_lp_gramo: (<>
+    {sh(18, 56, 3.4, 0.3)}
+    {/* 留声机：黄铜喇叭 + 木箱 + 唱片 */}
+    <path d="M30 27C39 17 48 12 56 12c1 9-3 18-13 26l-9 4z" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="1.3"/>
+    <path d="M36 29c6-6 12-9 17-10" stroke="#fff3c2" strokeWidth="1.7" strokeLinecap="round" opacity="0.75"/>
+    <rect x="13" y="38" width="28" height="14" rx="2.2" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1.2"/>
+    <circle cx="27" cy="40" r="7.5" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1"/>
+    <circle cx="27" cy="40" r="2" fill="url(#iaGoldR)"/>
+    <path d="M35 36l6-8" stroke="url(#iaBronze)" strokeWidth="2.4" strokeLinecap="round"/>
+    <path d="M17 45h20" stroke="#b98a58" strokeWidth="1" opacity="0.65"/>
+  </>),
+  v_lp_ifv: (<>
+    {sh(19, 56, 3.2, 0.3)}
+    {/* 步战车模型：装甲车身、炮塔、六轮 */}
+    <path d="M12 34l6-8h25l8 8v9H12z" fill="url(#iaCamo)" stroke="#29342b" strokeWidth="1.3"/>
+    <path d="M27 24h13l3 6H24z" fill="url(#iaSteel)" stroke="#293038" strokeWidth="1"/>
+    <path d="M39 26l14-3" stroke="url(#iaIron)" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M15 33h34" stroke="#d8e0d0" strokeWidth="1.4" opacity="0.5"/>
+    {[18, 26, 34, 42].map(x => <circle key={x} cx={x} cy="44" r="4" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1"/>)}
+    {[18, 26, 34, 42].map(x => <circle key={`${x}h`} cx={x} cy="44" r="1.5" fill="url(#iaSilver)"/>)}
+    <path d="M17 29c6-3 16-4 25-1" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.45"/>
+  </>),
+  v_lp_radar: (<>
+    {sh(17, 56, 3.2, 0.3)}
+    {/* 便携军用雷达：三脚架 + 旋转碟面 */}
+    <path d="M32 28L22 53M32 28l10 24M32 28v24" stroke="url(#iaIron)" strokeWidth="2.6" strokeLinecap="round"/>
+    <ellipse cx="32" cy="23" rx="15" ry="10" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.3" transform="rotate(-18 32 23)"/>
+    <ellipse cx="32" cy="23" rx="9" ry="5.5" fill="url(#iaLens)" opacity="0.85" transform="rotate(-18 32 23)"/>
+    <path d="M20 21c4-4 10-6 16-5" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.65"/>
+    <path d="M43 15c4 1.5 7 4 8.5 8M46 10c6 2.5 10 7 12 13" stroke="#3ce0d2" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.75"/>
+    <circle cx="32" cy="28" r="3" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+  </>),
+  v_lp_topsec: (<>
+    {sh(17, 57, 3.4, 0.32)}
+    {/* 绝密服务器：立式黑金主机，红色加密环 */}
+    <rect x="22" y="8" width="20" height="45" rx="3" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1.4"/>
+    <rect x="25" y="12" width="14" height="7" rx="1" fill="url(#iaSteel)"/>
+    <rect x="25" y="22" width="14" height="3" rx="1" fill="url(#iaLapis)"/>
+    <rect x="25" y="28" width="14" height="3" rx="1" fill="url(#iaLapis)"/>
+    <rect x="25" y="34" width="14" height="3" rx="1" fill="url(#iaLapis)"/>
+    <circle cx="32" cy="45" r="5" fill="none" stroke="url(#iaGemR)" strokeWidth="2"/>
+    <path d="M32 42v3l2 2" stroke="#ffb3b8" strokeWidth="1.3" strokeLinecap="round"/>
+    <path d="M25 11c2-1.5 5-2.2 9-2" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+  </>),
+  v_lp_disk: (<>
+    {sh(18, 56, 3.2, 0.3)}
+    {/* 高速磁盘阵列：三层盘仓 + 状态灯 */}
+    {[15, 27, 39].map((y, i) => <g key={y}><rect x="14" y={y} width="36" height="10" rx="2" fill={i === 1 ? 'url(#iaSteel)' : 'url(#iaIron)'} stroke="#20242a" strokeWidth="1"/><circle cx="19" cy={y + 5} r="1.5" fill={i === 0 ? '#3ce0d2' : '#d4af37'}/><path d={`M25 ${y + 3.2}h18M25 ${y + 6.5}h18`} stroke="#aab4bf" strokeWidth="0.9" opacity="0.65"/></g>)}
+    <path d="M17 16c5-2 10-2.5 16-1.5" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.45"/>
+  </>),
+  v_lp_cloud: (<>
+    {sh(17, 56, 3.2, 0.3)}
+    {/* 云存储阵列：机柜上的立体云 */}
+    <rect x="17" y="28" width="30" height="23" rx="3" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.3"/>
+    <path d="M22 26c0-6 4-10 9-10 4 0 7 2 8 5 4 0 7 2.5 7 6 0 4-3 6-7 6H26c-3 0-5-2.5-5-5 0-1 .7-1.8 1-2z" fill="url(#iaGemC)" stroke="#5c93ad" strokeWidth="1.2"/>
+    {[34, 38, 42].map(y => <path key={y} d={`M22 ${y}h20`} stroke="#b7c1ca" strokeWidth="1.1" opacity="0.7"/>)}
+    <circle cx="43" cy="47" r="1.8" fill="#3ce0d2"/>
+    <path d="M24 20c2-3 6-4.5 10-3.5" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.75"/>
+  </>),
+  v_lp_blade: (<>
+    {sh(13, 56, 3, 0.3)}
+    {/* 刀片服务器：细长抽屉式刀匣 */}
+    <g transform="rotate(4 32 32)">
+      <rect x="26" y="7" width="12" height="45" rx="2" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1.2"/>
+      {[14, 22, 30, 38, 46].map(y => <rect key={y} x="28" y={y} width="8" height="4" rx="0.8" fill="url(#iaSteel)" stroke="#454c55" strokeWidth="0.6"/>)}
+      <path d="M29 11c2-1 4-1.3 6-1" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      <circle cx="35" cy="50" r="1.2" fill="#3ce0d2"/>
+    </g>
+  </>),
+  v_lp_blackbox: (<>
+    {sh(15, 55, 3, 0.3)}
+    {/* 飞行记录仪：橙色抗毁方盒 + 黑胶带与接口 */}
+    <rect x="17" y="20" width="30" height="28" rx="5" fill="url(#iaTerra)" stroke="#6e3218" strokeWidth="1.3"/>
+    <rect x="17" y="29" width="30" height="5" fill="url(#iaObsidian)" opacity="0.9"/>
+    <circle cx="25" cy="41" r="4" fill="url(#iaIron)" stroke="#1a1d20" strokeWidth="0.8"/>
+    <path d="M35 39h8M35 43h8" stroke="#ffd0a0" strokeWidth="1.2" strokeLinecap="round"/>
+    <path d="M21 23c3-1.8 7-2.5 12-2" stroke="#fff0d0" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.7"/>
+  </>),
+  v_lp_laptop: (<>
+    {sh(18, 55, 3, 0.28)}
+    {/* 笔记本电脑：半开屏幕 + 发光键盘 */}
+    <path d="M18 16h28v24H18z" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1.3"/>
+    <rect x="21" y="19" width="22" height="16" rx="1" fill="url(#iaLens)" opacity="0.9"/>
+    <path d="M14 43h36l5 7H9z" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.2"/>
+    {[22, 27, 32, 37, 42].map(x => <rect key={x} x={x} y="45" width="3" height="1.5" rx="0.5" fill="#20242a"/>)}
+    <path d="M23 21c4-1.5 9-1.5 14 0" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.55"/>
+  </>),
+  v_lp_terminal: (<>
+    {sh(16, 56, 3.1, 0.3)}
+    {/* 军用信息终端：加固平板 + 天线 */}
+    <rect x="18" y="16" width="28" height="34" rx="3" fill="url(#iaIron)" stroke="#20242a" strokeWidth="1.4"/>
+    <rect x="22" y="21" width="20" height="17" rx="1" fill="url(#iaLens)"/>
+    <path d="M24 25h16M24 29h12M24 33h15" stroke="#9be8f0" strokeWidth="1.1" opacity="0.75"/>
+    <path d="M42 16l6-8" stroke="url(#iaSteel)" strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="48" cy="8" r="2" fill="#3ce0d2"/>
+    {[24, 30, 36].map(x => <circle key={x} cx={x} cy="44" r="1.7" fill="url(#iaGoldV)"/>)}
+    <path d="M21 18c3-1.5 7-2 12-1.5" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.45"/>
+  </>),
+  v_lp_radio: (<>
+    {sh(16, 56, 3.1, 0.3)}
+    {/* 军用电台：旋钮、扬声器网与折叠天线 */}
+    <rect x="18" y="18" width="28" height="32" rx="3" fill="url(#iaCamo)" stroke="#29342b" strokeWidth="1.3"/>
+    <path d="M22 18l-5-11" stroke="url(#iaSteel)" strokeWidth="2.2" strokeLinecap="round"/>
+    <circle cx="17" cy="7" r="1.8" fill="url(#iaSilver)"/>
+    {[25, 30, 35, 40].map(y => <path key={y} d={`M24 ${y}h12`} stroke="#151a16" strokeWidth="1.2" opacity="0.8"/>)}
+    <circle cx="40" cy="25" r="3.2" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.8"/>
+    <circle cx="40" cy="34" r="2.3" fill="url(#iaSilver)" stroke="#565e68" strokeWidth="0.7"/>
+    <path d="M21 21c3-1.4 7-2 12-1.6" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" opacity="0.45"/>
+  </>),
+  v_lp_array: (<>
+    {sh(17, 57, 3.3, 0.32)}
+    {/* 阵列服务器：三机并排长机柜 */}
+    {[20, 29, 38].map((x, i) => <g key={x}><rect x={x} y="10" width="7" height="42" rx="1.5" fill={i === 1 ? 'url(#iaSteel)' : 'url(#iaIron)'} stroke="#20242a" strokeWidth="0.9"/><path d={`M${x + 1.5} 17v27`} stroke="#6f7a86" strokeWidth="0.8" opacity="0.7"/><circle cx={x + 3.5} cy="47" r="1" fill={i === 1 ? '#d4af37' : '#3ce0d2'}/></g>)}
+    <path d="M19 24h28M19 32h28M19 40h28" stroke="#161a1f" strokeWidth="1" opacity="0.7"/>
+    <path d="M22 12c4-1.4 9-1.7 15-1" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.45"/>
+  </>),
+  v_lp_ctrl: (<>
+    {sh(17, 56, 3.1, 0.3)}
+    {/* 军用控制终端：斜面控制台 + 扳杆 */}
+    <path d="M15 39l6-18h25l5 18v9H15z" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.3"/>
+    <rect x="23" y="25" width="18" height="9" rx="1" fill="url(#iaLens)"/>
+    <path d="M25 26h14M25 29h10" stroke="#9be8f0" strokeWidth="1" opacity="0.8"/>
+    <path d="M42 20l6-8" stroke="url(#iaIron)" strokeWidth="2.5" strokeLinecap="round"/>
+    <circle cx="48" cy="12" r="2.3" fill="url(#iaGemR)"/>
+    {[22, 29, 36].map(x => <circle key={x} cx={x} cy="42" r="2" fill="url(#iaGoldV)" stroke="#7d5410" strokeWidth="0.5"/>)}
+    <path d="M22 24c4-2 10-2.5 16-1" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" fill="none" opacity="0.5"/>
+  </>),
+  v_lp_vent: (<>
+    {sh(17, 57, 3.4, 0.32)}
+    {/* 复苏呼吸机：主机、波纹管与面罩 */}
+    <rect x="17" y="16" width="26" height="34" rx="4" fill="url(#iaPorce)" stroke="#7c858d" strokeWidth="1.3"/>
+    <rect x="21" y="20" width="18" height="10" rx="1.5" fill="url(#iaLens)"/>
+    <path d="M23 25h14" stroke="#9be8f0" strokeWidth="1.2"/>
+    <circle cx="25" cy="39" r="3" fill="url(#iaSilver)" stroke="#606873" strokeWidth="0.8"/>
+    <path d="M43 35c8 0 10 4 10 8 0 5-4 8-9 7" fill="none" stroke="url(#iaSteel)" strokeWidth="3" strokeLinecap="round"/>
+    <ellipse cx="45" cy="50" rx="6" ry="4" fill="url(#iaGemC)" stroke="#5c93ad" strokeWidth="1"/>
+    <path d="M21 18c3-1.6 7-2.2 12-1.8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+  </>),
+  v_lp_ecmo: (<>
+    {sh(18, 57, 3.5, 0.33)}
+    {/* ECMO 体外膜肺：双泵车 + 环形管路 */}
+    <rect x="16" y="18" width="30" height="32" rx="4" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.3"/>
+    <circle cx="25" cy="30" r="6" fill="url(#iaGemR)" stroke="#6e0f1d" strokeWidth="1"/>
+    <circle cx="38" cy="30" r="6" fill="url(#iaGemB)" stroke="#0f3d68" strokeWidth="1"/>
+    <path d="M25 36c0 8 13 8 13 0" fill="none" stroke="url(#iaSilver)" strokeWidth="2.2"/>
+    <path d="M31 18v-7M31 10c-4-4-9-4-12 0M31 10c4-4 9-4 12 0" fill="none" stroke="url(#iaGemR)" strokeWidth="1.8" strokeLinecap="round"/>
+    <rect x="22" y="42" width="18" height="4" rx="1" fill="url(#iaObsidian)"/>
+    <circle cx="23" cy="52" r="2.5" fill="url(#iaObsidian)"/><circle cx="39" cy="52" r="2.5" fill="url(#iaObsidian)"/>
+    <path d="M20 21c4-2 10-2.6 17-1.8" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.5"/>
+  </>),
+  v_lp_aed: (<>
+    {sh(16, 56, 3.1, 0.3)}
+    {/* 自动体外除颤器：醒目橙箱 + 电极片 */}
+    <rect x="17" y="18" width="30" height="31" rx="5" fill="url(#iaTerra)" stroke="#6e3218" strokeWidth="1.3"/>
+    <rect x="22" y="23" width="20" height="11" rx="2" fill="url(#iaPaper)" stroke="#b8a878" strokeWidth="0.8"/>
+    <path d="M32 24l-4 6h4l-3 6 8-8h-4l3-4z" fill="url(#iaGoldV)" stroke="#8a5f0e" strokeWidth="0.7"/>
+    <circle cx="25" cy="41" r="3.4" fill="url(#iaSilver)" stroke="#606873" strokeWidth="0.8"/>
+    <circle cx="39" cy="41" r="3.4" fill="url(#iaSilver)" stroke="#606873" strokeWidth="0.8"/>
+    <path d="M22 20c4-1.5 9-2 15-1.5" stroke="#fff0d0" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.75"/>
+  </>),
+  v_lp_breath: (<>
+    {sh(16, 56, 3.1, 0.3)}
+    {/* 呼吸机：圆润主机 + 透明气囊 */}
+    <rect x="19" y="22" width="25" height="27" rx="6" fill="url(#iaGemC)" stroke="#5c93ad" strokeWidth="1.3"/>
+    <rect x="23" y="26" width="17" height="8" rx="1.5" fill="url(#iaLens)"/>
+    <path d="M25 30h13" stroke="#9be8f0" strokeWidth="1"/>
+    <path d="M44 35c7 1 9 5 8 9" fill="none" stroke="url(#iaSteel)" strokeWidth="2.6" strokeLinecap="round"/>
+    <ellipse cx="50" cy="46" rx="5" ry="6" fill="url(#iaPearl)" stroke="#8aa5b5" strokeWidth="1"/>
+    <circle cx="27" cy="41" r="3" fill="url(#iaSilver)"/>
+    <path d="M23 24c3-1.2 7-1.7 12-1.4" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.75"/>
+  </>),
+  v_lp_shell: (<>
+    {sh(12, 57, 3, 0.32)}
+    {/* 军用炮弹：铜壳 + 钢弹头 */}
+    <g transform="rotate(-10 32 32)">
+      <path d="M27 18c0-5 2-8 5-10 3 2 5 5 5 10v7H27z" fill="url(#iaSteel)" stroke="#30363e" strokeWidth="1.2"/>
+      <path d="M27 25h10v25a5 5 0 0 1-10 0z" fill="url(#iaBronze)" stroke="#6b3e1d" strokeWidth="1.2"/>
+      <path d="M27 31h10M27 44h10" stroke="#7c4f26" strokeWidth="1"/>
+      <path d="M30 14c1-2 2-3.5 3.5-4.5" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" opacity="0.55"/>
+    </g>
+  </>),
+  v_lp_carbon: (<>
+    {sh(17, 56, 3.2, 0.3)}
+    {/* 强化碳纤维板：斜纹编织 + 银色包边 */}
+    <g transform="rotate(-8 32 34)">
+      <rect x="15" y="20" width="34" height="28" rx="2" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1.3"/>
+      {[22, 28, 34, 40].map(y => <path key={y} d={`M17 ${y}l30 -8M17 ${y + 6}l30 -8`} stroke="#4b5563" strokeWidth="1" opacity="0.75"/>)}
+      <rect x="17" y="22" width="30" height="24" rx="1" fill="none" stroke="url(#iaSilver)" strokeWidth="1.2"/>
+      <path d="M20 23c5-2 12-2.5 20-1.5" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.4"/>
+    </g>
+  </>),
+  v_lp_robo: (<>
+    {sh(18, 56, 3.3, 0.3)}
+    {/* 扫拖一体机器人：圆形机身 + 激光雷达 */}
+    <ellipse cx="32" cy="42" rx="20" ry="10" fill="url(#iaPorce)" stroke="#7c858d" strokeWidth="1.3"/>
+    <ellipse cx="32" cy="38" rx="17" ry="8" fill="url(#iaPearl)" stroke="#9aa8b5" strokeWidth="1"/>
+    <circle cx="32" cy="35" r="5" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1"/>
+    <circle cx="32" cy="35" r="2" fill="url(#iaGemB)"/>
+    <path d="M19 39c4-3 10-4.5 18-3.5" stroke="#ffffff" strokeWidth="1.7" strokeLinecap="round" fill="none" opacity="0.7"/>
+    <path d="M17 45c5 3 25 3 30 0" stroke="#6f7a86" strokeWidth="1.2" fill="none" opacity="0.7"/>
+    <circle cx="22" cy="48" r="2" fill="url(#iaSteel)"/><circle cx="42" cy="48" r="2" fill="url(#iaSteel)"/>
+  </>),
+  v_lp_vacuum: (<>
+    {sh(17, 56, 3.2, 0.3)}
+    {/* 强力吸尘器：罐体、弯管与地刷 */}
+    <ellipse cx="26" cy="38" rx="10" ry="14" fill="url(#iaGemB)" stroke="#0f3d68" strokeWidth="1.3"/>
+    <ellipse cx="23" cy="32" rx="4" ry="7" fill="#ffffff" opacity="0.25"/>
+    <path d="M31 28c8-8 15-8 18-2" fill="none" stroke="url(#iaSteel)" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M49 26l4 14" stroke="url(#iaIron)" strokeWidth="3" strokeLinecap="round"/>
+    <rect x="44" y="40" width="13" height="5" rx="2" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1"/>
+    <circle cx="22" cy="51" r="3" fill="url(#iaObsidian)"/><circle cx="31" cy="51" r="3" fill="url(#iaObsidian)"/>
+    <path d="M21 27c2-3 5-5 9-5" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.65"/>
+  </>),
+  v_lp_camera2: (<>
+    {sh(17, 55, 3, 0.28)}
+    {/* 摄影机：机身、镜头与顶部手柄 */}
+    <rect x="15" y="25" width="28" height="18" rx="3" fill="url(#iaIron)" stroke="#20242a" strokeWidth="1.3"/>
+    <circle cx="43" cy="34" r="8" fill="url(#iaObsidian)" stroke="#111418" strokeWidth="1.2"/>
+    <circle cx="43" cy="34" r="5" fill="url(#iaLens)"/>
+    <circle cx="43" cy="34" r="2" fill="#0b1a24"/>
+    <path d="M22 25v-6h14v6" fill="none" stroke="url(#iaSteel)" strokeWidth="2.2"/>
+    <rect x="19" y="20" width="7" height="4" rx="1" fill="url(#iaSilver)"/>
+    <path d="M19 27c4-1.5 9-2 15-1" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.5"/>
+  </>),
+  v_lp_drone: (<>
+    {sh(18, 56, 3.1, 0.28)}
+    {/* 军用无人机：X 机架 + 四旋翼 + 光电吊舱 */}
+    <path d="M18 22l28 20M46 22L18 42" stroke="url(#iaIron)" strokeWidth="3" strokeLinecap="round"/>
+    <rect x="27" y="28" width="10" height="8" rx="2" fill="url(#iaCamo)" stroke="#29342b" strokeWidth="1"/>
+    <circle cx="32" cy="39" r="4" fill="url(#iaLens)" stroke="#0f3d68" strokeWidth="0.8"/>
+    {[18, 46].map(x => [22, 42].map(y => <g key={`${x}-${y}`}><circle cx={x} cy={y} r="3" fill="url(#iaSteel)"/><ellipse cx={x} cy={y} rx="9" ry="2" fill="#9aa8b5" opacity="0.55"/></g>))}
+    <path d="M28 29c2-1 5-1.3 8-.8" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+  </>),
+  v_lp_tear: (<>
+    {sh(14, 56, 3.2, 0.32)}
+    {/* 海洋之泪：深蓝水滴宝石，内含潮汐光纹 */}
+    <path d="M32 8c8 11 14 19 14 28 0 9-6 15-14 15s-14-6-14-15c0-9 6-17 14-28z" fill="url(#iaGemB)" stroke="#0f3d68" strokeWidth="1.5"/>
+    <path d="M24 35c4-4 12-4 16 0M26 42c4-3 9-3 12 0" stroke="#9be8f0" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+    <path d="M25 24c2-5 5-8.5 9-11" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.75"/>
+    <circle cx="27" cy="25" r="2.2" fill="#ffffff" opacity="0.85"/>
+    <path d="M32 14l2 4 4 .6-3 3 .7 4.2-3.7-2-3.7 2 .7-4.2-3-3 4-.6z" fill="#dff7ff" opacity="0.75"/>
+  </>),
 }
 
 interface ItemArtProps {

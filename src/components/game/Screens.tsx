@@ -26,13 +26,19 @@ function ThemeBanner() {
 /** 大厅累计摸金人数（匿名去重） */
 function PlayerCountBadge() {
   const [total, setTotal] = useState<number | null>(null)
+  const [failed, setFailed] = useState(false)
   useEffect(() => {
     let cancelled = false
     pingPlayerStats()
       .then(s => { if (!cancelled) setTotal(s.totalPlayers) })
-      .catch(() => { if (!cancelled) setTotal(null) })
+      .catch(() => { if (!cancelled) { setTotal(null); setFailed(true) } })
     return () => { cancelled = true }
   }, [])
+  if (failed) {
+    return (
+      <div className="mb-5 text-xs text-zinc-500 tracking-widest">本地单机版 · 存档保存在本机</div>
+    )
+  }
   if (total == null) {
     return (
       <div className="mb-5 text-xs text-zinc-500 tracking-widest">正在统计摸金者…</div>
@@ -231,6 +237,7 @@ export function MenuScreen() {
             { id: 'prison' as const, icon: '⛓️', name: '潮汐监狱', tags: '双 Boss · 航空箱', desc: '重兵把守的海边监狱，风险与宝藏并存' },
             { id: 'snow' as const, icon: '❄️', name: '长弓溪谷', tags: '低能见度 · 狙击 Boss', desc: '溪谷深处的雷达站，白狼在雾中等你' },
             { id: 'desert' as const, icon: '🏜️', name: '巴克什', tags: '双层墓道 · 沙暴机制', desc: '扎尔瓦特古城下的陵寝，点亮四座长明灯开启石门' },
+            { id: 'lootpark' as const, icon: '🎰', name: '摸金乐园', tags: '纯摸金爽玩 · 无战斗 · 无限时间', desc: '官方 28 类容器分区开摸，物资名称/品类/爆率对齐官方，容器 8 秒自动补货' },
           ]).map(m => {
             const active = ui.mode === 'war' ? ui.warMapId === m.id : ui.mapId === m.id
             return (

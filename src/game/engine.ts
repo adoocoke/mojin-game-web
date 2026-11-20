@@ -25,6 +25,7 @@ import { loadBossPlay, consumeDirectorCard, recordBossPlayWin, reportDossier, CA
 import { reportWarGame, warEventActive, markWarLogin, reportWarKill, reportD0Game, reportSupportCall, zhoumoDoubleActive } from './warevents'
 import { trickActive, loadTrickster, saveTrickster, rollRavenOutcome, RAVEN_TOKENS, RAVEN_CANDLES, bpRushMul, addLogiVouchers, markGlimmerLogin, markWcLogin, addTrickTokens, COSMETIC_NAMES, reportZmRaid, reportZmPgKill } from './trickster'
 import { VEHICLES, WAR_VEHICLE_LOADOUT, loadVehicles, saveVehicles, vehicleSkinDef, type VehicleDef } from './vehicles'
+import { PARK_CONTAINERS, rollParkLoot, parkJackpot } from './lootpark'
 
 /** 战场景内载具实例 */
 interface WarVehicle {
@@ -169,6 +170,7 @@ export class Game {
   private hazardToastT = 0     // 环境伤害提示节流
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
   private spawnTimer = 6
+  private parkRestock = new Map<Container, number>() // 摸金乐园：容器搜完后自动补货倒计时
   // ===== 极星守望·扮演德穆兰 =====
   private bossPlay = false
   private bpCarCd = 0          // 寻敌爆破车冷却
@@ -261,7 +263,8 @@ export class Game {
 
     this.camera = new THREE.PerspectiveCamera(this.baseFov, innerWidth / innerHeight, 0.08, 400)
     const themeNight = currentSeasonTheme().mods.night ?? false // 赛季主题：强制夜战
-    this.world = buildWorld(mapId, uiState.night || themeNight, uiState.highRisk)
+    const park = mapId === 'lootpark' // 摸金乐园：纯爽玩，强制白天且不吃高危修正
+    this.world = buildWorld(mapId, park ? false : uiState.night || themeNight, park ? false : uiState.highRisk)
     uiState.worldMapId = this.world.mapId
     // 赛季主题：迷雾（雾浓度倍率）
     const themeFog = currentSeasonTheme().mods.fogMul ?? 1
@@ -269,13 +272,13 @@ export class Game {
       const fg = this.world.scene.fog as THREE.Fog
       fg.near /= themeFog; fg.far /= themeFog
     }
-    if (uiState.night || themeNight) {
+    if ((uiState.night || themeNight) && mapId !== 'lootpark') {
       // 战术手电：挂在相机上的暖色聚光灯
       this.torch = new THREE.SpotLight(0xfff0d0, 3.2, 42, 0.52, 0.45, 1.1)
       this.world.scene.add(this.torch)
       this.world.scene.add(this.torch.target)
     }
-    if (themeNight) {
+    if (themeNight && mapId !== 'lootpark') {
       // 夜战主题：配电室——恢复局部照明
       const ex = this.world.extractPos
       const px = ex.x + 8, pz = ex.z + 4
@@ -1955,6 +1958,28 @@ export class Game {
   }
 
   private fillContainer(c: Container) {
+    // ===== 摸金乐园：官方容器品类池独立分支（不吃常规地图池/高危修正，物资池随官方公告维护） =====
+    if (this.world.mapId === 'lootpark') {
+      const def = PARK_CONTAINERS.find(d => d.title === c.title)
+      if (!def) return
+      const loot = rollParkLoot(def)
+      for (const item of loot) {
+        if (!autoPlace(c.grid, item)) continue
+        const jackpot = parkJackpot(item)
+        if (jackpot === 'red') {
+          this.toast(`🔴 大红出货！${ITEMS[item.defId].name}`, 'red')
+          uiState.killFeed = [`🔴 摸出大红：${ITEMS[item.defId].name}`, ...uiState.killFeed].slice(0, 4)
+        } else if (jackpot === 'cyan') {
+          this.toast(`🟡 大金出货！${ITEMS[item.defId].name}`, 'cyan')
+        }
+      }
+      c.searched = true
+      c.reveal = undefined
+      this.raidSearches++
+      uiState.raidLive = { ...uiState.raidLive, searches: this.raidSearches }
+      this.parkRestock.set(c, 8)
+      return
+    }
     // 活动「狂欢爆率」：所有容器 luck +0.5；「百鸟朝凤」：鸟窝 luck +1.2（黄金鸟蛋概率大增）
     // 自动生成的活动带 power 强度倍率
     const cur = currentEvent().event
@@ -2984,6 +3009,7 @@ export class Game {
     this.stormOn = false
     this.stormHurtT = 0
     this.spawnTimer = 6
+    this.parkRestock.clear()
     this.backpack = makeGrid(8, 9)
     // 保险箱格数由赛季任务进度决定（2 格 → 4 格 → 9 格 → 12 格）
     const lv = safeLv(loadSeason())
@@ -3148,12 +3174,12 @@ export class Game {
     this.campObjCrate = null
     uiState.campObj = this.camp ? this.camp.stageText[0] : ''
     // 局内随机事件排程：随机 2 个，开局不预告（战役模式不刷）
-    this.raidEvents = (uiState.tutorial || this.camp || this.vs?.mode === 'pvp') ? [] :
+    this.raidEvents = (uiState.tutorial || this.camp || this.vs?.mode === 'pvp' || this.world.mapId === 'lootpark') ? [] :
       (['supplyRain', 'elitePatrol', 'gasLeak'] as ('supplyRain' | 'elitePatrol' | 'gasLeak' | 'convoy')[])
         .sort(() => Math.random() - 0.5).slice(0, 2)
         .map(id => ({ id, at: 90 + Math.random() * 270, fired: false }))
     // 赛季主题：额外局内事件排程（押运/连场空投雨/精英巡猎等，由主题数据驱动）
-    if (!uiState.tutorial && this.vs?.mode !== 'pvp') {
+    if (!uiState.tutorial && this.vs?.mode !== 'pvp' && this.world.mapId !== 'lootpark') {
       for (const evId of this.theme.mods.extraEvents ?? []) {
         this.raidEvents.push({ id: evId, at: 100 + Math.random() * 220, fired: false })
       }
@@ -3285,6 +3311,7 @@ export class Game {
   }
 
   private spawnInitialEnemies() {
+    if (this.world.mapId === 'lootpark') return // 摸金乐园：纯摸金，无敌人
     if (this.vs && (this.vs.mode === 'pvp' || !this.vs.ai)) return // 对战乱斗无 AI；组队按房间规则决定是否刷 AI
     if (uiState.tutorial) {
       // 教学模式：无敌人，发一把 P92 + 子弹练手
@@ -5162,6 +5189,20 @@ export class Game {
         }
       }
 
+      // 摸金乐园：容器搜完 8 秒后自动补货（玩家打开该容器时顺延到关闭后）
+      if (this.world.mapId === 'lootpark' && this.parkRestock.size > 0) {
+        for (const [c, left0] of [...this.parkRestock]) {
+          const left = left0 - rawDt
+          if (left > 0 || this.activeLoot === c) { this.parkRestock.set(c, Math.max(0, left)); continue }
+          const def = PARK_CONTAINERS.find(d => d.title === c.title)
+          c.grid = makeGrid(def?.gridW ?? 6, def?.gridH ?? 4)
+          c.searched = false
+          c.reveal = undefined
+          this.parkRestock.delete(c)
+          this.toast(`✨ ${c.title} 已补货，可以接着摸`, 'cyan')
+        }
+      }
+
       // 撤离（用真实时间，避免低帧率下变慢；半径略大于光圈）
       const distExtract = Math.hypot(this.pos.x - this.world.extractPos.x, this.pos.z - this.world.extractPos.z)
       const sameLevel = Math.abs((this.pos.y - EYE) - this.world.extractPos.y) < 2.5
@@ -5186,7 +5227,7 @@ export class Game {
         }
       }
       if (this.bossPlay ? bpAtPad : ((distExtract < 6.2 && sameLevel) || (atPad2 && !padHeavy))) {
-        this.extractT += rawDt / ((uiState.highRisk ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
+        this.extractT += rawDt / (((uiState.highRisk && this.world.mapId !== 'lootpark') ? 7 : 4) / (this.opMods.extract * (this.theme.mods.extractMul ?? 1))) // 高危禁区：撤离读条 +3 秒；赛季主题可加速
         uiState.extractProgress = Math.min(1, this.extractT)
         if (this.extractT >= 1) { uiState.extractProgress = -1; if (this.war) this.endWar(this.warResultNow()); else this.endRaid(true) } // 大战场：站上撤离点可提前按当前战果结算
       } else {
@@ -5230,9 +5271,11 @@ export class Game {
         }
       }
 
-      // 时间
-      this.raidLeft -= rawDt
-      if (this.raidLeft <= 0 && !this.war) { this.endRaid(false) }
+      // 时间（摸金乐园：无限时间，永不清场）
+      if (this.world.mapId !== 'lootpark') {
+        this.raidLeft -= rawDt
+        if (this.raidLeft <= 0 && !this.war) { this.endRaid(false) }
+      }
       if (this.war) this.warTick(rawDt)
       // 巴克什：开局 8 分钟后沙暴来袭——地表能见度骤降且持续掉血，墓道内安全
       if (this.world.mapId === 'desert' && !this.stormOn && this.raidDuration - this.raidLeft >= this.raidDuration - 120) { // 最后 2 分钟沙暴来袭
@@ -5484,9 +5527,9 @@ export class Game {
         this.toast('💣 手雷！快躲开！', 'red')
       },
         seeMul: this.opMods.seeRange, invisible: this.invisT > 0 || smokeHidden }) // 烟雾内敌人失去视线
-      // 补员
+      // 补员（摸金乐园：无敌人）
       this.spawnTimer -= dt
-      if (this.spawnTimer <= 0 && this.enemies.aliveCount() < 7) {
+      if (this.world.mapId !== 'lootpark' && this.spawnTimer <= 0 && this.enemies.aliveCount() < 7) {
         this.spawnTimer = 9
         const tier = Math.min(3, Math.floor((this.raidDuration - this.raidLeft) / 90))
         const rk = Math.random()

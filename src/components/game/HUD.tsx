@@ -20,10 +20,11 @@ export function HUD() {
   if (ui.phase !== 'playing') return null
   const now = performance.now()
 
+  const isLootPark = ui.worldMapId === 'lootpark'
   const tSec = ui.mode === 'war' ? ui.warTime : ui.raidTime
   const mm = Math.floor(tSec / 60)
   const ss = Math.floor(tSec % 60)
-  const timeColor = tSec < 60 ? 'text-red-400 animate-pulse' : 'text-zinc-200'
+  const timeColor = isLootPark ? 'text-amber-300' : tSec < 60 ? 'text-red-400 animate-pulse' : 'text-zinc-200'
   const bpValue = gridTotalValue(ui.backpack) + gridTotalValue(ui.safebox)
   const hpRatio = ui.hp / ui.maxHp
   const hpColor = hpRatio > 0.5 ? 'bg-emerald-500' : hpRatio > 0.25 ? 'bg-amber-500' : 'bg-red-500'
@@ -67,7 +68,7 @@ export function HUD() {
       {/* 顶部：时间 / 撤离 */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
         <div className={`font-mono text-xl font-bold ${timeColor} bg-black/45 rounded px-3 py-1 border border-white/10`}>
-          ⏱ {mm}:{String(ss).padStart(2, '0')}
+          {isLootPark ? '🎰 摸金乐园 · ∞' : `⏱ ${mm}:${String(ss).padStart(2, '0')}`}
         </div>
         {ui.extractProgress >= 0 && (
           <div className="w-56">

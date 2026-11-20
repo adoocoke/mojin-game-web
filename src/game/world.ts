@@ -5,6 +5,7 @@ import { makeItem } from './data'
 import { currentEvent } from './events'
 import { MAP_MISSIONS } from './missions'
 import { FISHING_SPOTS, HUT, PAGE_SPOTS, loadHarp } from './fishing'
+import { PARK_CONTAINERS } from './lootpark'
 import { buildSky, buildDust, groundTexture, concreteTexture, asphaltTexture, scatterDecor, cloudTexture } from './gfx'
 
 export interface AABB { minX: number; maxX: number; minZ: number; maxZ: number; top: number; base?: number }
@@ -30,7 +31,7 @@ export interface Container {
   reveal?: Record<string, number>  // 逐格揭示：uid → 揭示时间戳（三角洲式放大镜扫描）
 }
 
-export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' | 'oldtown' | 'skyport' // 后五个为大战场专属竞技场（oldtown=摩格旧城区，skyport=天际港）
+export type MapId = 'wild' | 'tower' | 'prison' | 'snow' | 'desert' | 'blocks' | 'pipeline' | 'trench' | 'oldtown' | 'skyport' | 'lootpark' // 后五个为大战场专属竞技场（oldtown=摩格旧城区，skyport=天际港）；lootpark=摸金乐园（纯摸金爽玩，无战斗）
 
 /** 可推开的门：铰链在门扇一侧，openT 0→1 旋开；lockedBy 为所需房卡 */
 export interface Door {
@@ -496,7 +497,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.background = new THREE.Color(0x87a8c8)
   scene.fog = new THREE.Fog(0x87a8c8, 60, 220)
 
-  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'oldtown' ? 150 : mapId === 'skyport' ? 170 : mapId === 'pipeline' ? 170 : 140
+  const size = mapId === 'snow' ? 300 : mapId === 'blocks' ? 150 : mapId === 'trench' ? 150 : mapId === 'oldtown' ? 150 : mapId === 'skyport' ? 170 : mapId === 'pipeline' ? 170 : mapId === 'lootpark' ? 120 : 140
   const colliders: AABB[] = []
   const obstacleMeshes: THREE.Object3D[] = []
   const containers: Container[] = []
@@ -520,7 +521,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   // 地面
   const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 40, 40)
   const groundKind = mapId === 'snow' ? 'snow' : mapId === 'desert' ? 'sand' : mapId === 'trench' ? 'mud'
-    : mapId === 'blocks' || mapId === 'pipeline' || mapId === 'oldtown' || mapId === 'skyport' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
+    : mapId === 'blocks' || mapId === 'pipeline' || mapId === 'oldtown' || mapId === 'skyport' || mapId === 'lootpark' ? 'concrete' : mapId === 'prison' ? 'concrete' : 'grass'
   const groundMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: groundTexture(groundKind, Math.max(6, Math.round(size / 9))),
@@ -532,7 +533,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   scene.add(ground)
   // 网格道路（雪地图被积雪覆盖，不铺路）
   const roadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: asphaltTexture(Math.round(size / 6)), roughness: 0.95 })
-  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline' && mapId !== 'oldtown' && mapId !== 'skyport'; i++) {
+  for (let i = -2; i <= 2 && mapId !== 'snow' && mapId !== 'desert' && mapId !== 'trench' && mapId !== 'pipeline' && mapId !== 'oldtown' && mapId !== 'skyport' && mapId !== 'lootpark'; i++) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(size * 2, 6), roadMat)
     road.rotation.x = -Math.PI / 2
     road.position.set(0, 0.02, i * 40)
@@ -787,7 +788,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
     doors.push({ id: `d${did++}`, pivot, x: cx, z: cz, rot, w, base, open: false, openT: 0, lockedBy, lockedName })
   }
 
-  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : mapId === 'oldtown' ? 20261023 : mapId === 'skyport' ? 20261105 : 20260807)
+  const rng = mulberry32(mapId === 'wild' ? 20260806 : mapId === 'snow' ? 20260810 : mapId === 'desert' ? 20260813 : mapId === 'blocks' ? 20261001 : mapId === 'pipeline' ? 20261002 : mapId === 'trench' ? 20261003 : mapId === 'oldtown' ? 20261023 : mapId === 'skyport' ? 20261105 : mapId === 'lootpark' ? 20261120 : 20260807)
   const spawnPoints: THREE.Vector3[] = []
   const bossSpawns: World['bossSpawns'] = []
   let missionWall: World['missionWall'] = undefined
@@ -803,7 +804,76 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
   let lift: World['lift'] = undefined
   let activity: World['activity'] = undefined
 
-  if (mapId === 'wild') {
+  if (mapId === 'lootpark') {
+    // ===== 摸金乐园：纯摸金爽玩图——官方全品类容器分区展厅，无战斗、无限时间 =====
+    // 地面换成混凝土广场
+    groundMat.map = groundTexture('concrete', 14)
+    groundMat.needsUpdate = true
+    playerSpawn = new THREE.Vector3(0, 0, 0)
+    playerYaw = 0 // 面朝北（保险区；本引擎 yaw=0 朝 -Z）
+
+    // 中央「摸金乐园」标志柱
+    {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 9, 12),
+        new THREE.MeshStandardMaterial({ color: 0x2a2f3a, roughness: 0.4, metalness: 0.6 }))
+      pole.position.set(0, 4.5, 0)
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(1.3, 20, 14),
+        new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.25, metalness: 0.9, emissive: 0x6a4a00, emissiveIntensity: 0.9 }))
+      orb.position.set(0, 9.8, 0)
+      scene.add(pole, orb)
+    }
+
+    // 分区展位（每区一个发光地标柱 + 一圈容器，容器朝向区域中心）
+    const zonePole = (x: number, z: number, color: number) => {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.9, 0.5, 16),
+        new THREE.MeshStandardMaterial({ color: 0x333a45, roughness: 0.5, metalness: 0.5 }))
+      base.position.set(x, 0.25, z)
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 4.2, 10),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.4, roughness: 0.3 }))
+      glow.position.set(x, 2.6, z)
+      scene.add(base, glow)
+      colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: z - 1.7, maxZ: z + 1.7, top: 0.5, base: 0 })
+    }
+    // 每个分区：地标柱位置 + 容器（环绕地标 4~7 米半圆排布）
+    const zone = (zx: number, zz: number, color: number, titles: string[], arc0: number) => {
+      zonePole(zx, zz, color)
+      const n = titles.length
+      titles.forEach((t, i) => {
+        const ang = arc0 + (i / Math.max(1, n - 1)) * Math.PI - Math.PI / 2 // 半圆朝外
+        const r = 3.2 + (i % 2) * 1.8 // 保证地标柱周围容器仍在 F 交互半径内
+        const def = PARK_CONTAINERS.find(d => d.title === t)!
+        const c = mkContainer(zx + Math.cos(ang) * r, zz + Math.sin(ang) * r, t, 0.6, 0, rng)
+        c.grid = makeGrid(def.gridW, def.gridH)
+        c.luck = [2.4, 1.9, 1.25, 0.65, 0.25][def.tier]
+      })
+    }
+    // 北：保险区（官方必吃榜：保险柜/小保险箱/实验服/空投）
+    zone(0, -40, 0xd4af37, ['保险柜', '保险柜', '小保险箱', '小保险箱', '实验服', '空投补给箱'], 0)
+    // 东北：电子区（服务器/电脑/机箱/电脑包）
+    zone(38, -24, 0x3ce0d2, ['服务器', '服务器', '电脑', '电脑', '电脑机箱', '电脑包'], Math.PI / 3)
+    // 东南：医疗区（医疗堆/医疗包/衣服）
+    zone(38, 24, 0xe05a5a, ['医疗物资堆', '医疗物资堆', '医疗包', '医疗包', '衣服', '衣服'], Math.PI * 2 / 3)
+    // 南：武器军工区（大武器箱/武器箱/弹药箱）
+    zone(0, 40, 0x8ab05a, ['大武器箱', '大武器箱', '武器箱', '武器箱', '弹药箱', '弹药箱'], Math.PI)
+    // 西南：箱包区（旅行箱/储物箱/登山包/手提箱/收纳盒/抽屉柜/储物柜/快递箱/旅行袋）
+    zone(-38, 24, 0xc98a3a, ['高级储物箱', '高级储物箱', '高级旅行箱', '高级旅行箱', '登山包', '手提箱', '收纳盒', '抽屉柜', '储物柜', '快递箱', '旅行袋'], Math.PI * 4 / 3)
+    // 西北：野外杂项区（野外物资箱/鸟窝/藏匿物/井盖/垃圾箱/搅拌车/工具柜/大工具盒/航空储物箱）
+    zone(-38, -24, 0x7a8ab0, ['野外物资箱', '野外物资箱', '鸟窝', '鸟窝', '鸟窝', '藏匿物', '井盖', '垃圾箱', '搅拌车', '工具柜', '大工具盒', '航空储物箱', '航空储物箱'], Math.PI * 5 / 3)
+
+    // 边界围栏（矮墙，防止跑出图）
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x4a5260, roughness: 0.6, metalness: 0.4 })
+    const B = 62
+    for (const [fx, fz, fw, fd] of [[0, -B, B * 2 + 2, 0.6], [0, B, B * 2 + 2, 0.6], [-B, 0, 0.6, B * 2 + 2], [B, 0, 0.6, B * 2 + 2]] as const) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(fw, 2.2, fd), fenceMat)
+      wall.position.set(fx, 1.1, fz)
+      wall.castShadow = true
+      scene.add(wall)
+      obstacleMeshes.push(wall)
+      colliders.push({ minX: fx - fw / 2, maxX: fx + fw / 2, minZ: fz - fd / 2, maxZ: fz + fd / 2, top: 2.2, base: 0 })
+    }
+    mapMarkers.push({ x: 0, z: 0, kind: 'block', name: '摸金乐园' })
+  } else if (mapId === 'wild') {
+
     // ================= 地图一：零号大坝（爆率下调） =================
     const buildingColors = [0x8a8578, 0x9a8f7d, 0x7d8a94, 0x94857a, 0x808a78]
     const buildingSpots: { x: number; z: number }[] = []

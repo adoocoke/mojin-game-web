@@ -109,6 +109,42 @@ export const ITEMS: Record<string, ItemDef> = {
   w_m700:   { id: 'w_m700',   name: 'M700 狙击枪',  kind: 'weapon', rarity: 'red', w: 5, h: 2, baseValue: 6500,  icon: '🔫', gunId: 'm700' },
   v_crown:  { id: 'v_crown',  name: '黄金王冠',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 6000, icon: '👑' },
   v_super:  { id: 'v_super',  name: '曼德尔超算单元', kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 9000, icon: '🖥️' },
+  // ===== 摸金乐园·官方大红图鉴（对齐三角洲行动官方物资；价值按官方物价约 1% 映射；图标全部 ItemArt 原创手绘） =====
+  // —— 工艺藏品（官方规则：保险柜/小保险箱专属品类） ——
+  v_lp_african: { id: 'v_lp_african', name: '非洲之心',       kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 131400, icon: '❤️' },
+  v_lp_gazelle: { id: 'v_lp_gazelle', name: '黄金瞪羚',       kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 8800,  icon: '🦌' },
+  v_lp_musket:  { id: 'v_lp_musket',  name: '滑膛枪展品',     kind: 'valuable', rarity: 'red', w: 3, h: 1, baseValue: 8200,  icon: '🔫' },
+  v_lp_bust:    { id: 'v_lp_bust',    name: '克劳狄乌斯半身像', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 8000, icon: '🗿' },
+  v_lp_gramo:   { id: 'v_lp_gramo',   name: '雷斯的留声机',   kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 8600,  icon: '📻' },
+  v_lp_ifv:     { id: 'v_lp_ifv',     name: '步战车模型',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 10000, icon: '🚜' },
+  // —— 电子物品（官方规则：服务器/电脑/电脑机箱专属品类） ——
+  v_lp_radar:   { id: 'v_lp_radar',   name: '便携军用雷达',   kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 52000, icon: '📡' },
+  v_lp_topsec:  { id: 'v_lp_topsec',  name: '绝密服务器',     kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 55000, icon: '🗄️' },
+  v_lp_disk:    { id: 'v_lp_disk',    name: '高速磁盘阵列',   kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 20000, icon: '💽' },
+  v_lp_cloud:   { id: 'v_lp_cloud',   name: '云存储阵列',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 21000, icon: '☁️' },
+  v_lp_blade:   { id: 'v_lp_blade',   name: '刀片服务器',     kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 9500,  icon: '🖥️' },
+  v_lp_blackbox:{ id: 'v_lp_blackbox',name: '飞行记录仪',     kind: 'valuable', rarity: 'red', w: 1, h: 2, baseValue: 9000,  icon: '🟧' },
+  v_lp_laptop:  { id: 'v_lp_laptop',  name: '笔记本电脑',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 8000,  icon: '💻' },
+  v_lp_terminal:{ id: 'v_lp_terminal',name: '军用信息终端',   kind: 'valuable', rarity: 'red', w: 2, h: 1, baseValue: 7800,  icon: '📟' },
+  v_lp_radio:   { id: 'v_lp_radio',   name: '军用电台',       kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 7500,  icon: '📻' },
+  v_lp_array:   { id: 'v_lp_array',   name: '阵列服务器',     kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 7600,  icon: '🗄️' },
+  v_lp_ctrl:    { id: 'v_lp_ctrl',    name: '军用控制终端',   kind: 'valuable', rarity: 'red', w: 2, h: 1, baseValue: 7400,  icon: '🎛️' },
+  // —— 医疗物资（官方规则：医疗包/医疗物资堆专属品类） ——
+  v_lp_vent:    { id: 'v_lp_vent',    name: '复苏呼吸机',     kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 60000, icon: '🫁' },
+  v_lp_ecmo:    { id: 'v_lp_ecmo',    name: 'ECMO 体外膜肺',  kind: 'valuable', rarity: 'red', w: 2, h: 3, baseValue: 48000, icon: '🏥' },
+  v_lp_aed:     { id: 'v_lp_aed',     name: '自动体外除颤器', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 9000,  icon: '⚡' },
+  v_lp_breath:  { id: 'v_lp_breath',  name: '呼吸机',         kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 6800,  icon: '😷' },
+  // —— 军工材料（官方规则：大武器箱/弹药箱专属品类） ——
+  v_lp_shell:   { id: 'v_lp_shell',   name: '军用炮弹',       kind: 'valuable', rarity: 'red', w: 1, h: 3, baseValue: 8500,  icon: '🚀' },
+  v_lp_carbon:  { id: 'v_lp_carbon',  name: '强化碳纤维板',   kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 20000, icon: '⬛' },
+  // —— 家具家电（官方规则：高级旅行箱/高级储物箱等杂物容器品类） ——
+  v_lp_robo:    { id: 'v_lp_robo',    name: '扫拖一体机器人', kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 50000, icon: '🤖' },
+  v_lp_vacuum:  { id: 'v_lp_vacuum',  name: '强力吸尘器',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 18000, icon: '🌀' },
+  v_lp_camera2: { id: 'v_lp_camera2', name: '摄影机',         kind: 'valuable', rarity: 'red', w: 2, h: 1, baseValue: 7000,  icon: '📷' },
+  v_lp_drone:   { id: 'v_lp_drone',   name: '军用无人机',     kind: 'valuable', rarity: 'red', w: 2, h: 2, baseValue: 7200,  icon: '🛸' },
+  // —— 隐藏终极大红（官方：海洋之泪，潮汐监狱露天极低概率刷新；本模式全容器欧皇检测位 0.02%） ——
+  v_lp_tear:    { id: 'v_lp_tear',    name: '海洋之泪',       kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 220000, icon: '💧' },
+
   // ===== 房卡：对局内任何容器都可能出，用于开对应地图的专属锁房 =====
   k_w_shed:   { id: 'k_w_shed',   name: '水泥厂房卡',   kind: 'key', rarity: 'green',  w: 1, h: 1, baseValue: 800,   icon: '💳' },
   k_w_cave:   { id: 'k_w_cave',   name: '变电站房卡',   kind: 'key', rarity: 'blue',   w: 1, h: 1, baseValue: 2000,  icon: '💳' },

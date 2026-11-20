@@ -17,7 +17,7 @@ export function MapOverlay() {
   const svgRef = useRef<SVGSVGElement>(null)
   if (ui.phase !== 'playing' || !ui.mapOpen) return null
   const S = ui.mapSize || 140
-  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'oldtown' ? '摩格旧城区' : ui.worldMapId === 'skyport' ? '天际港' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : '零号大坝'
+  const mapName = ui.worldMapId === 'blocks' ? '烬区' : ui.worldMapId === 'pipeline' ? '贯穿' : ui.worldMapId === 'trench' ? '堑壕战' : ui.worldMapId === 'oldtown' ? '摩格旧城区' : ui.worldMapId === 'skyport' ? '天际港' : ui.worldMapId === 'tower' ? '航天基地' : ui.worldMapId === 'prison' ? '潮汐监狱' : ui.worldMapId === 'snow' ? '长弓溪谷' : ui.worldMapId === 'desert' ? '巴克什' : ui.worldMapId === 'lootpark' ? '摸金乐园' : '零号大坝'
   // 玩家朝向箭头（yaw 的前向为 (-sin, -cos)）
   const fx = -Math.sin(ui.playerYaw), fz = -Math.cos(ui.playerYaw)
   const ang = Math.atan2(fx, -fz) * 180 / Math.PI
@@ -42,8 +42,8 @@ export function MapOverlay() {
           }}
         >
           {/* 边界与网格道路 */}
-          <rect x={-S} y={-S} width={S * 2} height={S * 2} fill={ui.worldMapId === 'snow' ? '#c8d4e0' : ui.worldMapId === 'desert' ? '#c9b078' : '#3a4432'} stroke="#7a7568" strokeWidth="3" />
-          {ui.worldMapId !== 'snow' && ui.worldMapId !== 'desert' && [-80, -40, 0, 40, 80].map(i => (
+          <rect x={-S} y={-S} width={S * 2} height={S * 2} fill={ui.worldMapId === 'snow' ? '#c8d4e0' : ui.worldMapId === 'desert' ? '#c9b078' : ui.worldMapId === 'lootpark' ? '#555c66' : '#3a4432'} stroke="#7a7568" strokeWidth="3" />
+          {ui.worldMapId !== 'snow' && ui.worldMapId !== 'desert' && ui.worldMapId !== 'lootpark' && [-80, -40, 0, 40, 80].map(i => (
             <g key={i}>
               <rect x={-S} y={i - 3} width={S * 2} height="6" fill="#4a4f48" />
               <rect x={i - 3} y={-S} width="6" height={S * 2} fill="#4a4f48" />
