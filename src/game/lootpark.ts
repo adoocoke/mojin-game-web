@@ -3,7 +3,8 @@
 // 大武器箱出军工、实验服出房卡、杂物类全品类）；爆率分层对齐官方机密档社区实测感知
 //（高爆率容器红 1.5% / 中 0.5% / 低 0.12% / 垃圾 0.03%）；物资池随官方公告赛季更新。
 import { ITEMS, makeItem } from './data'
-import type { ItemDef, ItemInstance } from './types'
+import { makeGrid, autoPlace } from './inventory'
+import type { Grid, ItemDef, ItemInstance } from './types'
 
 /** 爆率档位（对齐官方：机密档为基准） */
 export type ParkTier = 0 | 1 | 2 | 3 | 4 // 0=空投 1=高爆率 2=中 3=低 4=垃圾
@@ -21,7 +22,7 @@ export interface ParkContainerDef {
   color: number        // 展台 3D 颜色
 }
 
-/** 官方 28 类容器全量（名称/品类/爆率档对齐官方；垃圾容器也能出红——官方"任何容器都有概率出大红"） */
+/** 官方全品类容器与常见变体（名称/品类/爆率档对齐官方；垃圾容器也能出红——官方"任何容器都有概率出大红"） */
 export const PARK_CONTAINERS: ParkContainerDef[] = [
   // —— 高爆率（官方必吃榜） ——
   { title: '保险柜',     icon: '🏦', tier: 1, cat: 'craft',      gridW: 4, gridH: 4, slots: [2, 4], color: 0x8a6d2f },
@@ -62,7 +63,7 @@ export const PARK_CONTAINERS: ParkContainerDef[] = [
 ]
 
 /** 品质概率（对齐官方机密档感知：红/金/紫；其余为蓝绿白填充） */
-const TIER_ODDS: Record<ParkTier, { red: number; gold: number; purple: number }> = {
+export const TIER_ODDS: Record<ParkTier, { red: number; gold: number; purple: number }> = {
   0: { red: 0.03,  gold: 0.25, purple: 0.45 }, // 空投（官方新版必吃榜第一）
   1: { red: 0.015, gold: 0.18, purple: 0.40 }, // 高爆率容器
   2: { red: 0.005, gold: 0.08, purple: 0.25 }, // 中爆率
@@ -142,4 +143,19 @@ export function parkJackpot(item: ItemInstance): 'red' | 'cyan' | null {
   if (def.rarity === 'red') return 'red'
   if (item.rarity === 'cyan' || def.rarity === 'cyan') return 'cyan'
   return null
+}
+
+export interface ParkOpenResult {
+  grid: Grid
+  overflow: number
+}
+
+/** 页面直选开容器：按容器自身格子摆放，结果可原样展示；放不下的数量单独提示 */
+export function openParkContainer(def: ParkContainerDef): ParkOpenResult {
+  const grid = makeGrid(def.gridW, def.gridH)
+  let overflow = 0
+  for (const item of rollParkLoot(def)) {
+    if (!autoPlace(grid, item)) overflow += item.count
+  }
+  return { grid, overflow }
 }

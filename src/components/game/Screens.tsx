@@ -6,6 +6,7 @@ import { OPERATORS } from '@/game/data'
 import { opLevel, lvProgress, effDesc, MAX_OP_LV } from '@/game/oplevel'
 import { useEffect, useMemo, useState } from 'react'
 import { pingPlayerStats } from '@/game/stats'
+import { LootParkPanel } from './LootParkPanel'
 
 /** 赛季主题横幅：与三角洲行动官方赛季同步（主题效果等价映射） */
 function ThemeBanner() {
@@ -57,6 +58,7 @@ function PlayerCountBadge() {
 export function MenuScreen() {
   const ui = useUI()
   const [cheat, setCheat] = useState('')
+  const [parkOpen, setParkOpen] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && uiState.creator) engine.exitCreator()
@@ -237,7 +239,6 @@ export function MenuScreen() {
             { id: 'prison' as const, icon: '⛓️', name: '潮汐监狱', tags: '双 Boss · 航空箱', desc: '重兵把守的海边监狱，风险与宝藏并存' },
             { id: 'snow' as const, icon: '❄️', name: '长弓溪谷', tags: '低能见度 · 狙击 Boss', desc: '溪谷深处的雷达站，白狼在雾中等你' },
             { id: 'desert' as const, icon: '🏜️', name: '巴克什', tags: '双层墓道 · 沙暴机制', desc: '扎尔瓦特古城下的陵寝，点亮四座长明灯开启石门' },
-            { id: 'lootpark' as const, icon: '🎰', name: '摸金乐园', tags: '纯摸金爽玩 · 无战斗 · 无限时间', desc: '官方 28 类容器分区开摸，物资名称/品类/爆率对齐官方，容器 8 秒自动补货' },
           ]).map(m => {
             const active = ui.mode === 'war' ? ui.warMapId === m.id : ui.mapId === m.id
             return (
@@ -259,6 +260,31 @@ export function MenuScreen() {
             )
           })}
         </div>
+
+        {/* 摸金乐园：独立页面直选容器，不进地图、不跑点、不战斗 */}
+        {ui.mode === 'raid' && (
+          <div className="max-w-3xl mx-auto mb-7">
+            <button
+              onClick={() => setParkOpen(true)}
+              className="group relative w-full overflow-hidden rounded-2xl border-2 border-amber-500/60 bg-gradient-to-r from-amber-950/50 via-zinc-950/80 to-red-950/40 p-4 text-left shadow-[0_0_32px_rgba(251,191,36,0.18)] transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-[0_0_44px_rgba(251,191,36,0.3)]"
+            >
+              <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl transition group-hover:bg-amber-400/20" />
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-400/50 bg-amber-500/15 text-4xl">🎰</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xl font-black tracking-widest text-amber-300">摸金乐园</span>
+                    <span className="rounded-full bg-emerald-500/15 border border-emerald-400/40 px-2 py-0.5 text-[10px] font-bold text-emerald-300">无需地图</span>
+                    <span className="rounded-full bg-cyan-500/15 border border-cyan-400/40 px-2 py-0.5 text-[10px] font-bold text-cyan-300">容器直接点</span>
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-amber-200/90">纯摸金爽玩 · 点击即摸 · 出货直接入仓库 · 容器 8 秒补货</div>
+                  <div className="mt-1 text-[11px] text-zinc-500">官方全品类容器直选；物资名称、品类规则与爆率档随官方公告维护</div>
+                </div>
+                <div className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 text-sm font-black text-black transition group-hover:bg-amber-300">进入开摸</div>
+              </div>
+            </button>
+          </div>
+        )}
 
         {/* 难度模式：常规 / 高危禁区 */}
         <div className="flex justify-center mb-3">
@@ -455,6 +481,7 @@ export function MenuScreen() {
           {ui.best > 0 && <span>历史最高收获：<span className="text-amber-300 font-mono">{ui.best.toLocaleString()}</span></span>}
         </div>
       </div>
+      <LootParkPanel open={parkOpen} onClose={() => setParkOpen(false)} />
     </div>
   )
 }

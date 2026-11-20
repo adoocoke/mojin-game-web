@@ -131,7 +131,7 @@ export const uiState: UIState = {
   money: Number(localStorage.getItem('mojin_money') || 0),
   stash: null, stashOpen: false,
   toast: '', toastRarity: 'white', toastTs: 0,
-  mapId: (localStorage.getItem('mojin_map') as MapId) || 'wild',
+  mapId: ((localStorage.getItem('mojin_map') || 'wild') === 'lootpark' ? 'wild' : (localStorage.getItem('mojin_map') as MapId)) || 'wild', // 旧版摸金乐园地图选择迁移为默认图；新版为页面直选容器
   warMapId: (localStorage.getItem('mojin_war_map') as MapId) || 'blocks',
   worldMapId: 'wild' as MapId,
   mapOpen: false, playerX: 0, playerZ: 0, playerYaw: 0,
