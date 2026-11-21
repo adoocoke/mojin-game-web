@@ -2120,7 +2120,7 @@ export function buildWorld(mapId: MapId = 'wild', night = false, highRisk = fals
       missionGuides.push(lbeam)
       lampStands!.push({ x, z, floorY, flame, light, lit: false })
     }
-    for (const l of MAP_MISSIONS.desert.lamps ?? []) mkLamp(l.x, l.z, l.floorY ?? UY)
+    for (const l of MAP_MISSIONS.desert?.lamps ?? []) mkLamp(l.x, l.z, l.floorY ?? UY)
     mapMarkers.push({ x: 0, z: -57, kind: 'mission', name: '长明灯' })
 
     // ================= 地下照明（每座厅室都有火盆光） =================

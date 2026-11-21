@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ITEMS } from '@/game/data'
+import type { ItemDef, Rarity } from '@/game/types'
 
 /**
  * 变卖物矢量图标库 —— 原创绘制，写实藏品风格。
@@ -149,6 +150,145 @@ const fishArt = (body: string, fin: string): ReactNode => (<>
   <circle cx="17" cy="29" r="1.9" fill="#10131a"/>
   <circle cx="16.3" cy="28.3" r="0.6" fill="#eaf8ff"/>
 </>)
+
+
+// ===================== 三角洲官方收集品：原创程序化高级质感图标 =====================
+// 735 件官方变卖物不可能逐件复制官方贴图（也不允许复制官方素材）；这里按官方品类绘制原创 SVG，
+// 再用官方 ID 稳定生成纹样、材质与光泽，保证每件都有独立的高级质感图标，绝不走 emoji 兜底。
+const OFFICIAL_RARITY_COLOR: Record<Rarity, string> = {
+  white: '#d7dde5', green: '#5ee08a', blue: '#63b3ff', purple: '#c58aff', cyan: '#4ee7f5', red: '#ff7474',
+}
+
+function officialHash(text: string): number {
+  let h = 2166136261
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+const officialFishBody = ['url(#iaFishW)', 'url(#iaFishG)', 'url(#iaFishB)', 'url(#iaFishP)', 'url(#iaFishR)']
+const officialFishFin = ['#8ba0ae', '#3a6b4c', '#2e5a84', '#a3741a', '#7a1408']
+
+function OfficialCollectibleArt({ def }: { def: ItemDef }) {
+  const seed = officialHash(def.officialId ?? def.id)
+  const rare = OFFICIAL_RARITY_COLOR[def.rarity]
+  const accent = ['#f8dc7e', '#9be8f0', '#ffb3b8', '#c8f2cd', '#d7c4ff'][seed % 5]
+  const glintX = 21 + (seed % 9)
+  const glintY = 16 + ((seed >> 4) % 7)
+  const motif = seed % 4
+  const group = def.officialGroup
+
+  if (group === 'dfg_102091' || group === 'dfg_102092') {
+    const idx = seed % officialFishBody.length
+    return (
+      <>
+        {fishArt(officialFishBody[idx], officialFishFin[idx])}
+        <path d={`M${24 + (seed % 7)} 27c4-2.2 9-2 13 .8`} stroke={accent} strokeWidth="1.1" strokeLinecap="round" fill="none" opacity="0.8"/>
+        <circle cx={glintX} cy={glintY} r="1.4" fill="#ffffff" opacity="0.78"/>
+        <path d="M12 20c4-4 10-6 16-5" stroke={rare} strokeWidth="1.2" strokeLinecap="round" opacity="0.55" fill="none"/>
+      </>
+    )
+  }
+
+  const body = (() => {
+    switch (group) {
+      case 'dfg_101': // 电子物品：玻璃屏 + 芯片 + 电路走线
+        return (
+          <>
+            <rect x="13" y="14" width="38" height="34" rx="5" fill="url(#iaIron)" stroke="#11161c" strokeWidth="1.4"/>
+            <rect x="17" y="18" width="30" height="19" rx="2.5" fill="url(#iaLens)" stroke="#0f3d68" strokeWidth="1"/>
+            <rect x={24 + (seed % 4)} y="24" width="14" height="9" rx="1.4" fill="url(#iaSteel)" stroke="#c7d2dc" strokeWidth="0.7"/>
+            <path d={`M18 42h9l4-4h9M20 42v5M41 38v9M28 33l-3 5M36 33l3 5`} stroke={accent} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.82"/>
+            {[0, 1, 2].map(i => <circle key={i} cx={20 + i * 8 + (seed % 3)} cy={42 + (i % 2) * 4} r="1.2" fill={accent}/>) }
+            <path d="M20 20c6-2 14-2 22 1" stroke="#ffffff" strokeWidth="1.7" strokeLinecap="round" opacity="0.5" fill="none"/>
+          </>
+        )
+      case 'dfg_102': // 医疗道具：银白医疗箱 + 十字 + 安瓿高光
+        return (
+          <>
+            <rect x="14" y="19" width="36" height="28" rx="5" fill="url(#iaSilver)" stroke="#6e7883" strokeWidth="1.4"/>
+            <path d="M25 19v-5h14v5" fill="none" stroke="url(#iaSteel)" strokeWidth="3" strokeLinecap="round"/>
+            <rect x="28" y="24" width="8" height="18" rx="1.6" fill="url(#iaGemR)"/>
+            <rect x="23" y="29" width="18" height="8" rx="1.6" fill="url(#iaGemR)"/>
+            <path d={`M18 23c5-2.5 11-3.2 18-1.5M19 43h${22 + (seed % 8)}`} stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.62"/>
+            <circle cx={44 - (seed % 6)} cy="24" r="1.5" fill={accent} opacity="0.85"/>
+          </>
+        )
+      case 'dfg_103': // 工具材料：工具钢/木柄组合
+        return (
+          <>
+            <path d="M18 45l20-20" stroke="url(#iaWood)" strokeWidth="7" strokeLinecap="round"/>
+            <path d={`M35 ${15 + (seed % 4)}a9 9 0 1 0 9 15l-6 2-5-5 2-6z`} fill="url(#iaSteel)" stroke="#2f353c" strokeWidth="1.3"/>
+            <path d="M17 46l8 2-7 5-5-4z" fill="url(#iaBronze)" stroke="#5f3b1c" strokeWidth="1"/>
+            <path d={`M${26 + (seed % 6)} 21l14 14`} stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.38"/>
+            <circle cx={43 - (seed % 5)} cy="43" r="3.2" fill="url(#iaBronze)" stroke="#5f3b1c" strokeWidth="0.8"/>
+          </>
+        )
+      case 'dfg_108': // 能源燃料：储能罐 + 发光芯
+        return (
+          <>
+            <rect x="20" y="12" width="24" height="40" rx="6" fill="url(#iaSteel)" stroke="#2f353c" strokeWidth="1.4"/>
+            <rect x="24" y="17" width="16" height="25" rx="4" fill="url(#iaAmber)" stroke="#9c5f10" strokeWidth="1"/>
+            <path d="M24 46h16" stroke="url(#iaSilver)" strokeWidth="3" strokeLinecap="round"/>
+            <path d={`M29 ${22 + (seed % 4)}l5 6h-4l5 8`} stroke="#fff6cf" strokeWidth="1.7" strokeLinejoin="round" fill="none" opacity="0.9"/>
+            <path d="M24 16c4-2 10-2 16 0" stroke="#ffffff" strokeWidth="1.5" opacity="0.5" fill="none"/>
+          </>
+        )
+      case 'dfg_104': // 资料情报：档案夹 + 密级封签 + 数据光带
+        return (
+          <>
+            <path d="M12 19h16l5 5h19v25H12z" fill="url(#iaPaper)" stroke="#9a845b" strokeWidth="1.3"/>
+            <path d="M12 24h40" stroke="#b8a878" strokeWidth="1"/>
+            <rect x="18" y="29" width="28" height="4" rx="1" fill="url(#iaLapis)" opacity="0.85"/>
+            <path d={`M18 38h${18 + (seed % 9)}M18 43h${14 + ((seed >> 3) % 12)}`} stroke="#7c6a4c" strokeWidth="1.3" strokeLinecap="round"/>
+            <circle cx="43" cy="22" r="4" fill="url(#iaGemR)" stroke="#7a1408" strokeWidth="0.8"/>
+            <path d="M41 22h4M43 20v4" stroke="#fff" strokeWidth="0.8" opacity="0.75"/>
+          </>
+        )
+      case 'dfg_105':
+      case 'dfg_106': // 家居/食品：瓶罐与盒装生活物资
+        return (
+          <>
+            <rect x={18 + (seed % 4)} y="12" width="10" height="8" rx="2" fill="url(#iaSilver)" stroke="#6e7883" strokeWidth="0.9"/>
+            <path d={`M22 20h${12 + (seed % 8)}l4 7v20a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V27z`} fill={motif % 2 ? 'url(#iaBronze)' : 'url(#iaGemG)'} stroke="#3c2a1a" strokeWidth="1.2"/>
+            <rect x="22" y="33" width="18" height="10" rx="1.5" fill="url(#iaPaper)" stroke="#9a845b" strokeWidth="0.7"/>
+            <path d={`M25 36.5h${8 + (seed % 6)}M25 40h${6 + ((seed >> 2) % 7)}`} stroke="#7c6a4c" strokeWidth="1"/>
+            <path d="M22 26c-1.5 7-1.5 13 0 19" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" opacity="0.42"/>
+          </>
+        )
+      case 'dfg_109': // 特殊活动收集品：纪念球/章形底座
+        return (
+          <>
+            <circle cx="32" cy="32" r="19" fill={motif % 2 ? 'url(#iaGoldR)' : 'url(#iaGemR)'} stroke="#5c2a12" strokeWidth="1.4"/>
+            <path d={`M32 13c${5 + (seed % 5)} 8 ${5 + (seed % 5)} 30 0 38M14 32c8-${5 + (seed % 5)} 28-${5 + (seed % 5)} 36 0`} stroke={accent} strokeWidth="1.3" fill="none" opacity="0.75"/>
+            <path d="M22 21c4-3 10-4 16-2" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" opacity="0.55"/>
+          </>
+        )
+      case 'dfg_107':
+      default: // 工艺藏品：宝石/陶胎/展台综合轮廓
+        return (
+          <>
+            <path d="M21 45h22l4 6H17z" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1"/>
+            <path d={motif % 2 ? 'M32 10l15 17-15 20-15-20z' : 'M22 20c0-7 20-7 20 0l5 18c0 9-30 9-30 0z'} fill={['url(#iaGemC)', 'url(#iaJade)', 'url(#iaAmber)', 'url(#iaGemB)'][motif]} stroke="#264252" strokeWidth="1.3"/>
+            <path d={motif % 2 ? 'M32 10v37M17 27h30M24 18l8 9 8-9' : 'M24 22c2-3 14-3 16 0M22 37c5 3 15 3 20 0'} stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.55"/>
+            <circle cx={glintX} cy={glintY} r="2" fill="#ffffff" opacity="0.8"/>
+          </>
+        )
+    }
+  })()
+
+  return (
+    <>
+      {sh(17, 55, 3.2, 0.3)}
+      {body}
+      {/* 稀有度金属描边与统一镜面高光；不是文字/emoji 图标 */}
+      <path d="M16 50c8 4 24 4 32 0" stroke={rare} strokeWidth="1.2" strokeLinecap="round" opacity="0.55" fill="none"/>
+      <path d={`M${glintX} ${glintY}c3-2 7-2.5 11-1.5`} stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" opacity="0.72" fill="none"/>
+    </>
+  )
+}
 
 // 每个条目是一段 64×64 视窗内的 SVG 内容；命名即物品 id
 const ART: Record<string, ReactNode> = {
@@ -2029,8 +2169,22 @@ interface ItemArtProps {
 /** 变卖物图标：有原创矢量图用矢量图，其余物品回退 emoji */
 export function ItemArt({ defId, width, height, emojiSize, inline }: ItemArtProps) {
   const art = ART[defId]
+  const def = ITEMS[defId]
+  if (!art && def?.officialGroup) {
+    return (
+      <svg
+        width={width}
+        height={height}
+        viewBox="0 0 64 64"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ display: inline ? 'inline-block' : 'block', verticalAlign: inline ? 'middle' : undefined, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.45))' }}
+      >
+        {D}
+        <OfficialCollectibleArt def={def} />
+      </svg>
+    )
+  }
   if (!art) {
-    const def = ITEMS[defId]
     return (
       <span style={{ fontSize: emojiSize ?? Math.min(width, height) * 0.6, lineHeight: 1 }}>{def?.icon ?? '❔'}</span>
     )

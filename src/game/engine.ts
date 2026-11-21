@@ -165,7 +165,6 @@ export class Game {
   private capProg = 0          // 攻防战：当前点进度 0-100
   private capPoints: { pos: THREE.Vector3; label: string; ring: THREE.Mesh; flag: THREE.Mesh; light: THREE.PointLight }[] = []
   private capGroup: THREE.Group | null = null
-  private adWaveT = 0          // 攻防战：防守方增援波次计时
   private artyStrikes: { x: number; z: number; t: number; ring: THREE.Mesh; friendly?: boolean }[] = []  // 堑壕战：进行中的炮击（friendly=玩家呼叫的空袭，不伤己方）
   private hazardToastT = 0     // 环境伤害提示节流
   private raidDuration = RAID_SECONDS // 本赛季对局时长（秒，可被主题调整）
@@ -1850,7 +1849,8 @@ export class Game {
         saveFishing(this.fishSave)
         this.fishing = null
         uiState.fishUI = null
-        const rare = defId === 'v_fish4' || defId === 'v_fish5' ? 'red' : 'cyan'
+        const rarity = ITEMS[defId].rarity
+        const rare = rarity === 'red' ? 'red' : rarity === 'cyan' || rarity === 'purple' ? 'cyan' : 'white'
         this.toast(`🎣 钓到【${ITEMS[defId].name}】！已放入背包`, rare)
         sfx.catchFish()
         this.syncGrids()
@@ -3086,7 +3086,7 @@ export class Game {
     this.warMode = uiState.warMode
     this.scoreUs = 0; this.scoreThem = 0
     this.tickets = this.warMode === 'ad' ? 75 : 0
-    this.capIdx = 0; this.capProg = 0; this.adWaveT = 0
+    this.capIdx = 0; this.capProg = 0
     this.allyRespawnQ = []
     uiState.warTime = 300; uiState.warRespawn = 0; uiState.warStreak = 0; uiState.warDeaths = 0
     uiState.warScoreUs = 0; uiState.warScoreThem = 0

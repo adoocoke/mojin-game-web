@@ -2,9 +2,9 @@
 // 容器类型与品类专属规则对齐三角洲行动官方（保险柜只出工艺藏品、服务器/电脑只出电子、医疗堆只出医疗、
 // 大武器箱出军工、实验服出房卡、杂物类全品类）；爆率分层对齐官方机密档社区实测感知
 //（高爆率容器红 1.5% / 中 0.5% / 低 0.12% / 垃圾 0.03%）；物资池随官方公告赛季更新。
-import { ITEMS, makeItem } from './data'
+import { dfCollectibleIds, ITEMS, makeItem } from './data'
 import { makeGrid, autoPlace } from './inventory'
-import type { Grid, ItemDef, ItemInstance } from './types'
+import type { Grid, ItemDef, ItemInstance, Rarity } from './types'
 
 /** 爆率档位（对齐官方：机密档为基准） */
 export type ParkTier = 0 | 1 | 2 | 3 | 4 // 0=空投 1=高爆率 2=中 3=低 4=垃圾
@@ -71,48 +71,58 @@ export const TIER_ODDS: Record<ParkTier, { red: number; gold: number; purple: nu
   4: { red: 0.0003, gold: 0.008, purple: 0.04 }, // 垃圾容器（官方：任何容器都能出大红）
 }
 
-/** 品类物资池（大红对齐官方图鉴；金紫填充复用本游戏现有藏品；随官方公告赛季更新） */
-const PARK_POOLS: Record<ParkCat, { red: string[]; gold: string[]; purple: string[]; filler: string[] }> = {
+/** 品类物资池：变卖物全量切换为三角洲官方收集品（735 件），按官方分组与稀有度抽取 */
+const DF_CRAFT = 'dfg_107'
+const DF_ELECTRONIC = 'dfg_101'
+const DF_MEDICAL = 'dfg_102'
+const DF_TOOL = 'dfg_103'
+const DF_ENERGY = 'dfg_108'
+const DF_NON_FISH_GROUPS = ['dfg_101', 'dfg_102', 'dfg_103', 'dfg_104', 'dfg_105', 'dfg_106', 'dfg_107', 'dfg_108', 'dfg_109'] as const
+
+const official = (groups: readonly string[], rarities: readonly Rarity[]) =>
+  dfCollectibleIds({ groups, rarities })
+
+export const PARK_POOLS: Record<ParkCat, { red: string[]; gold: string[]; purple: string[]; filler: string[] }> = {
   craft: {
-    red: ['v_lp_african', 'v_lp_ifv', 'v_lp_gramo', 'v_lp_gazelle', 'v_lp_musket', 'v_lp_bust'],
-    gold: ['v_crown', 'v_vase', 'v_painting', 'v_jade', 'v_diamond', 'v_relic'],
-    purple: ['v_necklace', 'v_goldbar', 'v_ring', 'v_watch', 'v_medal'],
-    filler: ['v_coin', 'v_cigar', 'v_cigs', 'v_bottle', 'v_perfume'],
+    red: official([DF_CRAFT], ['red']),
+    gold: official([DF_CRAFT], ['cyan']),
+    purple: official([DF_CRAFT], ['purple']),
+    filler: official([DF_CRAFT], ['white', 'green', 'blue']),
   },
   electronic: {
-    red: ['v_lp_topsec', 'v_lp_radar', 'v_lp_cloud', 'v_lp_disk', 'v_lp_blade', 'v_lp_blackbox', 'v_lp_laptop', 'v_lp_terminal', 'v_lp_radio', 'v_lp_array', 'v_lp_ctrl', 'v_super'],
-    gold: ['v_gpu', 'v_intel', 'v_chip'],
-    purple: ['v_scope', 'v_camera', 'v_compass'],
-    filler: ['v_coin', 'v_cigs', 'a_ammo'],
+    red: official([DF_ELECTRONIC], ['red']),
+    gold: official([DF_ELECTRONIC], ['cyan']),
+    purple: official([DF_ELECTRONIC], ['purple']),
+    filler: official([DF_ELECTRONIC], ['white', 'green', 'blue']),
   },
   medical: {
-    red: ['v_lp_vent', 'v_lp_ecmo', 'v_lp_aed', 'v_lp_breath'],
-    gold: ['v_medal', 'v_watch'],
-    purple: ['m_medkit', 'm_spray'],
-    filler: ['m_bandage', 'v_bottle', 'v_coin'],
+    red: official([DF_MEDICAL], ['red']),
+    gold: official([DF_MEDICAL], ['cyan']),
+    purple: official([DF_MEDICAL], ['purple']),
+    filler: official([DF_MEDICAL], ['white', 'green', 'blue']),
   },
   military: {
-    red: ['v_lp_carbon', 'v_lp_shell'],
-    gold: ['w_m700', 'w_m24', 'at_scope4', 'at_supp'],
-    purple: ['w_sks', 'w_akm', 'at_rdot', 'at_comp', 'a_ammo3'],
+    red: [...official([DF_TOOL, DF_ENERGY], ['red']), 'w_awm', 'w_m700'],
+    gold: [...official([DF_TOOL, DF_ENERGY], ['cyan']), 'w_m24'],
+    purple: [...official([DF_TOOL, DF_ENERGY], ['purple']), 'w_sks', 'w_akm', 'at_rdot', 'at_comp', 'a_ammo3'],
     filler: ['a_ammo', 'a_ammo2', 'm_bandage'],
   },
   cards: {
     red: ['k_t_dorm', 'k_d_crypt'],
     gold: ['k_w_cave', 'k_d_oasis'],
     purple: ['k_w_shed'],
-    filler: ['v_coin', 'v_intel'],
+    filler: ['k_w_shed', 'k_d_oasis'],
   },
   mixed: {
-    // 杂物类全品类（官方：高级旅行箱能出半身像/电脑，鸟窝能出非洲之心）
-    red: ['v_lp_robo', 'v_lp_vacuum', 'v_lp_african', 'v_lp_laptop', 'v_lp_bust', 'v_lp_drone', 'v_lp_camera2', 'v_super'],
-    gold: ['v_crown', 'v_vase', 'v_diamond', 'v_jade', 'v_piano', 'v_gpu'],
-    purple: ['v_goldbar', 'v_necklace', 'v_watch', 'v_ring', 'v_camera', 'v_perfume'],
-    filler: ['v_coin', 'v_cigar', 'v_cigs', 'v_bottle', 'v_scope', 'm_bandage'],
+    // 杂物类全品类：官方除鱼类外的全部收集品分组都可能出现；鱼类走冰湖垂钓
+    red: official(DF_NON_FISH_GROUPS, ['red']),
+    gold: official(DF_NON_FISH_GROUPS, ['cyan']),
+    purple: official(DF_NON_FISH_GROUPS, ['purple']),
+    filler: official(DF_NON_FISH_GROUPS, ['white', 'green', 'blue']),
   },
 }
 
-/** 摸金乐园容器出货：先按容器档位定品质，再从品类池抽取；全容器 0.02% 欧皇位出「海洋之泪」 */
+/** 摸金乐园容器出货：先按容器档位定品质，再从官方品类池抽取；全容器 0.02% 欧皇位出官方「海洋之泪」 */
 export function rollParkLoot(def: ParkContainerDef): ItemInstance[] {
   const n = def.slots[0] + Math.floor(Math.random() * (def.slots[1] - def.slots[0] + 1))
   const odds = TIER_ODDS[def.tier]
@@ -125,7 +135,7 @@ export function rollParkLoot(def: ParkContainerDef): ItemInstance[] {
     return src[Math.floor(Math.random() * src.length)]
   }
   for (let i = 0; i < n; i++) {
-    if (Math.random() < 0.0002) { out.push(makeItem('v_lp_tear', 1)); continue } // 欧皇检测位
+    if (Math.random() < 0.0002) { out.push(makeItem('df_15080050142', 1)); continue } // 欧皇检测位
     const r = Math.random()
     let defId: string
     if (r < odds.red) defId = pick(pool.red)

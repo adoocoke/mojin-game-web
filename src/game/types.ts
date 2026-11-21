@@ -36,6 +36,8 @@ export interface ItemDef {
   armorLv?: number   // kind === helmet/vest：护甲等级 1-3
   durability?: number// kind === helmet/vest：耐久上限
   weight?: number    // 重量 kg（默认按格子估算）
+  officialId?: string     // 三角洲官方收集品数据库 ID（仅官方变卖物）
+  officialGroup?: string  // 三角洲官方变卖物品类分组（仅官方变卖物）
 }
 
 export type AttSlot = 'scope' | 'muzzle' | 'mag' | 'stock' | 'grip' | 'laser'
@@ -60,6 +62,7 @@ export interface ItemInstance {
 }
 
 export function itemValue(def: ItemDef, _rarity?: Rarity): number {
+  void _rarity
   return def.baseValue
 }
 

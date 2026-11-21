@@ -1,6 +1,8 @@
 // ===================== 常驻活动：冰湖垂钓 & 守夜人的口风琴 =====================
 // 对应官方 S11 长弓溪谷的钓鱼玩法与佐拉口琴任务线（名称引用官方，玩法与内容均为原创实现）。
 // 两个活动都落在 snow（长弓溪谷）地图，进度存 localStorage，永久保留。
+import { dfCollectibleIds, ITEMS } from './data'
+import type { Rarity } from './types'
 
 // ---------- 钓点与NPC点位（与 world.ts 雪图视觉一致） ----------
 export const FISHING_SPOTS = [
@@ -21,13 +23,14 @@ export const PURGE_NEED = 6        // 口风琴阶段3：雷达站肃清人数
 export const RAID_CATCH_CAP = 10   // 每局渔获上限
 
 // ---------- 渔获稀有度表 ----------
-export const FISH_TABLE: { defId: string; weight: number }[] = [
-  { defId: 'v_fish1', weight: 45 },
-  { defId: 'v_fish2', weight: 27 },
-  { defId: 'v_fish3', weight: 15 },
-  { defId: 'v_fish4', weight: 9 },
-  { defId: 'v_fish5', weight: 4 },
-]
+// 官方鱼类变卖物全量同步：12 种普通鱼 + 15 种稀有鱼；权重按稀有度递减
+const FISH_RARITY_WEIGHT: Record<Rarity, number> = {
+  white: 46, green: 28, blue: 14, purple: 6, cyan: 2.4, red: 0.8,
+}
+
+export const FISH_TABLE: { defId: string; weight: number }[] = dfCollectibleIds({
+  groups: ['dfg_102091', 'dfg_102092'],
+}).map(defId => ({ defId, weight: FISH_RARITY_WEIGHT[ITEMS[defId].rarity] }))
 
 export function rollFish(rng: () => number = Math.random): string {
   const total = FISH_TABLE.reduce((s, f) => s + f.weight, 0)
