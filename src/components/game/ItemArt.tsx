@@ -1874,6 +1874,64 @@ const ART: Record<string, ReactNode> = {
     {/* 高光 */}
     <path d="M21.5 24.6c1.8-1.2 4-1.9 6.2-2" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
   </>),
+  // ===== 官方 2026-11-25 公告 · 合金装备Δ食蛇者联动道具（原创手绘，材质渐变 + 镜面高光 + 软阴影） =====
+  ev_mgs_box: (<>
+    {sh(17, 56, 3.2, 0.28)}
+    {/* 牛皮纸箱：箱身微斜，顶盖半开 */}
+    <g transform="rotate(-5 32 36)">
+      {/* 箱体正面 */}
+      <path d="M14 26h36v24a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3z" fill="url(#iaWood)" stroke="#3d2712" strokeWidth="1.4"/>
+      {/* 顶盖翻开的箱舌 */}
+      <path d="M14 26l6-7h24l6 7z" fill="#a87c4e" stroke="#3d2712" strokeWidth="1.2"/>
+      <path d="M20 19h24l3 4H17z" fill="#c09468" opacity="0.85"/>
+      {/* 横向封箱胶带 */}
+      <rect x="14" y="35" width="36" height="5" fill="url(#iaPaper)" opacity="0.55"/>
+      <rect x="14" y="35" width="36" height="1.2" fill="#8a713a" opacity="0.5"/>
+      {/* 纵向军绿胶带 */}
+      <rect x="28" y="26" width="8" height="27" fill="#5a6b3c" stroke="#3a4726" strokeWidth="0.8" opacity="0.95"/>
+      {/* 胶带上的警示贴纸：感叹号徽记 */}
+      <circle cx="32" cy="38.5" r="4.6" fill="url(#iaGoldR)" stroke="#6e4a0e" strokeWidth="1"/>
+      <rect x="31.1" y="35.6" width="1.8" height="3.6" rx="0.9" fill="#4a2f06"/>
+      <circle cx="32" cy="41" r="1" fill="#4a2f06"/>
+      {/* 印刷唛头：双向箭头与回收纹 */}
+      <path d="M18 44h6m-2-2l2 2-2 2m6-4h-0.01" stroke="#4a3018" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+      <path d="M41 44l3 0 0 3m3-3l-3 0 0 3" stroke="#4a3018" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+    </g>
+    {/* 星闪 */}
+    <path d="M50 13l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
+    {/* 高光 */}
+    <path d="M17 27.5c2.2-1.8 5-2.8 8-3" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" fill="none" opacity="0.6"/>
+  </>),
+  v_mgs_figurine: (<>
+    {sh(15, 56, 3, 0.3)}
+    {/* 展示底座：双层圆台 */}
+    <ellipse cx="32" cy="51" rx="13" ry="4" fill="url(#iaObsidian)" stroke="#0a0c0f" strokeWidth="1.2"/>
+    <ellipse cx="32" cy="48.5" rx="13" ry="4" fill="url(#iaSteel)" stroke="#1c2126" strokeWidth="1"/>
+    {/* Q 版兵人手办：站姿 */}
+    <g>
+      {/* 腿 */}
+      <path d="M28 36v9m8-9v9" stroke="#2c3324" strokeWidth="4.6" strokeLinecap="round"/>
+      {/* 战术背心躯干 */}
+      <path d="M25 24c0-3 3-5 7-5s7 2 7 5v9c0 2-2 4-7 4s-7-2-7-4z" fill="#4a5537" stroke="#232a18" strokeWidth="1.2"/>
+      {/* 背心织带 */}
+      <path d="M25.5 27h13m-13 4h13" stroke="#2c331f" strokeWidth="1.3" opacity="0.8"/>
+      {/* 手臂 */}
+      <path d="M25 25.5l-3.5 6m14-6l3 6" stroke="#3d4a2c" strokeWidth="3.4" strokeLinecap="round"/>
+      {/* 头部 */}
+      <circle cx="32" cy="14.5" r="7" fill="#d8b08a" stroke="#6e4a26" strokeWidth="1.1"/>
+      {/* 头巾：束带 + 飘结 */}
+      <path d="M25 12.5c2-2.2 12-2.2 14 0l-.4 2.6c-4.4-1.6-8.8-1.6-13.2 0z" fill="#6b3a22" stroke="#3d1f10" strokeWidth="0.9"/>
+      <path d="M38.6 13.4l4.4-1.8-1.2 3.4 2.6 1.2-4.4 1z" fill="#6b3a22" stroke="#3d1f10" strokeWidth="0.8"/>
+      {/* 眉眼 */}
+      <path d="M28.6 15.6h2.6m4.8 0h2.6" stroke="#2a1a0c" strokeWidth="1.1" strokeLinecap="round"/>
+      <circle cx="30" cy="17.4" r="0.85" fill="#241608"/>
+      <circle cx="37" cy="17.4" r="0.85" fill="#241409"/>
+      {/* 面部高光 */}
+      <path d="M27.5 11.5c1.4-1.8 3.4-2.7 5.6-2.8" stroke="#ffe8cc" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+    </g>
+    {/* 星闪 */}
+    <path d="M47 10l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
+  </>),
   // ===== 摸金乐园 · 官方大红图鉴（原创手绘，材质渐变 + 镜面高光 + 软阴影） =====
   v_lp_african: (<>
     {sh(15, 56, 3.1, 0.3)}

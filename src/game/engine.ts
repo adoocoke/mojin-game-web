@@ -2077,6 +2077,8 @@ export class Game {
       }
       // 官方活动「甄选加码·升级」（11/19 公告，11/20-11/26）：武器箱概率产出「随机武器补给包」（对应官方：新增随机武器补给包，可开出 40 种不同改装风格的枪械）
       if (evLoot.has('zhenxuan') && c.title === '武器箱' && Math.random() < 0.22) autoPlace(c.grid, makeItem('ev_randwpn_pack', 1))
+      // 官方活动「潜龙谍影·纸箱潜行」（11/25 公告，11/27-12/17）：全图容器概率刷出「潜龙谍影纸箱」（对应官方：局内搜索 MGSΔ纸箱容器，有几率获得稀有物资含限定手办）
+      if (evLoot.has('mgsbox') && Math.random() < 0.07) autoPlace(c.grid, makeItem('ev_mgs_box', 1))
     }
     // 官方活动「空投夺宝」：夺宝空投开出捣蛋代币，概率掉落炫彩花小蝶
     if (c.tag === 'airdrop' && trickActive('airdrop')) {
@@ -2450,6 +2452,28 @@ export class Game {
           uiState.money += gold
           saveMoney(uiState.money)
           msg = `🧰 开出「${pick.name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
+        }
+      } else if (def.openable === 'mgsbox') {
+        // 潜龙谍影纸箱：保底紫色物资，30% 概率开出联动限定「裸蛇手办」（对应官方：MGSΔ纸箱容器有几率获得稀有物资、含限定手办）
+        const figurine = Math.random() < 0.3
+        if (figurine) {
+          if (autoPlace(uiState.stash, makeItem('v_mgs_figurine', 1))) {
+            msg = '📦 纸箱里藏着联动限定「裸蛇手办」！'
+          } else {
+            uiState.money += 16800
+            saveMoney(uiState.money)
+            msg = '📦 开出「裸蛇手办」，仓库已满折现 +16,800 金币'
+          }
+        } else {
+          const purples = Object.values(ITEMS).filter(d => d.rarity === 'purple' && d.kind === 'valuable' && !d.openable && d.id !== 'v_mgs_figurine')
+          const pick = purples[Math.floor(Math.random() * purples.length)]
+          if (autoPlace(uiState.stash, makeItem(pick.id, 1))) {
+            msg = `📦 潜龙谍影纸箱开出「${pick.name}」！`
+          } else {
+            uiState.money += pick.baseValue
+            saveMoney(uiState.money)
+            msg = `📦 开出「${pick.name}」，仓库已满折现 +${pick.baseValue.toLocaleString()} 金币`
+          }
         }
       } else {
         // 猩红曼德尔砖：破译开启，保底红色物资

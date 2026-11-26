@@ -77,6 +77,11 @@ export const SKINS: SkinDef[] = [
   // ---------- 2026-11-19 公告批次 ----------
   { id: 'sk_jiyefenghuo', name: '极夜烽火', icon: '🌌', rarity: 'red', gun: 'any', main: 0x0d1830, accent: 0x2a4a7a, emissive: 0x4ae8d8, emissiveIntensity: 0.34, price: 4800,
     desc: '「极夜烽火—2026烽火世界杯捆绑包」限时上架：极夜深蓝枪身映极光青焰、余烬橙纹收边（对应官方：AWM/AS Val/QCQ171 极夜烽火武器外观+系列挂饰/头像/军牌/喷漆，11/20-12/19 商城 2400 三角券；本游戏等价镜像为全武器通用涂装，配色原创）' },
+  // ---------- 2026-11-25 公告批次（合金装备Δ食蛇者联动，11/27 开启） ----------
+  { id: 'sk_mgs_qianlong', name: '潜龙谍影', icon: '🐍', rarity: 'red', gun: 'any', main: 0x22301c, accent: 0x101408, emissive: 0x6a9a4a, emissiveIntensity: 0.26,
+    desc: '「联动传说赠礼」任务嘉奖：深林绿枪身覆枯叶斑纹、苔光幽微（对应官方：联动传说枪械外观 MGSΔ-SR-3M 任务免费获取；本游戏无 SR-3M，等价镜像为全武器通用涂装，配色原创）' },
+  { id: 'sk_mgs_naked', name: '裸蛇潜行', icon: '🕵️', rarity: 'red', gun: 'any', main: 0x3a3624, accent: 0x1c1a12, emissive: 0xc8a24a, emissiveIntensity: 0.22, price: 36000,
+    desc: '「无名·裸蛇」限定登场窗口期上架：橄榄褐枪身配沙色战术织带纹（对应官方：无名-裸蛇奖池 11/27-12/31，含 MGSΔ-S12K 等；本游戏无干员外观系统与 S12K，等价镜像为全武器通用涂装限时金币上架，配色原创）' },
 ]
 
 // ====================== 存档（永久，不随赛季重置） ======================

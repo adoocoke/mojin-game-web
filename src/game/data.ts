@@ -284,6 +284,11 @@ export const ITEMS: Record<string, ItemDef> = {
   v_dfi_ticket: { id: 'v_dfi_ticket', name: '精锐制式装备券', kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 4200, icon: '🎟️', stack: 5 },
   // 官方 2026-11-19 公告：甄选加码升级新增「随机武器补给包」（可开出 40 种不同改装风格的枪械；本游戏等价镜像为随机整枪）
   ev_randwpn_pack: { id: 'ev_randwpn_pack', name: '随机武器补给包', kind: 'valuable', rarity: 'purple', w: 2, h: 1, baseValue: 9000, icon: '🧰', stack: 2, openable: 'randwpn' },
+  // ===== 官方 2026-11-25 公告（11/26-27 不停机更新）：合金装备Δ食蛇者联动活动道具 =====
+  // 「潜龙谍影纸箱」：局内特殊联动容器，带出到仓库开启（对应官方：局内搜索 MGSΔ纸箱容器，有几率获得稀有物资、含限定手办）
+  ev_mgs_box: { id: 'ev_mgs_box', name: '潜龙谍影纸箱', kind: 'valuable', rarity: 'purple', w: 2, h: 1, baseValue: 8800, icon: '📦', stack: 2, openable: 'mgsbox' },
+  // 「裸蛇手办」：联动限定手办收藏品（对应官方：纸箱容器稀有产出·限定手办）
+  v_mgs_figurine: { id: 'v_mgs_figurine', name: '裸蛇手办', kind: 'valuable', rarity: 'red', w: 1, h: 1, baseValue: 16800, icon: '🕵️', stack: 3 },
   // ===== 官方活动道具：极星守望（德小兰/灰鲭鲨碎片，集齐各 3 块在仓库合成大红藏品「灰鲭鲨·德小兰」——对应官方首款可组装收集品） =====
   ev_jx_doll:  { id: 'ev_jx_doll',  name: '德小兰碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🧸', stack: 3 },
   ev_jx_shark: { id: 'ev_jx_shark', name: '灰鲭鲨碎片',   kind: 'valuable', rarity: 'purple', w: 1, h: 1, baseValue: 2600,  icon: '🦈', stack: 3 },
