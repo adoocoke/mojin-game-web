@@ -2454,18 +2454,20 @@ export class Game {
           msg = `🧰 开出「${pick.name}」，仓库已满折现 +${gold.toLocaleString()} 金币`
         }
       } else if (def.openable === 'mgsbox') {
-        // 潜龙谍影纸箱：保底紫色物资，30% 概率开出联动限定「裸蛇手办」（对应官方：MGSΔ纸箱容器有几率获得稀有物资、含限定手办）
+        // 潜龙谍影纸箱：保底紫色物资，30% 概率开出联动限定手办（「裸蛇手办」「夏娃手办」随机其一）（对应官方：MGSΔ纸箱容器有几率获得稀有物资、含限定手办「手办:裸蛇」「手办:夏娃」）
         const figurine = Math.random() < 0.3
         if (figurine) {
-          if (autoPlace(uiState.stash, makeItem('v_mgs_figurine', 1))) {
-            msg = '📦 纸箱里藏着联动限定「裸蛇手办」！'
+          const figId = Math.random() < 0.5 ? 'v_mgs_figurine' : 'v_mgs_figurine_eva'
+          const figDef = ITEMS[figId]
+          if (autoPlace(uiState.stash, makeItem(figId, 1))) {
+            msg = `📦 纸箱里藏着联动限定「${figDef.name}」！`
           } else {
-            uiState.money += 16800
+            uiState.money += figDef.baseValue
             saveMoney(uiState.money)
-            msg = '📦 开出「裸蛇手办」，仓库已满折现 +16,800 金币'
+            msg = `📦 开出「${figDef.name}」，仓库已满折现 +${figDef.baseValue.toLocaleString()} 金币`
           }
         } else {
-          const purples = Object.values(ITEMS).filter(d => d.rarity === 'purple' && d.kind === 'valuable' && !d.openable && d.id !== 'v_mgs_figurine')
+          const purples = Object.values(ITEMS).filter(d => d.rarity === 'purple' && d.kind === 'valuable' && !d.openable && d.id !== 'v_mgs_figurine' && d.id !== 'v_mgs_figurine_eva')
           const pick = purples[Math.floor(Math.random() * purples.length)]
           if (autoPlace(uiState.stash, makeItem(pick.id, 1))) {
             msg = `📦 潜龙谍影纸箱开出「${pick.name}」！`

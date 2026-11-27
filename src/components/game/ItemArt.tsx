@@ -1932,6 +1932,42 @@ const ART: Record<string, ReactNode> = {
     {/* 星闪 */}
     <path d="M47 10l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
   </>),
+  v_mgs_figurine_eva: (<>
+    {sh(15, 56, 3, 0.3)}
+    {/* 展示底座：双层圆台（与裸蛇手办同系列藏品规格） */}
+    <ellipse cx="32" cy="51" rx="13" ry="4" fill="url(#iaObsidian)" stroke="#0a0c0f" strokeWidth="1.2"/>
+    <ellipse cx="32" cy="48.5" rx="13" ry="4" fill="url(#iaSteel)" stroke="#1c2126" strokeWidth="1"/>
+    {/* Q 版女兵手办：站姿 */}
+    <g>
+      {/* 腿 */}
+      <path d="M28 36v9m8-9v9" stroke="#262b38" strokeWidth="4.6" strokeLinecap="round"/>
+      {/* 深色连体潜行服躯干 */}
+      <path d="M25 24c0-3 3-5 7-5s7 2 7 5v9c0 2-2 4-7 4s-7-2-7-4z" fill="#39404f" stroke="#1a1e28" strokeWidth="1.2"/>
+      {/* 前襟拉链与浅色领口内衬 */}
+      <path d="M32 20.5v14" stroke="#161a22" strokeWidth="1.1"/>
+      <path d="M28.5 21.5l3.5 2.6 3.5-2.6" fill="none" stroke="#cfd6e0" strokeWidth="1.3" strokeLinecap="round"/>
+      {/* 手臂 */}
+      <path d="M25 25.5l-3.5 6m14-6l3 6" stroke="#2f3543" strokeWidth="3.4" strokeLinecap="round"/>
+      {/* 肩后长发 */}
+      <path d="M24.5 13c-1.6 6-1 12 .8 15.4l3-.6c-1.4-3.4-1.8-8-1-12.8z" fill="#3a2a20"/>
+      <path d="M39.5 13c1.6 6 1 12-.8 15.4l-3-.6c1.4-3.4 1.8-8 1-12.8z" fill="#3a2a20"/>
+      {/* 头部 */}
+      <circle cx="32" cy="14.5" r="7" fill="#e2b795" stroke="#7a5230" strokeWidth="1.1"/>
+      {/* 额发与垂脸侧发 */}
+      <path d="M25 13.2c1.8-3 5-4.4 7-4.4s5.2 1.4 7 4.4c-2.2-1.2-4.6-1.7-7-1.4-2.4-.3-4.8.2-7 1.4z" fill="#4a352a" stroke="#2c1e14" strokeWidth="0.8"/>
+      <path d="M25.2 13.5c-.8 2.6-.6 5 .4 7l2-.5c-.8-2-.9-4.2-.4-6.2z" fill="#4a352a"/>
+      <path d="M38.8 13.5c.8 2.6.6 5-.4 7l-2-.5c.8-2 .9-4.2.4-6.2z" fill="#4a352a"/>
+      {/* 眉眼与微笑 */}
+      <path d="M28.4 15.4h2.6m5.2 0h2.6" stroke="#33200f" strokeWidth="1" strokeLinecap="round"/>
+      <circle cx="29.8" cy="17.2" r="0.85" fill="#241608"/>
+      <circle cx="36.6" cy="17.2" r="0.85" fill="#241608"/>
+      <path d="M30.6 19.6c.9.8 1.9.8 2.8 0" stroke="#8a4a34" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      {/* 面部高光 */}
+      <path d="M27.5 11.5c1.4-1.8 3.4-2.7 5.6-2.8" stroke="#ffe8cc" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.7"/>
+    </g>
+    {/* 星闪 */}
+    <path d="M47 10l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#ffffff" opacity="0.9"/>
+  </>),
   // ===== 摸金乐园 · 官方大红图鉴（原创手绘，材质渐变 + 镜面高光 + 软阴影） =====
   v_lp_african: (<>
     {sh(15, 56, 3.1, 0.3)}
